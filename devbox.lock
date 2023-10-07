@@ -1,0 +1,45 @@
+{
+  "lockfile_version": "1",
+  "packages": {
+    "gibo@1.0.6": {
+      "last_modified": "2023-09-27T18:02:17Z",
+      "resolved": "github:NixOS/nixpkgs/517501bcf14ae6ec47efd6a17dda0ca8e6d866f9#gibo",
+      "source": "devbox-search",
+      "version": "1.0.6",
+      "systems": {
+        "aarch64-darwin": {
+          "store_path": "/nix/store/5l3mmlbmlvhb26akwzskshfn8bw345pb-gibo-1.0.6"
+        },
+        "aarch64-linux": {
+          "store_path": "/nix/store/g2wq6hsyckhyr5fa5c78mrgqim47g20j-gibo-1.0.6"
+        },
+        "x86_64-darwin": {
+          "store_path": "/nix/store/55nn17246z8b1y5z19ds559xv7vk8zxc-gibo-1.0.6"
+        },
+        "x86_64-linux": {
+          "store_path": "/nix/store/x15cgkz28j0wfcr93vvm1f9brwplim6h-gibo-1.0.6"
+        }
+      }
+    },
+    "go@1.21.1": {
+      "last_modified": "2023-09-27T18:02:17Z",
+      "resolved": "github:NixOS/nixpkgs/517501bcf14ae6ec47efd6a17dda0ca8e6d866f9#go_1_21",
+      "source": "devbox-search",
+      "version": "1.21.1",
+      "systems": {
+        "aarch64-darwin": {
+          "store_path": "/nix/store/s1xk6hrfn0kw8ycvqbx4vv4gr00k6qpl-go-1.21.1"
+        },
+        "aarch64-linux": {
+          "store_path": "/nix/store/id3ygqxp1hvbh7dyjlwngx53fvcpqg84-go-1.21.1"
+        },
+        "x86_64-darwin": {
+          "store_path": "/nix/store/yn0g820ayb963s0i4nnw9pf72l49kkg0-go-1.21.1"
+        },
+        "x86_64-linux": {
+          "store_path": "/nix/store/pvvv2lmx9m8b2n0447mljrl5xmla8r3h-go-1.21.1"
+        }
+      }
+    }
+  }
+}
