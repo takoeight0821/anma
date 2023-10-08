@@ -2,10 +2,7 @@ module github.com/takoeight0821/tenchi
 
 go 1.21.1
 
-require (
-	github.com/peterh/liner v1.2.2
-	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
-)
+require github.com/peterh/liner v1.2.2
 
 require (
 	github.com/mattn/go-runewidth v0.0.3 // indirect

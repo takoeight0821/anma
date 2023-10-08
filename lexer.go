@@ -146,9 +146,11 @@ func (l *lexer) identifier() error {
 }
 
 var keywords = map[string]TokenKind{
-	"type": TYPE,
-	"def":  DEF,
 	"case": CASE,
+	"def":  DEF,
+	"fn":   FN,
+	"let":  LET,
+	"type": TYPE,
 }
 
 func isSymbol(c rune) bool {
@@ -156,6 +158,7 @@ func isSymbol(c rune) bool {
 	return c != '_' && !isReserved && (unicode.IsSymbol(c) || unicode.IsPunct(c))
 }
 
+// These characters are reserved symbols, but they are not included in operator.
 var reservedSymbols = map[rune]TokenKind{
 	'(': LEFT_PAREN,
 	')': RIGHT_PAREN,
@@ -210,9 +213,11 @@ const (
 	STRING
 
 	// Keywords.
-	TYPE
-	DEF
 	CASE
+	DEF
+	FN
+	LET
+	TYPE
 )
 
 type Token struct {
