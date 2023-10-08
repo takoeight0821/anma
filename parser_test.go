@@ -70,7 +70,7 @@ func TestSimplePrefix(t *testing.T) {
 }
 
 func TestParen(t *testing.T) {
-	completeParse(t, "(-1)", "(paren (- 1))")
+	completeParse(t, "(-1)", "(tuple ((- 1)))")
 }
 
 func TestSimplePostfix(t *testing.T) {
@@ -87,4 +87,16 @@ func TestInfixAndPrefix(t *testing.T) {
 
 func TestDifferentPosition(t *testing.T) {
 	completeParse(t, "1 - -2", "(- 1 (- 2))")
+}
+
+func TestApply(t *testing.T) {
+	completeParse(t, "add(1, 2)", "(apply add (1 2))")
+}
+
+func TestFuncLiteral(t *testing.T) {
+	completeParse(t, "{ # (x, y) -> add(x, y) }", "(func (# (tuple (x y))) (apply add (x y)))")
+}
+
+func TestApply2(t *testing.T) {
+	completeParse(t, "-x(1, 2)", "(- (apply x (1 2)))")
 }

@@ -72,5 +72,13 @@ func Run(source string) error {
 		fmt.Println(token)
 	}
 
+	p := NewParser(tokens)
+	expr, err := p.Parse()
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(expr)
+
 	return nil
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 )
 
@@ -98,6 +99,74 @@ func parenthesize(args ...fmt.Stringer) string {
 	return b.String()
 }
 
+type OpKind int
+
+const (
+	Prefix OpKind = iota
+	Closed
+	Postfix
+	Infix
+)
+
+type Symbol interface{}
+
+type ExprPlace struct {
+	Name string
+}
+
+type ListPlace struct {
+	Name      string
+	Separator string
+	Elem      Symbol
+}
+
+var _ Symbol = ExprPlace{}
+
+func Match(s Symbol, t Token) bool {
+	switch s := s.(type) {
+	case string:
+		return s == t.Lexeme
+	case ExprPlace:
+		return false
+	default:
+		panic(fmt.Errorf("unexpected symbol type %T", s))
+	}
+}
+
+type Op struct {
+	Kind    OpKind
+	LeftBp  int
+	RightBp int
+	Name    string
+	Symbols []Symbol
+}
+
+const (
+	MAX_BP = math.MaxInt16
+	MIN_BP = 0
+)
+
+func NewPrefix(name string, symbols []Symbol, rightBp int) Op {
+	return Op{Kind: Prefix, LeftBp: 0, RightBp: rightBp, Name: name, Symbols: symbols}
+}
+
+func NewClosed(name string, symbols []Symbol) Op {
+	return Op{Kind: Closed, LeftBp: 0, RightBp: 0, Name: name, Symbols: symbols}
+}
+
+func NewPostfix(name string, symbols []Symbol, leftBp int) Op {
+	return Op{Kind: Postfix, LeftBp: leftBp, RightBp: 0, Name: name, Symbols: symbols}
+}
+
+func NewInfix(name string, symbols []Symbol, leftBp int, rightBp int) Op {
+	return Op{Kind: Infix, LeftBp: leftBp, RightBp: rightBp, Name: name, Symbols: symbols}
+}
+
+type Language struct {
+	leading   []Op
+	following []Op
+}
+
 type Parser struct {
 	lang    Language
 	tokens  []Token // must be end with EOF
@@ -108,14 +177,17 @@ type Parser struct {
 func NewParser(tokens []Token) *Parser {
 	language := Language{
 		leading: []Op{
-			NewPrefix("-", []string{"-"}, 51),
-			NewParen("paren", []string{"(", ")"}),
+			NewPrefix("-", []Symbol{"-"}, 51),
+			NewPrefix("#", []Symbol{"#"}, MIN_BP),
+			NewClosed("tuple", []Symbol{"(", ListPlace{"tuple", ",", ExprPlace{"elem"}}, ")"}),
+			NewClosed("func", []Symbol{"{", ExprPlace{"pattern"}, "->", ExprPlace{"body"}, "}"}),
 		},
 		following: []Op{
-			NewPostfix("?", []string{"?"}, 20),
-			NewInfix("+", []string{"+"}, 50, 51),
-			NewInfix("-", []string{"-"}, 50, 51),
-			NewInfix("*", []string{"*"}, 80, 81),
+			NewPostfix("?", []Symbol{"?"}, 20),
+			NewPostfix("apply", []Symbol{"(", ListPlace{"arguments", ",", ExprPlace{"argument"}}, ")"}, MAX_BP),
+			NewInfix("+", []Symbol{"+"}, 50, 51),
+			NewInfix("-", []Symbol{"-"}, 50, 51),
+			NewInfix("*", []Symbol{"*"}, 80, 81),
 		},
 	}
 	return &Parser{lang: language, tokens: tokens, current: 0, err: nil}
@@ -139,19 +211,11 @@ func (p *Parser) advance() Token {
 	return p.previous()
 }
 
-func (p *Parser) consume(k TokenKind, message string) Token {
-	if p.peek().Kind == k {
-		return p.advance()
-	}
-	p.recover(parseError(p.peek(), message))
-	return Token{}
-}
-
 func parseError(t Token, message string) error {
 	if t.Kind == EOF {
 		return fmt.Errorf("at end: %s", message)
 	}
-	return fmt.Errorf("at line %q: %s: %s", t.Line, t.Lexeme, message)
+	return fmt.Errorf("at line %d: %q: %s", t.Line, t.Lexeme, message)
 }
 
 func (p Parser) previous() Token {
@@ -180,6 +244,36 @@ func (p *Parser) atom() Expr {
 	}
 }
 
+func (p *Parser) symbol(s Symbol) Expr {
+	switch s := s.(type) {
+	case string:
+		if !Match(s, p.peek()) {
+			p.recover(parseError(p.peek(), fmt.Sprintf("expected %q, got %q", s, p.peek().Lexeme)))
+		} else {
+			p.advance()
+		}
+		return nil
+	case ExprPlace:
+		return p.expr(0)
+	case ListPlace:
+		var children []Expr
+		for {
+			child := p.symbol(s.Elem)
+			if child == nil {
+				break
+			}
+			children = append(children, child)
+			if !Match(s.Separator, p.peek()) {
+				break
+			}
+			p.advance()
+		}
+		return NewList(children...)
+	default:
+		panic(fmt.Errorf("unexpected symbol type %T", s))
+	}
+}
+
 func (p *Parser) expr(minBp int) Expr {
 	var lead Expr
 	{
@@ -187,18 +281,14 @@ func (p *Parser) expr(minBp int) Expr {
 		t := p.peek()
 
 		for _, op := range p.lang.leading {
-			if op.Symbols[0] == t.Lexeme {
+			if Match(op.Symbols[0], t) {
 				p.advance()
 				children := []Expr{NewKeyword(t, op.Name)}
 
 				for _, s := range op.Symbols[1:] {
-					inner := p.expr(0)
-					children = append(children, inner)
-
-					if p.peek().Lexeme != s {
-						p.recover(parseError(p.peek(), fmt.Sprintf("expected %q, got %q", s, p.peek().Lexeme)))
-					} else {
-						p.advance()
+					child := p.symbol(s)
+					if child != nil {
+						children = append(children, child)
 					}
 				}
 
@@ -226,7 +316,7 @@ main:
 			return lead
 		}
 		for _, op := range p.lang.following {
-			if op.Symbols[0] == t.Lexeme {
+			if Match(op.Symbols[0], t) {
 				if op.LeftBp <= minBp {
 					return lead
 				}
@@ -235,13 +325,9 @@ main:
 				children := []Expr{NewKeyword(t, op.Name), lead}
 
 				for _, s := range op.Symbols[1:] {
-					inner := p.expr(0)
-					children = append(children, inner)
-
-					if p.peek().Lexeme != s {
-						p.recover(parseError(p.peek(), fmt.Sprintf("expected %q, got %q", s, p.peek().Lexeme)))
-					} else {
-						p.advance()
+					child := p.symbol(s)
+					if child != nil {
+						children = append(children, child)
 					}
 				}
 
@@ -258,42 +344,4 @@ main:
 		// No following operator found
 		return lead
 	}
-}
-
-type OpKind int
-
-const (
-	Prefix OpKind = iota
-	Paren
-	Postfix
-	Infix
-)
-
-type Op struct {
-	Kind    OpKind
-	LeftBp  int
-	RightBp int
-	Name    string
-	Symbols []string
-}
-
-func NewPrefix(name string, symbols []string, rightBp int) Op {
-	return Op{Kind: Prefix, LeftBp: 0, RightBp: rightBp, Name: name, Symbols: symbols}
-}
-
-func NewParen(name string, symbols []string) Op {
-	return Op{Kind: Paren, LeftBp: 0, RightBp: 0, Name: name, Symbols: symbols}
-}
-
-func NewPostfix(name string, symbols []string, leftBp int) Op {
-	return Op{Kind: Postfix, LeftBp: leftBp, RightBp: 0, Name: name, Symbols: symbols}
-}
-
-func NewInfix(name string, symbols []string, leftBp int, rightBp int) Op {
-	return Op{Kind: Infix, LeftBp: leftBp, RightBp: rightBp, Name: name, Symbols: symbols}
-}
-
-type Language struct {
-	leading   []Op
-	following []Op
 }
