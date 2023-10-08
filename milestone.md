@@ -1,0 +1,8 @@
+- Integer, Arithmetic, Bit Manipulation
+- String
+- Function
+- Object
+- Rune, Stream
+- Variant, Pattern Matching
+- Copattern
+- Type
