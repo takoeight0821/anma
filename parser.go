@@ -114,6 +114,10 @@ type ExprPlace struct {
 	Name string
 }
 
+type ClausePlace struct {
+	Name string
+}
+
 type ListPlace struct {
 	Name      string
 	Separator string
@@ -127,6 +131,10 @@ func Match(s Symbol, t Token) bool {
 	case string:
 		return s == t.Lexeme
 	case ExprPlace:
+		return false
+	case ClausePlace:
+		return false
+	case ListPlace:
 		return false
 	default:
 		panic(fmt.Errorf("unexpected symbol type %T", s))
@@ -162,20 +170,21 @@ func NewInfix(name string, symbols []Symbol, leftBp int, rightBp int) Op {
 	return Op{Kind: Infix, LeftBp: leftBp, RightBp: rightBp, Name: name, Symbols: symbols}
 }
 
-type Language struct {
+type OpTable struct {
 	leading   []Op
 	following []Op
 }
 
 type Parser struct {
-	lang    Language
-	tokens  []Token // must be end with EOF
-	current int
-	err     error
+	exprTable   OpTable
+	clauseTable OpTable
+	tokens      []Token // must be end with EOF
+	current     int
+	err         error
 }
 
 func NewParser(tokens []Token) *Parser {
-	language := Language{
+	expr := OpTable{
 		leading: []Op{
 			NewPrefix("-", []Symbol{"-"}, 51),
 			NewPrefix("#", []Symbol{"#"}, MIN_BP),
@@ -190,7 +199,13 @@ func NewParser(tokens []Token) *Parser {
 			NewInfix("*", []Symbol{"*"}, 80, 81),
 		},
 	}
-	return &Parser{lang: language, tokens: tokens, current: 0, err: nil}
+	clause := OpTable{
+		leading: []Op{},
+		following: []Op{
+			NewInfix("->", []Symbol{"->"}, 0, 0),
+		},
+	}
+	return &Parser{exprTable: expr, clauseTable: clause, tokens: tokens, current: 0, err: nil}
 }
 
 func (p *Parser) Parse() (result Expr, err error) {
@@ -280,7 +295,7 @@ func (p *Parser) expr(minBp int) Expr {
 		var expr Expr
 		t := p.peek()
 
-		for _, op := range p.lang.leading {
+		for _, op := range p.exprTable.leading {
 			if Match(op.Symbols[0], t) {
 				p.advance()
 				children := []Expr{NewKeyword(t, op.Name)}
@@ -315,7 +330,7 @@ main:
 		if t.Kind == EOF {
 			return lead
 		}
-		for _, op := range p.lang.following {
+		for _, op := range p.exprTable.following {
 			if Match(op.Symbols[0], t) {
 				if op.LeftBp <= minBp {
 					return lead
