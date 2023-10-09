@@ -1,7 +1,8 @@
 {
   "packages": [
     "go@1.21.1",
-    "gibo@1.0.6"
+    "gibo@1.0.6",
+    "golangci-lint@latest"
   ],
   "shell": {
     "init_hook": [

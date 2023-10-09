@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/adrg/xdg"
 	"github.com/peterh/liner"
 )
 
@@ -29,15 +30,28 @@ func main() {
 	}
 }
 
-var history = filepath.Join(os.TempDir(), ".tenchi_history")
+var history = filepath.Join(xdg.DataHome, "tenchi", ".tenchi_history")
 
 func RunPrompt() {
 	line := liner.NewLiner()
-	defer line.Close()
+	defer func() {
+		if err := os.MkdirAll(filepath.Dir(history), os.ModePerm); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		if f, err := os.Create(history); err == nil {
+			defer f.Close()
+			if _, err := line.WriteHistory(f); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+			}
+		}
+		line.Close()
+	}()
 
 	if f, err := os.Open(history); err == nil {
 		defer f.Close()
-		line.ReadHistory(f)
+		if _, err := line.ReadHistory(f); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
 	}
 
 	for {
