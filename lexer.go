@@ -146,8 +146,10 @@ func (l *lexer) identifier() error {
 }
 
 var keywords = map[string]TokenKind{
+	"->":   ARROW,
 	"case": CASE,
 	"def":  DEF,
+	"=":    EQUAL,
 	"fn":   FN,
 	"let":  LET,
 	"type": TYPE,
@@ -213,8 +215,10 @@ const (
 	STRING
 
 	// Keywords.
+	ARROW
 	CASE
 	DEF
+	EQUAL
 	FN
 	LET
 	TYPE
@@ -228,9 +232,5 @@ type Token struct {
 }
 
 func (t Token) String() string {
-	if t.Literal == nil {
-		return fmt.Sprintf("[%v %v %v]", t.Kind, t.Lexeme, t.Line)
-	} else {
-		return fmt.Sprintf("[%v %v %v %#v]", t.Kind, t.Lexeme, t.Line, t.Literal)
-	}
+	return t.Lexeme
 }

@@ -88,22 +88,22 @@ statement = typeDecl | varDecl | infixDecl ;
 
 typeDecl = "type" identifier "=" type ;
 
-varDecl = "def" identifier "=" expression | "def" identifier ":" type "=" expression | "def" identifier ":" type ;
+varDecl = "def" identifier "=" expr | "def" identifier ":" type "=" expr | "def" identifier ":" type ;
 
 infixDecl = "infix" operator int | "infixl" operator int | "infixr" operator int ;
 
-type = <subset of expression> ;
+type = <subset of expr> ;
 
-expression
+expr
     = identifier
     | literal
-    | "(" expression ")"
-    | expression "." identifier
-    | expression "(" ")"
-    | expression "(" expression ("," expression)* ","? ")"
-    | expression operator expression
-    | expression ":" type
-    | "let" pattern "=" expression
+    | "(" expr ("," expr)* ","? ")"
+    | expr "." identifier
+    | expr "(" ")"
+    | expr "(" expr ("," expr)* ","? ")"
+    | expr operator expr
+    | expr ":" type
+    | "let" pattern "=" expr
     | codata
     | lambda
     | case
@@ -111,15 +111,15 @@ expression
 
 codata = "{" clause ("," clause)* ","? "}" ;
 
-lambda = "fn" pattern "{" expression (";" expression)* ";"? "}" ;
+lambda = "fn" pattern "{" expr (";" expr)* ";"? "}" ;
 
-case = "case" expression "{" clause ("," clause)* ","? "}" ;
+case = "case" expr "{" clause ("," clause)* ","? "}" ;
 
 object = "{" field ("," field)* ","? "}" ;
 
-field = identifier ":" expression (";" expression)* ";"? ;
+field = identifier ":" expr (";" expr)* ";"? ;
 
-clause = pattern "->" expression (";" expression)* ";"? ;
+clause = pattern "->" expr (";" expr)* ";"? ;
 
-pattern = <subset of expression> | "#" ;
+pattern = <subset of expr> | "#" ;
 ```
