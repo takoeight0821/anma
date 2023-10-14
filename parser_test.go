@@ -3,43 +3,52 @@ package main_test
 import (
 	"testing"
 
+	"github.com/motemen/go-testutil/dataloc"
 	. "github.com/takoeight0821/tenchi"
 )
 
-func completeParse(t *testing.T, input string, expected string) {
+func completeParse(t *testing.T, input string, expected string, loc string) {
 	tokens, err := Lex(input)
 	if err != nil {
-		t.Errorf("Lex(%q) returned error: %v", input, err)
+		t.Errorf("Lex(%q) returned error: %v at %s", input, err, loc)
 	}
 
 	p := NewParser(tokens)
 	node, err := p.Parse()
 	if err != nil {
-		t.Errorf("Parse(%q) returned error: %v", input, err)
+		t.Errorf("Parse(%q) returned error: %v at %s", input, err, loc)
 	}
 
 	actual := node.String()
 	if actual != expected {
-		t.Errorf("Parse(%q) returned %q, expected %q", input, actual, expected)
+		t.Errorf("Parse(%q) returned %q, expected %q at %s", input, actual, expected, loc)
 	}
 }
 
 func TestParse(t *testing.T) {
-	completeParse(t, "1", "(literal 1)")
-	completeParse(t, `"hello"`, `(literal "hello")`)
-	completeParse(t, "f()", "(call (var f))")
-	completeParse(t, "f(1)", "(call (var f) (literal 1))")
-	completeParse(t, "f(1, 2)", "(call (var f) (literal 1) (literal 2))")
-	completeParse(t, "f(1)(2)", "(call (call (var f) (literal 1)) (literal 2))")
-	completeParse(t, "f(1,)", "(call (var f) (literal 1))")
-	completeParse(t, "a.b", "(access (var a) b)")
-	completeParse(t, "a.b.c", "(access (access (var a) b) c)")
-	completeParse(t, "f(x) + g(y).z", "(binary (call (var f) (var x)) + (access (call (var g) (var y)) z))")
-	completeParse(t, "x : Int", "(assert (var x) (var Int))")
-	completeParse(t, "let x = 1", "(let (var x) (literal 1))")
-	completeParse(t, "let x = 1 : Int", "(let (var x) (assert (literal 1) (var Int)))")
-	completeParse(t, "let Cons(x, xs) = list", "(let (call (var Cons) (var x) (var xs)) (var list))")
-	completeParse(t, "{ #(x, y) -> x + y }", "(codata (clause (call (this #) (var x) (var y)) (binary (var x) + (var y))))")
-	completeParse(t, "{ #(x, y) -> x + y, #(x, y) -> x - y }", "(codata (clause (call (this #) (var x) (var y)) (binary (var x) + (var y))) (clause (call (this #) (var x) (var y)) (binary (var x) - (var y))))")
-	completeParse(t, "fn x { x + 1 }", "(lambda (var x) (binary (var x) + (literal 1)))")
+	testcases := []struct {
+		input    string
+		expected string
+	}{
+		{"1", "(literal 1)"},
+		{`"hello"`, `(literal "hello")`},
+		{"f()", "(call (var f))"},
+		{"f(1)", "(call (var f) (literal 1))"},
+		{"f(1, 2)", "(call (var f) (literal 1) (literal 2))"},
+		{"f(1)(2)", "(call (call (var f) (literal 1)) (literal 2))"},
+		{"f(1,)", "(call (var f) (literal 1))"},
+		{"a.b", "(access (var a) b)"},
+		{"a.b.c", "(access (access (var a) b) c)"},
+		{"f(x) + g(y).z", "(binary (call (var f) (var x)) + (access (call (var g) (var y)) z))"},
+		{"x : Int", "(assert (var x) (var Int))"},
+		{"let x = 1", "(let (var x) (literal 1))"},
+		{"let x = 1 : Int", "(let (var x) (assert (literal 1) (var Int)))"},
+		{"let Cons(x, xs) = list", "(let (call (var Cons) (var x) (var xs)) (var list))"},
+		{"{ #(x, y) -> x + y }", "(codata (clause (call (this #) (var x) (var y)) (binary (var x) + (var y))))"},
+		{"{ #(x, y) -> x + y, #(x, y) -> x - y }", "(codata (clause (call (this #) (var x) (var y)) (binary (var x) + (var y))) (clause (call (this #) (var x) (var y)) (binary (var x) - (var y))))"},
+		{"fn x { x + 1 }", "(lambda (var x) (binary (var x) + (literal 1)))"},
+	}
+	for _, testcase := range testcases {
+		completeParse(t, testcase.input, testcase.expected, dataloc.L(testcase.input))
+	}
 }

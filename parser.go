@@ -452,6 +452,9 @@ func (c Codata) String() string {
 }
 
 func (c Codata) Base() Token {
+	if len(c.Clauses) == 0 {
+		return Token{}
+	}
 	return c.Clauses[0].Base()
 }
 
@@ -476,6 +479,9 @@ func (c Clause) String() string {
 }
 
 func (c Clause) Base() Token {
+	if c.Pattern == nil {
+		return Token{}
+	}
 	return c.Pattern.Base()
 }
 
@@ -674,7 +680,11 @@ func parenthesize(head string, nodes ...fmt.Stringer) string {
 	b.WriteString(head)
 	for _, node := range nodes {
 		b.WriteString(" ")
-		b.WriteString(node.String())
+		if node == nil {
+			b.WriteString("<nil>")
+		} else {
+			b.WriteString(node.String())
+		}
 	}
 	b.WriteString(")")
 	return b.String()
