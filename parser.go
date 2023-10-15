@@ -65,26 +65,6 @@ func (p *Parser) assert() Expr {
 	return expr
 }
 
-// pattern = binop
-func (p *Parser) pattern() Pattern {
-	e := p.binop()
-	if e.ValidPattern() {
-		return e
-	}
-	p.recover(parseError(e.Base(), "expected pattern"))
-	return nil
-}
-
-// type = binop
-func (p *Parser) typ() Type {
-	e := p.binop()
-	if e.ValidType() {
-		return e
-	}
-	p.recover(parseError(e.Base(), "expected type"))
-	return nil
-}
-
 // binop = access (operator access)*
 func (p *Parser) binop() Expr {
 	expr := p.access()
@@ -96,7 +76,7 @@ func (p *Parser) binop() Expr {
 	return expr
 }
 
-// access = call ("." IDENTIFIER)+
+// access = call ("." IDENTIFIER)*
 func (p *Parser) access() Expr {
 	expr := p.call()
 	for p.match(DOT) {
@@ -134,11 +114,9 @@ func (p *Parser) finishCall(fun Expr) Expr {
 	return Call{fun, args}
 }
 
-// atom = IDENT | INTEGER | STRING | "(" expr ")"
+// atom = IDENT | INTEGER | STRING | codata | "(" expr ("," expr)* ","? ")" | "(" ")"
 func (p *Parser) atom() Expr {
 	switch t := p.advance(); t.Kind {
-	case SHARP:
-		return This{t}
 	case IDENT:
 		return Var{t}
 	case INTEGER, STRING:
@@ -193,6 +171,148 @@ func (p *Parser) clause() Clause {
 		exprs = append(exprs, p.expr())
 	}
 	return Clause{pattern, exprs}
+}
+
+// pattern = accessPat
+func (p *Parser) pattern() Pattern {
+	return p.accessPat()
+}
+
+// accessPat = callPat ("." IDENTIFIER)*
+func (p *Parser) accessPat() Pattern {
+	pat := p.callPat()
+	for p.match(DOT) {
+		p.advance()
+		name := p.consume(IDENT, "expected identifier")
+		pat = Access{pat, name}
+	}
+	return pat
+}
+
+// callPat = atomPat finishCallPat*
+func (p *Parser) callPat() Pattern {
+	pat := p.atomPat()
+	for p.match(LEFT_PAREN) {
+		pat = p.finishCallPat(pat)
+	}
+	return pat
+}
+
+// finishCallPat = "(" ")" | "(" pattern ("," pattern)* ","? ")"
+func (p *Parser) finishCallPat(fun Pattern) Pattern {
+	p.consume(LEFT_PAREN, "expected `(`")
+	args := []Pattern{}
+	if !p.match(RIGHT_PAREN) {
+		args = append(args, p.pattern())
+		for p.match(COMMA) {
+			p.advance()
+			if p.match(RIGHT_PAREN) {
+				break
+			}
+			args = append(args, p.pattern())
+		}
+	}
+	p.consume(RIGHT_PAREN, "expected `)`")
+	return Call{fun, args}
+}
+
+// atomPat = IDENT | INTEGER | STRING | "(" pattern ")"
+func (p *Parser) atomPat() Pattern {
+	switch t := p.advance(); t.Kind {
+	case SHARP:
+		return This{t}
+	case IDENT:
+		return Var{t}
+	case INTEGER, STRING:
+		return Literal{t}
+	case LEFT_PAREN:
+		if p.match(RIGHT_PAREN) {
+			p.advance()
+			return Paren{}
+		}
+		patterns := []Pattern{p.pattern()}
+		for p.match(COMMA) {
+			p.advance()
+			if p.match(RIGHT_PAREN) {
+				break
+			}
+			patterns = append(patterns, p.pattern())
+		}
+		p.consume(RIGHT_PAREN, "expected `)`")
+		return Paren{patterns}
+	default:
+		p.recover(parseError(t, "expected variable, literal, or parenthesized pattern"))
+		return nil
+	}
+}
+
+// type = binopType
+func (p *Parser) typ() Type {
+	return p.binopType()
+}
+
+// binopType = callType (operator callType)*
+func (p *Parser) binopType() Type {
+	typ := p.callType()
+	for p.match(OPERATOR) {
+		op := p.advance()
+		right := p.callType()
+		typ = Binary{typ, op, right}
+	}
+	return typ
+}
+
+// callType = atomType finishCallType*
+func (p *Parser) callType() Type {
+	typ := p.atomType()
+	for p.match(LEFT_PAREN) {
+		typ = p.finishCallType(typ)
+	}
+	return typ
+}
+
+// finishCallType = "(" ")" | "(" type ("," type)* ","? ")"
+func (p *Parser) finishCallType(fun Type) Type {
+	p.consume(LEFT_PAREN, "expected `(`")
+	args := []Type{}
+	if !p.match(RIGHT_PAREN) {
+		args = append(args, p.typ())
+		for p.match(COMMA) {
+			p.advance()
+			if p.match(RIGHT_PAREN) {
+				break
+			}
+			args = append(args, p.typ())
+		}
+	}
+	p.consume(RIGHT_PAREN, "expected `)`")
+	return Call{fun, args}
+}
+
+// atomType = IDENT | "(" type ("," type)* ","? ")"
+func (p *Parser) atomType() Type {
+	switch t := p.advance(); t.Kind {
+	case IDENT:
+		return Var{t}
+	case LEFT_PAREN:
+		if p.match(RIGHT_PAREN) {
+			p.advance()
+			return Paren{}
+		}
+		types := []Type{p.typ()}
+		for p.match(COMMA) {
+			p.advance()
+			if p.match(RIGHT_PAREN) {
+				break
+			}
+			types = append(types, p.typ())
+		}
+		p.consume(RIGHT_PAREN, "expected `)`")
+		return Paren{types}
+	default:
+		p.recover(parseError(t, "expected variable or parenthesized type"))
+		return nil
+	}
 }
 
 func (p *Parser) recover(err error) {
@@ -250,9 +370,6 @@ type Node interface {
 
 type Expr interface {
 	Node
-
-	ValidPattern() bool // Check if the node can be used as a pattern.
-	ValidType() bool    // Check if the node can be used as a type.
 }
 
 // var := IDENTIFIER
@@ -266,14 +383,6 @@ func (v Var) String() string {
 
 func (v Var) Base() Token {
 	return v.Name
-}
-
-func (v Var) ValidType() bool {
-	return true
-}
-
-func (v Var) ValidPattern() bool {
-	return true
 }
 
 var (
@@ -293,14 +402,6 @@ func (l Literal) String() string {
 
 func (l Literal) Base() Token {
 	return l.Token
-}
-
-func (l Literal) ValidType() bool {
-	return false
-}
-
-func (l Literal) ValidPattern() bool {
-	return true
 }
 
 var (
@@ -331,24 +432,6 @@ func (p Paren) Base() Token {
 	return p.Exprs[0].Base()
 }
 
-func (p Paren) ValidType() bool {
-	for _, expr := range p.Exprs {
-		if !expr.ValidType() {
-			return false
-		}
-	}
-	return true
-}
-
-func (p Paren) ValidPattern() bool {
-	for _, expr := range p.Exprs {
-		if !expr.ValidPattern() {
-			return false
-		}
-	}
-	return true
-}
-
 var (
 	_ Expr    = Paren{}
 	_ Pattern = Paren{}
@@ -369,14 +452,6 @@ func (a Access) Base() Token {
 	return a.Name
 }
 
-func (a Access) ValidType() bool {
-	return false
-}
-
-func (a Access) ValidPattern() bool {
-	return a.Expr.ValidPattern()
-}
-
 var (
 	_ Expr    = Access{}
 	_ Pattern = Access{}
@@ -394,34 +469,6 @@ func (c Call) String() string {
 
 func (c Call) Base() Token {
 	return c.Func.Base()
-}
-
-func (c Call) ValidType() bool {
-	if !c.Func.ValidType() {
-		return false
-	}
-
-	for _, arg := range c.Args {
-		if !arg.ValidType() {
-			return false
-		}
-	}
-
-	return true
-}
-
-func (c Call) ValidPattern() bool {
-	if !c.Func.ValidPattern() {
-		return false
-	}
-
-	for _, arg := range c.Args {
-		if !arg.ValidPattern() {
-			return false
-		}
-	}
-
-	return true
 }
 
 var (
@@ -445,14 +492,6 @@ func (b Binary) Base() Token {
 	return b.Op
 }
 
-func (b Binary) ValidType() bool {
-	return b.Left.ValidType() && b.Right.ValidType()
-}
-
-func (b Binary) ValidPattern() bool {
-	return false
-}
-
 var (
 	_ Expr = Binary{}
 	_ Type = Binary{}
@@ -472,14 +511,6 @@ func (a Assert) Base() Token {
 	return a.Expr.Base()
 }
 
-func (a Assert) ValidType() bool {
-	return false
-}
-
-func (a Assert) ValidPattern() bool {
-	return false
-}
-
 var _ Expr = Assert{}
 
 // let := "let" pattern "=" expr
@@ -494,14 +525,6 @@ func (l Let) String() string {
 
 func (l Let) Base() Token {
 	return l.Pattern.Base()
-}
-
-func (l Let) ValidType() bool {
-	return false
-}
-
-func (l Let) ValidPattern() bool {
-	return false
 }
 
 var _ Expr = Let{}
@@ -520,14 +543,6 @@ func (c Codata) Base() Token {
 		return Token{}
 	}
 	return c.Clauses[0].Base()
-}
-
-func (c Codata) ValidType() bool {
-	return false
-}
-
-func (c Codata) ValidPattern() bool {
-	return false
 }
 
 var _ Expr = Codata{}
@@ -565,14 +580,6 @@ func (l Lambda) Base() Token {
 	return l.Pattern.Base()
 }
 
-func (l Lambda) ValidType() bool {
-	return false
-}
-
-func (l Lambda) ValidPattern() bool {
-	return false
-}
-
 var _ Expr = Lambda{}
 
 // case := "case" expr "{" clause ("," clause)* ","? "}"
@@ -589,14 +596,6 @@ func (c Case) Base() Token {
 	return c.Expr.Base()
 }
 
-func (c Case) ValidType() bool {
-	return false
-}
-
-func (c Case) ValidPattern() bool {
-	return false
-}
-
 var _ Expr = Case{}
 
 // object := "{" field ("," field)* ","? "}"
@@ -610,28 +609,6 @@ func (o Object) String() string {
 
 func (o Object) Base() Token {
 	return o.Fields[0].Base()
-}
-
-func (o Object) ValidType() bool {
-	for _, field := range o.Fields {
-		for _, expr := range field.Exprs {
-			if !expr.ValidType() {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-func (o Object) ValidPattern() bool {
-	for _, field := range o.Fields {
-		for _, expr := range field.Exprs {
-			if !expr.ValidPattern() {
-				return false
-			}
-		}
-	}
-	return true
 }
 
 var (
@@ -730,14 +707,6 @@ func (t This) String() string {
 
 func (t This) Base() Token {
 	return t.Token
-}
-
-func (t This) ValidType() bool {
-	return false
-}
-
-func (t This) ValidPattern() bool {
-	return true
 }
 
 var _ Pattern = This{}

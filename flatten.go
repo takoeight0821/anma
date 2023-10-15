@@ -250,18 +250,6 @@ func (p PatternList) String() string {
 	return b.String()
 }
 
-func (p PatternList) ValidPattern() bool {
-	b := true
-	for _, p := range p.Params {
-		b = b && p.ValidPattern()
-	}
-	return b
-}
-
-func (p PatternList) ValidType() bool {
-	return false
-}
-
 var _ Pattern = PatternList{}
 
 // Returns the length of every Params in the list.
