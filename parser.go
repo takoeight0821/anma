@@ -36,7 +36,7 @@ func (p *Parser) let() ast.Node {
 		pattern := p.pattern()
 		p.consume(token.EQUAL, "expected `=`")
 		expr := p.assert()
-		return ast.Let{pattern, expr}
+		return ast.Let{Bind: pattern, Body: expr}
 	}
 	if p.match(token.FN) {
 		p.advance()
@@ -51,7 +51,7 @@ func (p *Parser) let() ast.Node {
 			exprs = append(exprs, p.expr())
 		}
 		p.consume(token.RIGHT_BRACE, "expected `}`")
-		return ast.Lambda{pattern, exprs}
+		return ast.Lambda{Pattern: pattern, Exprs: exprs}
 	}
 	return p.assert()
 }
@@ -62,7 +62,7 @@ func (p *Parser) assert() ast.Node {
 	for p.match(token.COLON) {
 		p.advance()
 		typ := p.typ()
-		expr = ast.Assert{expr, typ}
+		expr = ast.Assert{Expr: expr, Type: typ}
 	}
 	return expr
 }
@@ -73,7 +73,7 @@ func (p *Parser) binop() ast.Node {
 	for p.match(token.OPERATOR) {
 		op := p.advance()
 		right := p.access()
-		expr = ast.Binary{expr, op, right}
+		expr = ast.Binary{Left: expr, Op: op, Right: right}
 	}
 	return expr
 }
@@ -84,7 +84,7 @@ func (p *Parser) access() ast.Node {
 	for p.match(token.DOT) {
 		p.advance()
 		name := p.consume(token.IDENT, "expected identifier")
-		expr = ast.Access{expr, name}
+		expr = ast.Access{Receiver: expr, Name: name}
 	}
 	return expr
 }
@@ -113,16 +113,16 @@ func (p *Parser) finishCall(fun ast.Node) ast.Node {
 		}
 	}
 	p.consume(token.RIGHT_PAREN, "expected `)`")
-	return ast.Call{fun, args}
+	return ast.Call{Func: fun, Args: args}
 }
 
 // atom = IDENT | INTEGER | STRING | codata | "(" expr ("," expr)* ","? ")" | "(" ")"
 func (p *Parser) atom() ast.Node {
 	switch t := p.advance(); t.Kind {
 	case token.IDENT:
-		return ast.Var{t}
+		return ast.Var{Name: t}
 	case token.INTEGER, token.STRING:
-		return ast.Literal{t}
+		return ast.Literal{Token: t}
 	case token.LEFT_BRACE:
 		return p.codata()
 	case token.LEFT_PAREN:
@@ -139,7 +139,7 @@ func (p *Parser) atom() ast.Node {
 			elems = append(elems, p.expr())
 		}
 		p.consume(token.RIGHT_PAREN, "expected `)`")
-		return ast.Paren{elems}
+		return ast.Paren{Elems: elems}
 	default:
 		p.recover(parseError(t, "expected variable, literal, or parenthesized expression"))
 		return nil
@@ -157,7 +157,7 @@ func (p *Parser) codata() ast.Node {
 		clauses = append(clauses, p.clause())
 	}
 	p.consume(token.RIGHT_BRACE, "expected `}`")
-	return ast.Codata{clauses}
+	return ast.Codata{Clauses: clauses}
 }
 
 // clause = pattern "->" expr (";" expr)* ";"?
@@ -172,7 +172,7 @@ func (p *Parser) clause() ast.Clause {
 		}
 		exprs = append(exprs, p.expr())
 	}
-	return ast.Clause{pattern, exprs}
+	return ast.Clause{Pattern: pattern, Exprs: exprs}
 }
 
 // pattern = accessPat
@@ -186,7 +186,7 @@ func (p *Parser) accessPat() ast.Node {
 	for p.match(token.DOT) {
 		p.advance()
 		name := p.consume(token.IDENT, "expected identifier")
-		pat = ast.Access{pat, name}
+		pat = ast.Access{Receiver: pat, Name: name}
 	}
 	return pat
 }
@@ -215,18 +215,18 @@ func (p *Parser) finishCallPat(fun ast.Node) ast.Node {
 		}
 	}
 	p.consume(token.RIGHT_PAREN, "expected `)`")
-	return ast.Call{fun, args}
+	return ast.Call{Func: fun, Args: args}
 }
 
 // atomPat = IDENT | INTEGER | STRING | "(" pattern ")"
 func (p *Parser) atomPat() ast.Node {
 	switch t := p.advance(); t.Kind {
 	case token.SHARP:
-		return ast.This{t}
+		return ast.This{Token: t}
 	case token.IDENT:
-		return ast.Var{t}
+		return ast.Var{Name: t}
 	case token.INTEGER, token.STRING:
-		return ast.Literal{t}
+		return ast.Literal{Token: t}
 	case token.LEFT_PAREN:
 		if p.match(token.RIGHT_PAREN) {
 			p.advance()
@@ -241,7 +241,7 @@ func (p *Parser) atomPat() ast.Node {
 			patterns = append(patterns, p.pattern())
 		}
 		p.consume(token.RIGHT_PAREN, "expected `)`")
-		return ast.Paren{patterns}
+		return ast.Paren{Elems: patterns}
 	default:
 		p.recover(parseError(t, "expected variable, literal, or parenthesized pattern"))
 		return nil
@@ -259,7 +259,7 @@ func (p *Parser) binopType() ast.Node {
 	for p.match(token.OPERATOR) {
 		op := p.advance()
 		right := p.callType()
-		typ = ast.Binary{typ, op, right}
+		typ = ast.Binary{Left: typ, Op: op, Right: right}
 	}
 	return typ
 }
@@ -288,14 +288,14 @@ func (p *Parser) finishCallType(fun ast.Node) ast.Node {
 		}
 	}
 	p.consume(token.RIGHT_PAREN, "expected `)`")
-	return ast.Call{fun, args}
+	return ast.Call{Func: fun, Args: args}
 }
 
 // atomType = IDENT | "(" type ("," type)* ","? ")"
 func (p *Parser) atomType() ast.Node {
 	switch t := p.advance(); t.Kind {
 	case token.IDENT:
-		return ast.Var{t}
+		return ast.Var{Name: t}
 	case token.LEFT_PAREN:
 		if p.match(token.RIGHT_PAREN) {
 			p.advance()
@@ -310,7 +310,7 @@ func (p *Parser) atomType() ast.Node {
 			types = append(types, p.typ())
 		}
 		p.consume(token.RIGHT_PAREN, "expected `)`")
-		return ast.Paren{types}
+		return ast.Paren{Elems: types}
 	default:
 		p.recover(parseError(t, "expected variable or parenthesized type"))
 		return nil

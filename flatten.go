@@ -18,27 +18,27 @@ func Flattern(n ast.Node) ast.Node {
 		for i, e := range n.Elems {
 			es[i] = Flattern(e)
 		}
-		return ast.Paren{es}
+		return ast.Paren{Elems: es}
 	case ast.Access:
-		return ast.Access{Flattern(n.Receiver), n.Name}
+		return ast.Access{Receiver: Flattern(n.Receiver), Name: n.Name}
 	case ast.Call:
 		as := make([]ast.Node, len(n.Args))
 		for i, a := range n.Args {
 			as[i] = Flattern(a)
 		}
-		return ast.Call{Flattern(n.Func), as}
+		return ast.Call{Func: Flattern(n.Func), Args: as}
 	case ast.Binary:
-		return ast.Binary{Flattern(n.Left), n.Op, Flattern(n.Right)}
+		return ast.Binary{Left: Flattern(n.Left), Op: n.Op, Right: Flattern(n.Right)}
 	case ast.Assert:
-		return ast.Assert{Flattern(n.Expr), n.Type}
+		return ast.Assert{Expr: Flattern(n.Expr), Type: n.Type}
 	case ast.Let:
-		return ast.Let{Flattern(n.Bind), Flattern(n.Body)}
+		return ast.Let{Bind: Flattern(n.Bind), Body: Flattern(n.Body)}
 	case ast.Lambda:
 		es := make([]ast.Node, len(n.Exprs))
 		for i, e := range n.Exprs {
 			es[i] = Flattern(e)
 		}
-		return ast.Lambda{Flattern(n.Pattern), es}
+		return ast.Lambda{Pattern: Flattern(n.Pattern), Exprs: es}
 	case ast.Case:
 		cs := make([]ast.Clause, len(n.Clauses))
 		for i, c := range n.Clauses {
@@ -46,9 +46,9 @@ func Flattern(n ast.Node) ast.Node {
 			for i, e := range c.Exprs {
 				es[i] = Flattern(e)
 			}
-			cs[i] = ast.Clause{Flattern(c.Pattern), es}
+			cs[i] = ast.Clause{Pattern: Flattern(c.Pattern), Exprs: es}
 		}
-		return ast.Case{Flattern(n.Scrutinee), cs}
+		return ast.Case{Scrutinee: Flattern(n.Scrutinee), Clauses: cs}
 	case ast.Object:
 		fs := make([]ast.Field, len(n.Fields))
 		for i, f := range n.Fields {
@@ -56,9 +56,9 @@ func Flattern(n ast.Node) ast.Node {
 			for i, e := range f.Exprs {
 				es[i] = Flattern(e)
 			}
-			fs[i] = ast.Field{f.Name, es}
+			fs[i] = ast.Field{Name: f.Name, Exprs: es}
 		}
-		return ast.Object{fs}
+		return ast.Object{Fields: fs}
 	default:
 		return n
 	}
@@ -78,7 +78,7 @@ func flatternCodata(c ast.Codata) ast.Node {
 		for j, e := range cl.Exprs {
 			cl.Exprs[j] = Flattern(e)
 		}
-		newClauses[i] = ast.Clause{ps[i], cl.Exprs}
+		newClauses[i] = ast.Clause{Pattern: ps[i], Exprs: cl.Exprs}
 	}
 
 	arity, err := Arity(ps)
@@ -112,7 +112,7 @@ func (b *Builder) Object(clauses []ast.Clause) ast.Object {
 	for _, c := range clauses {
 		plist := c.Pattern.(PatternList)
 		if field, plist, ok := Pop(plist); ok {
-			next[field.String()] = append(next[field.String()], ast.Clause{plist, c.Exprs})
+			next[field.String()] = append(next[field.String()], ast.Clause{Pattern: plist, Exprs: c.Exprs})
 			if !slices.Contains(nextKeys, field.String()) {
 				nextKeys = append(nextKeys, field.String())
 			}
@@ -136,7 +136,7 @@ func (b *Builder) Object(clauses []ast.Clause) ast.Object {
 		}
 		if allHasAccessors {
 			// if all pattern lists have accessors, call Object recursively
-			fields = append(fields, ast.Field{field, []ast.Node{b.Object(cs)}})
+			fields = append(fields, ast.Field{Name: field, Exprs: []ast.Node{b.Object(cs)}})
 		} else if len(b.Scrutinees) != 0 {
 			// if any of cs has no accessors and has guards, generate Case expression
 			caseClauses := make([]ast.Clause, 0)
@@ -144,7 +144,7 @@ func (b *Builder) Object(clauses []ast.Clause) ast.Object {
 			for _, c := range cs {
 				plist := c.Pattern.(PatternList)
 				if len(plist.Accessors) == 0 {
-					caseClauses = append(caseClauses, ast.Clause{ast.Paren{plist.Params}, c.Exprs})
+					caseClauses = append(caseClauses, ast.Clause{Pattern: ast.Paren{Elems: plist.Params}, Exprs: c.Exprs})
 				} else {
 					restClauses = append(restClauses, c)
 				}
@@ -152,30 +152,30 @@ func (b *Builder) Object(clauses []ast.Clause) ast.Object {
 
 			for _, c := range restClauses {
 				plist := c.Pattern.(PatternList)
-				caseClauses = append(caseClauses, ast.Clause{ast.Paren{plist.Params}, []ast.Node{b.Object(restClauses)}})
+				caseClauses = append(caseClauses, ast.Clause{Pattern: ast.Paren{Elems: plist.Params}, Exprs: []ast.Node{b.Object(restClauses)}})
 			}
-			fields = append(fields, ast.Field{field, []ast.Node{ast.Case{ast.Paren{b.Scrutinees}, caseClauses}}})
+			fields = append(fields, ast.Field{Name: field, Exprs: []ast.Node{ast.Case{Scrutinee: ast.Paren{Elems: b.Scrutinees}, Clauses: caseClauses}}})
 		} else {
 			// if there is no scrutinee, simply insert the clause's body expression
-			fields = append(fields, ast.Field{field, cs[0].Exprs})
+			fields = append(fields, ast.Field{Name: field, Exprs: cs[0].Exprs})
 		}
 	}
-	return ast.Object{fields}
+	return ast.Object{Fields: fields}
 }
 
 // Generate Lambda and dispatch body expression to Object or Case based on existence of accessors.
 func (b *Builder) Lambda(arity int, clauses []ast.Clause) ast.Lambda {
-	baseToken := ast.Codata{clauses}.Base()
+	baseToken := ast.Codata{Clauses: clauses}.Base()
 	// Generate Scrutinees
 	b.Scrutinees = make([]ast.Node, arity)
 	for i := 0; i < arity; i++ {
-		b.Scrutinees[i] = ast.Var{token.Token{Kind: token.IDENT, Lexeme: fmt.Sprintf("x%d", i), Line: baseToken.Line, Literal: nil}}
+		b.Scrutinees[i] = ast.Var{Name: token.Token{Kind: token.IDENT, Lexeme: fmt.Sprintf("x%d", i), Line: baseToken.Line, Literal: nil}}
 	}
 
 	// If any of clauses has accessors, body expression is Object.
 	for _, c := range clauses {
 		if len(c.Pattern.(PatternList).Accessors) != 0 {
-			return ast.Lambda{Pattern: ast.Paren{b.Scrutinees}, Exprs: []ast.Node{b.Object(clauses)}}
+			return ast.Lambda{Pattern: ast.Paren{Elems: b.Scrutinees}, Exprs: []ast.Node{b.Object(clauses)}}
 		}
 	}
 
@@ -183,9 +183,9 @@ func (b *Builder) Lambda(arity int, clauses []ast.Clause) ast.Lambda {
 	caseClauses := make([]ast.Clause, 0)
 	for _, c := range clauses {
 		plist := c.Pattern.(PatternList)
-		caseClauses = append(caseClauses, ast.Clause{ast.Paren{plist.Params}, c.Exprs})
+		caseClauses = append(caseClauses, ast.Clause{Pattern: ast.Paren{Elems: plist.Params}, Exprs: c.Exprs})
 	}
-	return ast.Lambda{Pattern: ast.Paren{b.Scrutinees}, Exprs: []ast.Node{ast.Case{ast.Paren{b.Scrutinees}, caseClauses}}}
+	return ast.Lambda{Pattern: ast.Paren{Elems: b.Scrutinees}, Exprs: []ast.Node{ast.Case{Scrutinee: ast.Paren{Elems: b.Scrutinees}, Clauses: caseClauses}}}
 }
 
 func InvalidPattern(n ast.Node) error {
