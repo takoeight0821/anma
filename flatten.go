@@ -14,51 +14,50 @@ func Flattern(n ast.Node) ast.Node {
 	case ast.Codata:
 		return flatternCodata(n)
 	case ast.Paren:
-		es := make([]ast.Node, len(n.Elems))
 		for i, e := range n.Elems {
-			es[i] = Flattern(e)
+			n.Elems[i] = Flattern(e)
 		}
-		return ast.Paren{Elems: es}
+		return n
 	case ast.Access:
-		return ast.Access{Receiver: Flattern(n.Receiver), Name: n.Name}
+		n.Receiver = Flattern(n.Receiver)
+		return n
 	case ast.Call:
-		as := make([]ast.Node, len(n.Args))
+		n.Func = Flattern(n.Func)
 		for i, a := range n.Args {
-			as[i] = Flattern(a)
+			n.Args[i] = Flattern(a)
 		}
-		return ast.Call{Func: Flattern(n.Func), Args: as}
+		return n
 	case ast.Binary:
-		return ast.Binary{Left: Flattern(n.Left), Op: n.Op, Right: Flattern(n.Right)}
+		n.Left = Flattern(n.Left)
+		n.Right = Flattern(n.Right)
+		return n
 	case ast.Assert:
-		return ast.Assert{Expr: Flattern(n.Expr), Type: n.Type}
+		n.Expr = Flattern(n.Expr)
+		return n
 	case ast.Let:
-		return ast.Let{Bind: Flattern(n.Bind), Body: Flattern(n.Body)}
+		n.Bind = Flattern(n.Bind)
+		n.Body = Flattern(n.Body)
+		return n
 	case ast.Lambda:
-		es := make([]ast.Node, len(n.Exprs))
 		for i, e := range n.Exprs {
-			es[i] = Flattern(e)
+			n.Exprs[i] = Flattern(e)
 		}
-		return ast.Lambda{Pattern: Flattern(n.Pattern), Exprs: es}
+		return n
 	case ast.Case:
-		cs := make([]ast.Clause, len(n.Clauses))
+		n.Scrutinee = Flattern(n.Scrutinee)
 		for i, c := range n.Clauses {
-			es := make([]ast.Node, len(c.Exprs))
-			for i, e := range c.Exprs {
-				es[i] = Flattern(e)
+			for j, e := range c.Exprs {
+				n.Clauses[i].Exprs[j] = Flattern(e)
 			}
-			cs[i] = ast.Clause{Pattern: Flattern(c.Pattern), Exprs: es}
 		}
-		return ast.Case{Scrutinee: Flattern(n.Scrutinee), Clauses: cs}
+		return n
 	case ast.Object:
-		fs := make([]ast.Field, len(n.Fields))
 		for i, f := range n.Fields {
-			es := make([]ast.Node, len(f.Exprs))
-			for i, e := range f.Exprs {
-				es[i] = Flattern(e)
+			for j, e := range f.Exprs {
+				n.Fields[i].Exprs[j] = Flattern(e)
 			}
-			fs[i] = ast.Field{Name: f.Name, Exprs: es}
 		}
-		return ast.Object{Fields: fs}
+		return n
 	default:
 		return n
 	}
@@ -66,27 +65,24 @@ func Flattern(n ast.Node) ast.Node {
 
 func flatternCodata(c ast.Codata) ast.Node {
 	// Generate PatternList
-	ps := make([]PatternList, len(c.Clauses))
+	arity := -1
 	for i, cl := range c.Clauses {
-		as := accessors(cl.Pattern)
-		p := params(cl.Pattern)
-		ps[i] = PatternList{as, p}
-	}
-
-	newClauses := make([]ast.Clause, len(c.Clauses))
-	for i, cl := range c.Clauses {
-		for j, e := range cl.Exprs {
-			cl.Exprs[j] = Flattern(e)
+		c.Clauses[i].Pattern = PatternList{Accessors: accessors(cl.Pattern), Params: params(cl.Pattern)}
+		if arity == -1 {
+			arity = len(c.Clauses[i].Pattern.(PatternList).Params)
+		} else if arity != len(c.Clauses[i].Pattern.(PatternList).Params) {
+			panic(fmt.Errorf("arity mismatch at %d: %v", c.Base().Line, c))
 		}
-		newClauses[i] = ast.Clause{Pattern: ps[i], Exprs: cl.Exprs}
+		for j, e := range cl.Exprs {
+			c.Clauses[i].Exprs[j] = Flattern(e)
+		}
 	}
 
-	arity, err := Arity(ps)
-	if err != nil {
-		panic(err)
+	if arity == -1 {
+		panic(fmt.Errorf("unreachable: arity is -1 at %d: %v", c.Base().Line, c))
 	}
 
-	return NewBuilder().Build(arity, newClauses)
+	return NewBuilder().Build(arity, c.Clauses)
 }
 
 type Builder struct {
@@ -253,22 +249,6 @@ func (p PatternList) String() string {
 }
 
 var _ ast.Node = PatternList{}
-
-// Returns the length of every Params in the list.
-func Arity(ps []PatternList) (int, error) {
-	if len(ps) == 0 {
-		return 0, fmt.Errorf("empty pattern list")
-	}
-
-	arity := len(ps[0].Params)
-	for _, p := range ps {
-		if len(p.Params) != arity {
-			return 0, fmt.Errorf("invalid arity at %v: %d", p, arity)
-		}
-	}
-
-	return arity, nil
-}
 
 // Split PatternList into the first accessor and the rest.
 func Pop(p PatternList) (token.Token, PatternList, bool) {
