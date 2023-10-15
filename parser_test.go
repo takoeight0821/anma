@@ -47,6 +47,8 @@ func TestParse(t *testing.T) {
 		{"{ #(x, y) -> x + y }", "(codata (clause (call (this #) (var x) (var y)) (binary (var x) + (var y))))"},
 		{"{ #(x, y) -> x + y, #(x, y) -> x - y }", "(codata (clause (call (this #) (var x) (var y)) (binary (var x) + (var y))) (clause (call (this #) (var x) (var y)) (binary (var x) - (var y))))"},
 		{"fn x { x + 1 }", "(lambda (var x) (binary (var x) + (literal 1)))"},
+		{"(x, y, z)", "(paren (var x) (var y) (var z))"},
+		{"()", "(paren)"},
 	}
 	for _, testcase := range testcases {
 		completeParse(t, testcase.input, testcase.expected, dataloc.L(testcase.input))

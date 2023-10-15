@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"strings"
+
+	"golang.org/x/exp/slices"
 )
 
 func Flattern(n Expr) Expr {
@@ -10,7 +12,11 @@ func Flattern(n Expr) Expr {
 	case Codata:
 		return flatternCodata(n)
 	case Paren:
-		return Paren{Flattern(n.Expr)}
+		es := make([]Expr, len(n.Exprs))
+		for i, e := range n.Exprs {
+			es[i] = Flattern(e)
+		}
+		return Paren{es}
 	case Access:
 		return Access{Flattern(n.Expr), n.Name}
 	case Call:
@@ -44,7 +50,11 @@ func Flattern(n Expr) Expr {
 	case Object:
 		fs := make([]Field, len(n.Fields))
 		for i, f := range n.Fields {
-			fs[i] = Field{f.Name, Flattern(f.Expr)}
+			es := make([]Expr, len(f.Exprs))
+			for i, e := range f.Exprs {
+				es[i] = Flattern(e)
+			}
+			fs[i] = Field{f.Name, es}
 		}
 		return Object{fs}
 	default:
@@ -63,6 +73,9 @@ func flatternCodata(c Codata) Expr {
 
 	newClauses := make([]Clause, len(c.Clauses))
 	for i, cl := range c.Clauses {
+		for j, e := range cl.Exprs {
+			cl.Exprs[j] = Flattern(e)
+		}
 		newClauses[i] = Clause{ps[i], cl.Exprs}
 	}
 
@@ -74,12 +87,15 @@ func flatternCodata(c Codata) Expr {
 	return NewBuilder().Build(arity, newClauses)
 }
 
-type Builder struct{}
+type Builder struct {
+	Scrutinees []Expr
+}
 
 func NewBuilder() *Builder {
 	return &Builder{}
 }
 
+// dispatch to Object or Lambda based on arity
 func (b *Builder) Build(arity int, clauses []Clause) Expr {
 	if arity == 0 {
 		return b.Object(clauses)
@@ -88,11 +104,86 @@ func (b *Builder) Build(arity int, clauses []Clause) Expr {
 }
 
 func (b *Builder) Object(clauses []Clause) Expr {
-	panic("Not implemented")
+	// Pop the first accessor of each clause and group remaining clauses by the popped accessor.
+	next := make(map[string][]Clause)
+	nextKeys := make([]string, 0) // for deterministic order
+	for _, c := range clauses {
+		plist := c.Pattern.(PatternList)
+		if field, plist, ok := Pop(plist); ok {
+			next[field.String()] = append(next[field.String()], Clause{plist, c.Exprs})
+			if !slices.Contains(nextKeys, field.String()) {
+				nextKeys = append(nextKeys, field.String())
+			}
+		} else {
+			panic(fmt.Errorf("not implemented: %v\nmix of pure pattern and copattern is not supported yet", c))
+		}
+	}
+
+	fields := make([]Field, 0)
+
+	// Generate each field's body expression
+	for _, field := range nextKeys {
+		cs := next[field]
+
+		allHasAccessors := true
+		for _, c := range cs {
+			if len(c.Pattern.(PatternList).Accessors) == 0 {
+				allHasAccessors = false
+				break
+			}
+		}
+		if allHasAccessors {
+			// if all pattern lists have accessors, call Object recursively
+			fields = append(fields, Field{field, []Expr{b.Object(cs)}})
+		} else if len(b.Scrutinees) != 0 {
+			// if any of cs has no accessors and has guards, generate Case expression
+			caseClauses := make([]Clause, 0)
+			restClauses := make([]Clause, 0)
+			for _, c := range cs {
+				plist := c.Pattern.(PatternList)
+				if len(plist.Accessors) == 0 {
+					caseClauses = append(caseClauses, Clause{Paren{plist.Params}, c.Exprs})
+				} else {
+					restClauses = append(restClauses, c)
+				}
+			}
+
+			for _, c := range restClauses {
+				plist := c.Pattern.(PatternList)
+				caseClauses = append(caseClauses, Clause{Paren{plist.Params}, []Expr{b.Object(restClauses)}})
+			}
+			fields = append(fields, Field{field, []Expr{Case{Paren{b.Scrutinees}, caseClauses}}})
+		} else {
+			// if there is no scrutinee, simply insert the clause's body expression
+			fields = append(fields, Field{field, cs[0].Exprs})
+		}
+	}
+	return Object{fields}
 }
 
+// Generate Lambda and dispatch body expression to Object or Case based on existence of accessors.
 func (b *Builder) Lambda(arity int, clauses []Clause) Expr {
-	panic("Not implemented")
+	baseToken := Codata{clauses}.Base()
+	// Generate Scrutinees
+	b.Scrutinees = make([]Expr, arity)
+	for i := 0; i < arity; i++ {
+		b.Scrutinees[i] = Var{Token{IDENT, fmt.Sprintf("x%d", i), baseToken.Line, nil}}
+	}
+
+	// If any of clauses has accessors, body expression is Object.
+	for _, c := range clauses {
+		if len(c.Pattern.(PatternList).Accessors) != 0 {
+			return Lambda{Pattern: Paren{b.Scrutinees}, Exprs: []Expr{b.Object(clauses)}}
+		}
+	}
+
+	// otherwise, body expression is Case.
+	caseClauses := make([]Clause, 0)
+	for _, c := range clauses {
+		plist := c.Pattern.(PatternList)
+		caseClauses = append(caseClauses, Clause{Paren{plist.Params}, c.Exprs})
+	}
+	return Lambda{Pattern: Paren{b.Scrutinees}, Exprs: []Expr{Case{Paren{b.Scrutinees}, caseClauses}}}
 }
 
 func InvalidPattern(n Node) error {
@@ -118,11 +209,7 @@ func params(p Pattern) []Pattern {
 		if _, ok := p.Func.(This); !ok {
 			panic(InvalidPattern(p))
 		}
-		ps := make([]Pattern, len(p.Args))
-		for i, a := range p.Args {
-			ps[i] = a.(Pattern)
-		}
-		return ps
+		return p.Args
 	default:
 		return []Pattern{}
 	}
@@ -193,12 +280,12 @@ func Arity(ps []PatternList) (int, error) {
 	return arity, nil
 }
 
-// Returns the last element of Accessors and removes it.
-func Pop(p *PatternList) (Token, bool) {
+// Split PatternList into the first accessor and the rest.
+func Pop(p PatternList) (Token, PatternList, bool) {
 	if len(p.Accessors) == 0 {
-		return Token{}, false
+		return Token{}, p, false
 	}
-	a := p.Accessors[len(p.Accessors)-1]
-	p.Accessors = p.Accessors[:len(p.Accessors)-1]
-	return a, true
+	a := p.Accessors[0]
+	p.Accessors = p.Accessors[1:]
+	return a, p, true
 }

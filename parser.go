@@ -146,9 +146,20 @@ func (p *Parser) atom() Expr {
 	case LEFT_BRACE:
 		return p.codata()
 	case LEFT_PAREN:
-		expr := p.expr()
+		if p.match(RIGHT_PAREN) {
+			p.advance()
+			return Paren{}
+		}
+		exprs := []Expr{p.expr()}
+		for p.match(COMMA) {
+			p.advance()
+			if p.match(RIGHT_PAREN) {
+				break
+			}
+			exprs = append(exprs, p.expr())
+		}
 		p.consume(RIGHT_PAREN, "expected `)`")
-		return Paren{expr}
+		return Paren{exprs}
 	default:
 		p.recover(parseError(t, "expected variable, literal, or parenthesized expression"))
 		return nil
@@ -297,13 +308,45 @@ var (
 	_ Pattern = Literal{}
 )
 
-// paren := "(" expr ")"
+// paren := "(" expr ("," expr)* ","? ")" | "(" ")"
+// If len(Exprs) == 0, it is an empty tuple.
+// If len(Exprs) == 1, it is a parenthesized expression.
+// Otherwise, it is a tuple.
 type Paren struct {
-	Expr
+	Exprs []Expr
 }
 
 func (p Paren) String() string {
-	return parenthesize("paren", p.Expr)
+	ss := make([]fmt.Stringer, len(p.Exprs))
+	for i, expr := range p.Exprs {
+		ss[i] = expr
+	}
+	return parenthesize("paren", ss...)
+}
+
+func (p Paren) Base() Token {
+	if len(p.Exprs) == 0 {
+		return Token{}
+	}
+	return p.Exprs[0].Base()
+}
+
+func (p Paren) ValidType() bool {
+	for _, expr := range p.Exprs {
+		if !expr.ValidType() {
+			return false
+		}
+	}
+	return true
+}
+
+func (p Paren) ValidPattern() bool {
+	for _, expr := range p.Exprs {
+		if !expr.ValidPattern() {
+			return false
+		}
+	}
+	return true
 }
 
 var (
@@ -571,8 +614,10 @@ func (o Object) Base() Token {
 
 func (o Object) ValidType() bool {
 	for _, field := range o.Fields {
-		if !field.Expr.ValidType() {
-			return false
+		for _, expr := range field.Exprs {
+			if !expr.ValidType() {
+				return false
+			}
 		}
 	}
 	return true
@@ -580,8 +625,10 @@ func (o Object) ValidType() bool {
 
 func (o Object) ValidPattern() bool {
 	for _, field := range o.Fields {
-		if !field.Expr.ValidPattern() {
-			return false
+		for _, expr := range field.Exprs {
+			if !expr.ValidPattern() {
+				return false
+			}
 		}
 	}
 	return true
@@ -595,16 +642,16 @@ var (
 
 // field := IDENTIFIER ":" expr
 type Field struct {
-	Name Token
-	Expr
+	Name  string
+	Exprs []Expr
 }
 
 func (f Field) String() string {
-	return parenthesize("field", f.Name, f.Expr)
+	return parenthesize("field "+f.Name, squash(f.Exprs)...)
 }
 
 func (f Field) Base() Token {
-	return f.Name
+	return f.Exprs[0].Base()
 }
 
 var _ Node = Field{}
@@ -669,13 +716,9 @@ func (i InfixDecl) Base() Token {
 
 var _ Stmt = InfixDecl{}
 
-type Type interface {
-	Expr
-}
+type Type = Expr
 
-type Pattern interface {
-	Expr
-}
+type Pattern = Expr
 
 type This struct {
 	Token
