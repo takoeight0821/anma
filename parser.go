@@ -99,7 +99,7 @@ func (p *Parser) call() ast.Node {
 }
 
 // finishCall = "(" ")" | "(" expr ("," expr)* ","? ")"
-func (p *Parser) finishCall(fun ast.Node) ast.Node {
+func (p *Parser) finishCall(fun ast.Node) ast.Call {
 	p.consume(token.LEFT_PAREN, "expected `(`")
 	args := []ast.Node{}
 	if !p.match(token.RIGHT_PAREN) {
@@ -147,7 +147,7 @@ func (p *Parser) atom() ast.Node {
 }
 
 // codata = "{" clause ("," clause)* ","? "}"
-func (p *Parser) codata() ast.Node {
+func (p *Parser) codata() ast.Codata {
 	clauses := []ast.Clause{p.clause()}
 	for p.match(token.COMMA) {
 		p.advance()
@@ -201,7 +201,7 @@ func (p *Parser) callPat() ast.Node {
 }
 
 // finishCallPat = "(" ")" | "(" pattern ("," pattern)* ","? ")"
-func (p *Parser) finishCallPat(fun ast.Node) ast.Node {
+func (p *Parser) finishCallPat(fun ast.Node) ast.Call {
 	p.consume(token.LEFT_PAREN, "expected `(`")
 	args := []ast.Node{}
 	if !p.match(token.RIGHT_PAREN) {
@@ -274,7 +274,7 @@ func (p *Parser) callType() ast.Node {
 }
 
 // finishCallType = "(" ")" | "(" type ("," type)* ","? ")"
-func (p *Parser) finishCallType(fun ast.Node) ast.Node {
+func (p *Parser) finishCallType(fun ast.Node) ast.Call {
 	p.consume(token.LEFT_PAREN, "expected `(`")
 	args := []ast.Node{}
 	if !p.match(token.RIGHT_PAREN) {
