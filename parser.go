@@ -265,7 +265,11 @@ func (v Var) ValidPattern() bool {
 	return true
 }
 
-var _ Expr = Var{}
+var (
+	_ Expr    = Var{}
+	_ Pattern = Var{}
+	_ Type    = Var{}
+)
 
 // literal := INTEGER | FLOAT | RUNE | STRING
 type Literal struct {
@@ -288,7 +292,10 @@ func (l Literal) ValidPattern() bool {
 	return true
 }
 
-var _ Expr = Literal{}
+var (
+	_ Expr    = Literal{}
+	_ Pattern = Literal{}
+)
 
 // paren := "(" expr ")"
 type Paren struct {
@@ -299,7 +306,11 @@ func (p Paren) String() string {
 	return parenthesize("paren", p.Expr)
 }
 
-var _ Expr = Paren{}
+var (
+	_ Expr    = Paren{}
+	_ Pattern = Paren{}
+	_ Type    = Paren{}
+)
 
 // access := expr "." IDENTIFIER
 type Access struct {
@@ -323,7 +334,10 @@ func (a Access) ValidPattern() bool {
 	return a.Expr.ValidPattern()
 }
 
-var _ Expr = Access{}
+var (
+	_ Expr    = Access{}
+	_ Pattern = Access{}
+)
 
 // call := expr "(" ")" | expr "(" expr ("," expr)* ","? ")"
 type Call struct {
@@ -367,7 +381,11 @@ func (c Call) ValidPattern() bool {
 	return true
 }
 
-var _ Expr = Call{}
+var (
+	_ Expr    = Call{}
+	_ Pattern = Call{}
+	_ Type    = Call{}
+)
 
 // binary := expr operator expr
 type Binary struct {
@@ -392,7 +410,10 @@ func (b Binary) ValidPattern() bool {
 	return false
 }
 
-var _ Expr = Binary{}
+var (
+	_ Expr = Binary{}
+	_ Type = Binary{}
+)
 
 // assert := expr ":" type
 type Assert struct {
@@ -566,7 +587,11 @@ func (o Object) ValidPattern() bool {
 	return true
 }
 
-var _ Expr = Object{}
+var (
+	_ Expr    = Object{}
+	_ Pattern = Object{}
+	_ Type    = Object{}
+)
 
 // field := IDENTIFIER ":" expr
 type Field struct {

@@ -82,10 +82,6 @@ func Run(source string) error {
 		return err
 	}
 
-	for _, token := range tokens {
-		fmt.Println(token)
-	}
-
 	p := NewParser(tokens)
 	expr, err := p.Parse()
 	if err != nil {
@@ -93,6 +89,8 @@ func Run(source string) error {
 	}
 
 	fmt.Println(expr)
+
+	fmt.Printf("flattened:\n%v\n", Flattern(expr.(Expr)))
 
 	return nil
 }
