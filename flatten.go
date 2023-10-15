@@ -4,66 +4,67 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/takoeight0821/anma/ast"
 	"github.com/takoeight0821/anma/token"
 	"golang.org/x/exp/slices"
 )
 
-func Flattern(n Node) Node {
+func Flattern(n ast.Node) ast.Node {
 	switch n := n.(type) {
-	case Codata:
+	case ast.Codata:
 		return flatternCodata(n)
-	case Paren:
-		es := make([]Node, len(n.Elems))
+	case ast.Paren:
+		es := make([]ast.Node, len(n.Elems))
 		for i, e := range n.Elems {
 			es[i] = Flattern(e)
 		}
-		return Paren{es}
-	case Access:
-		return Access{Flattern(n.Receiver), n.Name}
-	case Call:
-		as := make([]Node, len(n.Args))
+		return ast.Paren{es}
+	case ast.Access:
+		return ast.Access{Flattern(n.Receiver), n.Name}
+	case ast.Call:
+		as := make([]ast.Node, len(n.Args))
 		for i, a := range n.Args {
 			as[i] = Flattern(a)
 		}
-		return Call{Flattern(n.Func), as}
-	case Binary:
-		return Binary{Flattern(n.Left), n.Op, Flattern(n.Right)}
-	case Assert:
-		return Assert{Flattern(n.Expr), n.Type}
-	case Let:
-		return Let{Flattern(n.Bind), Flattern(n.Body)}
-	case Lambda:
-		es := make([]Node, len(n.Exprs))
+		return ast.Call{Flattern(n.Func), as}
+	case ast.Binary:
+		return ast.Binary{Flattern(n.Left), n.Op, Flattern(n.Right)}
+	case ast.Assert:
+		return ast.Assert{Flattern(n.Expr), n.Type}
+	case ast.Let:
+		return ast.Let{Flattern(n.Bind), Flattern(n.Body)}
+	case ast.Lambda:
+		es := make([]ast.Node, len(n.Exprs))
 		for i, e := range n.Exprs {
 			es[i] = Flattern(e)
 		}
-		return Lambda{Flattern(n.Pattern), es}
-	case Case:
-		cs := make([]Clause, len(n.Clauses))
+		return ast.Lambda{Flattern(n.Pattern), es}
+	case ast.Case:
+		cs := make([]ast.Clause, len(n.Clauses))
 		for i, c := range n.Clauses {
-			es := make([]Node, len(c.Exprs))
+			es := make([]ast.Node, len(c.Exprs))
 			for i, e := range c.Exprs {
 				es[i] = Flattern(e)
 			}
-			cs[i] = Clause{Flattern(c.Pattern), es}
+			cs[i] = ast.Clause{Flattern(c.Pattern), es}
 		}
-		return Case{Flattern(n.Scrutinee), cs}
-	case Object:
-		fs := make([]Field, len(n.Fields))
+		return ast.Case{Flattern(n.Scrutinee), cs}
+	case ast.Object:
+		fs := make([]ast.Field, len(n.Fields))
 		for i, f := range n.Fields {
-			es := make([]Node, len(f.Exprs))
+			es := make([]ast.Node, len(f.Exprs))
 			for i, e := range f.Exprs {
 				es[i] = Flattern(e)
 			}
-			fs[i] = Field{f.Name, es}
+			fs[i] = ast.Field{f.Name, es}
 		}
-		return Object{fs}
+		return ast.Object{fs}
 	default:
 		return n
 	}
 }
 
-func flatternCodata(c Codata) Node {
+func flatternCodata(c ast.Codata) ast.Node {
 	// Generate PatternList
 	ps := make([]PatternList, len(c.Clauses))
 	for i, cl := range c.Clauses {
@@ -72,12 +73,12 @@ func flatternCodata(c Codata) Node {
 		ps[i] = PatternList{as, p}
 	}
 
-	newClauses := make([]Clause, len(c.Clauses))
+	newClauses := make([]ast.Clause, len(c.Clauses))
 	for i, cl := range c.Clauses {
 		for j, e := range cl.Exprs {
 			cl.Exprs[j] = Flattern(e)
 		}
-		newClauses[i] = Clause{ps[i], cl.Exprs}
+		newClauses[i] = ast.Clause{ps[i], cl.Exprs}
 	}
 
 	arity, err := Arity(ps)
@@ -89,7 +90,7 @@ func flatternCodata(c Codata) Node {
 }
 
 type Builder struct {
-	Scrutinees []Node
+	Scrutinees []ast.Node
 }
 
 func NewBuilder() *Builder {
@@ -97,21 +98,21 @@ func NewBuilder() *Builder {
 }
 
 // dispatch to Object or Lambda based on arity
-func (b *Builder) Build(arity int, clauses []Clause) Node {
+func (b *Builder) Build(arity int, clauses []ast.Clause) ast.Node {
 	if arity == 0 {
 		return b.Object(clauses)
 	}
 	return b.Lambda(arity, clauses)
 }
 
-func (b *Builder) Object(clauses []Clause) Object {
+func (b *Builder) Object(clauses []ast.Clause) ast.Object {
 	// Pop the first accessor of each clause and group remaining clauses by the popped accessor.
-	next := make(map[string][]Clause)
+	next := make(map[string][]ast.Clause)
 	nextKeys := make([]string, 0) // for deterministic order
 	for _, c := range clauses {
 		plist := c.Pattern.(PatternList)
 		if field, plist, ok := Pop(plist); ok {
-			next[field.String()] = append(next[field.String()], Clause{plist, c.Exprs})
+			next[field.String()] = append(next[field.String()], ast.Clause{plist, c.Exprs})
 			if !slices.Contains(nextKeys, field.String()) {
 				nextKeys = append(nextKeys, field.String())
 			}
@@ -120,7 +121,7 @@ func (b *Builder) Object(clauses []Clause) Object {
 		}
 	}
 
-	fields := make([]Field, 0)
+	fields := make([]ast.Field, 0)
 
 	// Generate each field's body expression
 	for _, field := range nextKeys {
@@ -135,15 +136,15 @@ func (b *Builder) Object(clauses []Clause) Object {
 		}
 		if allHasAccessors {
 			// if all pattern lists have accessors, call Object recursively
-			fields = append(fields, Field{field, []Node{b.Object(cs)}})
+			fields = append(fields, ast.Field{field, []ast.Node{b.Object(cs)}})
 		} else if len(b.Scrutinees) != 0 {
 			// if any of cs has no accessors and has guards, generate Case expression
-			caseClauses := make([]Clause, 0)
-			restClauses := make([]Clause, 0)
+			caseClauses := make([]ast.Clause, 0)
+			restClauses := make([]ast.Clause, 0)
 			for _, c := range cs {
 				plist := c.Pattern.(PatternList)
 				if len(plist.Accessors) == 0 {
-					caseClauses = append(caseClauses, Clause{Paren{plist.Params}, c.Exprs})
+					caseClauses = append(caseClauses, ast.Clause{ast.Paren{plist.Params}, c.Exprs})
 				} else {
 					restClauses = append(restClauses, c)
 				}
@@ -151,50 +152,50 @@ func (b *Builder) Object(clauses []Clause) Object {
 
 			for _, c := range restClauses {
 				plist := c.Pattern.(PatternList)
-				caseClauses = append(caseClauses, Clause{Paren{plist.Params}, []Node{b.Object(restClauses)}})
+				caseClauses = append(caseClauses, ast.Clause{ast.Paren{plist.Params}, []ast.Node{b.Object(restClauses)}})
 			}
-			fields = append(fields, Field{field, []Node{Case{Paren{b.Scrutinees}, caseClauses}}})
+			fields = append(fields, ast.Field{field, []ast.Node{ast.Case{ast.Paren{b.Scrutinees}, caseClauses}}})
 		} else {
 			// if there is no scrutinee, simply insert the clause's body expression
-			fields = append(fields, Field{field, cs[0].Exprs})
+			fields = append(fields, ast.Field{field, cs[0].Exprs})
 		}
 	}
-	return Object{fields}
+	return ast.Object{fields}
 }
 
 // Generate Lambda and dispatch body expression to Object or Case based on existence of accessors.
-func (b *Builder) Lambda(arity int, clauses []Clause) Lambda {
-	baseToken := Codata{clauses}.Base()
+func (b *Builder) Lambda(arity int, clauses []ast.Clause) ast.Lambda {
+	baseToken := ast.Codata{clauses}.Base()
 	// Generate Scrutinees
-	b.Scrutinees = make([]Node, arity)
+	b.Scrutinees = make([]ast.Node, arity)
 	for i := 0; i < arity; i++ {
-		b.Scrutinees[i] = Var{token.Token{Kind: token.IDENT, Lexeme: fmt.Sprintf("x%d", i), Line: baseToken.Line, Literal: nil}}
+		b.Scrutinees[i] = ast.Var{token.Token{Kind: token.IDENT, Lexeme: fmt.Sprintf("x%d", i), Line: baseToken.Line, Literal: nil}}
 	}
 
 	// If any of clauses has accessors, body expression is Object.
 	for _, c := range clauses {
 		if len(c.Pattern.(PatternList).Accessors) != 0 {
-			return Lambda{Pattern: Paren{b.Scrutinees}, Exprs: []Node{b.Object(clauses)}}
+			return ast.Lambda{Pattern: ast.Paren{b.Scrutinees}, Exprs: []ast.Node{b.Object(clauses)}}
 		}
 	}
 
 	// otherwise, body expression is Case.
-	caseClauses := make([]Clause, 0)
+	caseClauses := make([]ast.Clause, 0)
 	for _, c := range clauses {
 		plist := c.Pattern.(PatternList)
-		caseClauses = append(caseClauses, Clause{Paren{plist.Params}, c.Exprs})
+		caseClauses = append(caseClauses, ast.Clause{ast.Paren{plist.Params}, c.Exprs})
 	}
-	return Lambda{Pattern: Paren{b.Scrutinees}, Exprs: []Node{Case{Paren{b.Scrutinees}, caseClauses}}}
+	return ast.Lambda{Pattern: ast.Paren{b.Scrutinees}, Exprs: []ast.Node{ast.Case{ast.Paren{b.Scrutinees}, caseClauses}}}
 }
 
-func InvalidPattern(n Node) error {
+func InvalidPattern(n ast.Node) error {
 	return fmt.Errorf("invalid pattern: %v", n)
 }
 
 // Collect all Access patterns recursively.
-func accessors(p Node) []token.Token {
+func accessors(p ast.Node) []token.Token {
 	switch p := p.(type) {
-	case Access:
+	case ast.Access:
 		return append(accessors(p.Receiver), p.Name)
 	default:
 		return []token.Token{}
@@ -202,23 +203,23 @@ func accessors(p Node) []token.Token {
 }
 
 // Get Args of Call{This, ...}
-func params(p Node) []Node {
+func params(p ast.Node) []ast.Node {
 	switch p := p.(type) {
-	case Access:
+	case ast.Access:
 		return params(p.Receiver)
-	case Call:
-		if _, ok := p.Func.(This); !ok {
+	case ast.Call:
+		if _, ok := p.Func.(ast.This); !ok {
 			panic(InvalidPattern(p))
 		}
 		return p.Args
 	default:
-		return []Node{}
+		return []ast.Node{}
 	}
 }
 
 type PatternList struct {
 	Accessors []token.Token
-	Params    []Node
+	Params    []ast.Node
 }
 
 func (p PatternList) Base() token.Token {
@@ -251,7 +252,7 @@ func (p PatternList) String() string {
 	return b.String()
 }
 
-var _ Node = PatternList{}
+var _ ast.Node = PatternList{}
 
 // Returns the length of every Params in the list.
 func Arity(ps []PatternList) (int, error) {
