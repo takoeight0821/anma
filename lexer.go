@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"strconv"
 	"unicode"
+
+	"github.com/takoeight0821/anma/token"
 )
 
-func Lex(source string) ([]Token, error) {
+func Lex(source string) ([]token.Token, error) {
 	l := lexer{
 		source:  []rune(source),
-		tokens:  []Token{},
+		tokens:  []token.Token{},
 		start:   0,
 		current: 0,
 		line:    1,
@@ -22,13 +24,13 @@ func Lex(source string) ([]Token, error) {
 		err = errors.Join(err, l.scanToken())
 	}
 
-	l.tokens = append(l.tokens, Token{EOF, "", l.line, nil})
+	l.tokens = append(l.tokens, token.Token{Kind: token.EOF, Lexeme: "", Line: l.line, Literal: nil})
 	return l.tokens, err
 }
 
 type lexer struct {
 	source []rune
-	tokens []Token
+	tokens []token.Token
 
 	start   int // start of current lexeme
 	current int // current position in source
@@ -51,9 +53,9 @@ func (l *lexer) advance() rune {
 	return l.source[l.current-1]
 }
 
-func (l *lexer) addToken(kind TokenKind, literal any) {
+func (l *lexer) addToken(kind token.Kind, literal any) {
 	text := string(l.source[l.start:l.current])
-	l.tokens = append(l.tokens, Token{kind, text, l.line, literal})
+	l.tokens = append(l.tokens, token.Token{Kind: kind, Lexeme: text, Line: l.line, Literal: literal})
 }
 
 func (l *lexer) scanToken() error {
@@ -108,7 +110,7 @@ func (l *lexer) string() error {
 	}
 
 	value := string(l.source[l.start+1 : l.current-1])
-	l.addToken(STRING, value)
+	l.addToken(token.STRING, value)
 	return nil
 }
 
@@ -122,7 +124,7 @@ func (l *lexer) integer() error {
 	}
 
 	value, err := strconv.Atoi(string(l.source[l.start:l.current]))
-	l.addToken(INTEGER, value)
+	l.addToken(token.INTEGER, value)
 	return err
 }
 
@@ -140,19 +142,19 @@ func (l *lexer) identifier() error {
 	if k, ok := keywords[value]; ok {
 		l.addToken(k, nil)
 	} else {
-		l.addToken(IDENT, value)
+		l.addToken(token.IDENT, value)
 	}
 	return nil
 }
 
-var keywords = map[string]TokenKind{
-	"->":   ARROW,
-	"case": CASE,
-	"def":  DEF,
-	"=":    EQUAL,
-	"fn":   FN,
-	"let":  LET,
-	"type": TYPE,
+var keywords = map[string]token.Kind{
+	"->":   token.ARROW,
+	"case": token.CASE,
+	"def":  token.DEF,
+	"=":    token.EQUAL,
+	"fn":   token.FN,
+	"let":  token.LET,
+	"type": token.TYPE,
 }
 
 func isSymbol(c rune) bool {
@@ -161,18 +163,18 @@ func isSymbol(c rune) bool {
 }
 
 // These characters are reserved symbols, but they are not included in operator.
-var reservedSymbols = map[rune]TokenKind{
-	'(': LEFT_PAREN,
-	')': RIGHT_PAREN,
-	'{': LEFT_BRACE,
-	'}': RIGHT_BRACE,
-	'[': LEFT_BRACKET,
-	']': RIGHT_BRACKET,
-	':': COLON,
-	',': COMMA,
-	'.': DOT,
-	';': SEMICOLON,
-	'#': SHARP,
+var reservedSymbols = map[rune]token.Kind{
+	'(': token.LEFT_PAREN,
+	')': token.RIGHT_PAREN,
+	'{': token.LEFT_BRACE,
+	'}': token.RIGHT_BRACE,
+	'[': token.LEFT_BRACKET,
+	']': token.RIGHT_BRACKET,
+	':': token.COLON,
+	',': token.COMMA,
+	'.': token.DOT,
+	';': token.SEMICOLON,
+	'#': token.SHARP,
 }
 
 func (l *lexer) operator() error {
@@ -184,53 +186,7 @@ func (l *lexer) operator() error {
 	if k, ok := keywords[value]; ok {
 		l.addToken(k, nil)
 	} else {
-		l.addToken(OPERATOR, value)
+		l.addToken(token.OPERATOR, value)
 	}
 	return nil
-}
-
-//go:generate go run golang.org/x/tools/cmd/stringer@v0.13.0 -type=TokenKind
-type TokenKind int
-
-const (
-	EOF TokenKind = iota
-
-	// Single-character tokens.
-	LEFT_PAREN
-	RIGHT_PAREN
-	LEFT_BRACE
-	RIGHT_BRACE
-	LEFT_BRACKET
-	RIGHT_BRACKET
-	COLON
-	COMMA
-	DOT
-	SEMICOLON
-	SHARP
-
-	// Literals and identifiers.
-	IDENT
-	OPERATOR
-	INTEGER
-	STRING
-
-	// Keywords.
-	ARROW
-	CASE
-	DEF
-	EQUAL
-	FN
-	LET
-	TYPE
-)
-
-type Token struct {
-	Kind    TokenKind
-	Lexeme  string
-	Line    int
-	Literal any
-}
-
-func (t Token) String() string {
-	return t.Lexeme
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/takoeight0821/anma/token"
 	"golang.org/x/exp/slices"
 )
 
@@ -167,7 +168,7 @@ func (b *Builder) Lambda(arity int, clauses []Clause) Lambda {
 	// Generate Scrutinees
 	b.Scrutinees = make([]Node, arity)
 	for i := 0; i < arity; i++ {
-		b.Scrutinees[i] = Var{Token{IDENT, fmt.Sprintf("x%d", i), baseToken.Line, nil}}
+		b.Scrutinees[i] = Var{token.Token{Kind: token.IDENT, Lexeme: fmt.Sprintf("x%d", i), Line: baseToken.Line, Literal: nil}}
 	}
 
 	// If any of clauses has accessors, body expression is Object.
@@ -191,12 +192,12 @@ func InvalidPattern(n Node) error {
 }
 
 // Collect all Access patterns recursively.
-func accessors(p Node) []Token {
+func accessors(p Node) []token.Token {
 	switch p := p.(type) {
 	case Access:
 		return append(accessors(p.Receiver), p.Name)
 	default:
-		return []Token{}
+		return []token.Token{}
 	}
 }
 
@@ -216,14 +217,14 @@ func params(p Node) []Node {
 }
 
 type PatternList struct {
-	Accessors []Token
+	Accessors []token.Token
 	Params    []Node
 }
 
-func (p PatternList) Base() Token {
+func (p PatternList) Base() token.Token {
 	if len(p.Accessors) == 0 {
 		if len(p.Params) == 0 {
-			return Token{}
+			return token.Token{}
 		}
 		return p.Params[0].Base()
 	}
@@ -269,9 +270,9 @@ func Arity(ps []PatternList) (int, error) {
 }
 
 // Split PatternList into the first accessor and the rest.
-func Pop(p PatternList) (Token, PatternList, bool) {
+func Pop(p PatternList) (token.Token, PatternList, bool) {
 	if len(p.Accessors) == 0 {
-		return Token{}, p, false
+		return token.Token{}, p, false
 	}
 	a := p.Accessors[0]
 	p.Accessors = p.Accessors[1:]
