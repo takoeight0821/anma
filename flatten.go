@@ -7,20 +7,20 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func Flattern(n Expr) Expr {
+func Flattern(n Node) Node {
 	switch n := n.(type) {
 	case Codata:
 		return flatternCodata(n)
 	case Paren:
-		es := make([]Expr, len(n.Exprs))
-		for i, e := range n.Exprs {
+		es := make([]Node, len(n.Elems))
+		for i, e := range n.Elems {
 			es[i] = Flattern(e)
 		}
 		return Paren{es}
 	case Access:
-		return Access{Flattern(n.Expr), n.Name}
+		return Access{Flattern(n.Receiver), n.Name}
 	case Call:
-		as := make([]Expr, len(n.Args))
+		as := make([]Node, len(n.Args))
 		for i, a := range n.Args {
 			as[i] = Flattern(a)
 		}
@@ -30,9 +30,9 @@ func Flattern(n Expr) Expr {
 	case Assert:
 		return Assert{Flattern(n.Expr), n.Type}
 	case Let:
-		return Let{Flattern(n.Pattern), Flattern(n.Expr)}
+		return Let{Flattern(n.Bind), Flattern(n.Body)}
 	case Lambda:
-		es := make([]Expr, len(n.Exprs))
+		es := make([]Node, len(n.Exprs))
 		for i, e := range n.Exprs {
 			es[i] = Flattern(e)
 		}
@@ -40,17 +40,17 @@ func Flattern(n Expr) Expr {
 	case Case:
 		cs := make([]Clause, len(n.Clauses))
 		for i, c := range n.Clauses {
-			es := make([]Expr, len(c.Exprs))
+			es := make([]Node, len(c.Exprs))
 			for i, e := range c.Exprs {
 				es[i] = Flattern(e)
 			}
 			cs[i] = Clause{Flattern(c.Pattern), es}
 		}
-		return Case{Flattern(n.Expr), cs}
+		return Case{Flattern(n.Scrutinee), cs}
 	case Object:
 		fs := make([]Field, len(n.Fields))
 		for i, f := range n.Fields {
-			es := make([]Expr, len(f.Exprs))
+			es := make([]Node, len(f.Exprs))
 			for i, e := range f.Exprs {
 				es[i] = Flattern(e)
 			}
@@ -62,7 +62,7 @@ func Flattern(n Expr) Expr {
 	}
 }
 
-func flatternCodata(c Codata) Expr {
+func flatternCodata(c Codata) Node {
 	// Generate PatternList
 	ps := make([]PatternList, len(c.Clauses))
 	for i, cl := range c.Clauses {
@@ -88,7 +88,7 @@ func flatternCodata(c Codata) Expr {
 }
 
 type Builder struct {
-	Scrutinees []Expr
+	Scrutinees []Node
 }
 
 func NewBuilder() *Builder {
@@ -96,14 +96,14 @@ func NewBuilder() *Builder {
 }
 
 // dispatch to Object or Lambda based on arity
-func (b *Builder) Build(arity int, clauses []Clause) Expr {
+func (b *Builder) Build(arity int, clauses []Clause) Node {
 	if arity == 0 {
 		return b.Object(clauses)
 	}
 	return b.Lambda(arity, clauses)
 }
 
-func (b *Builder) Object(clauses []Clause) Expr {
+func (b *Builder) Object(clauses []Clause) Object {
 	// Pop the first accessor of each clause and group remaining clauses by the popped accessor.
 	next := make(map[string][]Clause)
 	nextKeys := make([]string, 0) // for deterministic order
@@ -134,7 +134,7 @@ func (b *Builder) Object(clauses []Clause) Expr {
 		}
 		if allHasAccessors {
 			// if all pattern lists have accessors, call Object recursively
-			fields = append(fields, Field{field, []Expr{b.Object(cs)}})
+			fields = append(fields, Field{field, []Node{b.Object(cs)}})
 		} else if len(b.Scrutinees) != 0 {
 			// if any of cs has no accessors and has guards, generate Case expression
 			caseClauses := make([]Clause, 0)
@@ -150,9 +150,9 @@ func (b *Builder) Object(clauses []Clause) Expr {
 
 			for _, c := range restClauses {
 				plist := c.Pattern.(PatternList)
-				caseClauses = append(caseClauses, Clause{Paren{plist.Params}, []Expr{b.Object(restClauses)}})
+				caseClauses = append(caseClauses, Clause{Paren{plist.Params}, []Node{b.Object(restClauses)}})
 			}
-			fields = append(fields, Field{field, []Expr{Case{Paren{b.Scrutinees}, caseClauses}}})
+			fields = append(fields, Field{field, []Node{Case{Paren{b.Scrutinees}, caseClauses}}})
 		} else {
 			// if there is no scrutinee, simply insert the clause's body expression
 			fields = append(fields, Field{field, cs[0].Exprs})
@@ -162,10 +162,10 @@ func (b *Builder) Object(clauses []Clause) Expr {
 }
 
 // Generate Lambda and dispatch body expression to Object or Case based on existence of accessors.
-func (b *Builder) Lambda(arity int, clauses []Clause) Expr {
+func (b *Builder) Lambda(arity int, clauses []Clause) Lambda {
 	baseToken := Codata{clauses}.Base()
 	// Generate Scrutinees
-	b.Scrutinees = make([]Expr, arity)
+	b.Scrutinees = make([]Node, arity)
 	for i := 0; i < arity; i++ {
 		b.Scrutinees[i] = Var{Token{IDENT, fmt.Sprintf("x%d", i), baseToken.Line, nil}}
 	}
@@ -173,7 +173,7 @@ func (b *Builder) Lambda(arity int, clauses []Clause) Expr {
 	// If any of clauses has accessors, body expression is Object.
 	for _, c := range clauses {
 		if len(c.Pattern.(PatternList).Accessors) != 0 {
-			return Lambda{Pattern: Paren{b.Scrutinees}, Exprs: []Expr{b.Object(clauses)}}
+			return Lambda{Pattern: Paren{b.Scrutinees}, Exprs: []Node{b.Object(clauses)}}
 		}
 	}
 
@@ -183,7 +183,7 @@ func (b *Builder) Lambda(arity int, clauses []Clause) Expr {
 		plist := c.Pattern.(PatternList)
 		caseClauses = append(caseClauses, Clause{Paren{plist.Params}, c.Exprs})
 	}
-	return Lambda{Pattern: Paren{b.Scrutinees}, Exprs: []Expr{Case{Paren{b.Scrutinees}, caseClauses}}}
+	return Lambda{Pattern: Paren{b.Scrutinees}, Exprs: []Node{Case{Paren{b.Scrutinees}, caseClauses}}}
 }
 
 func InvalidPattern(n Node) error {
@@ -191,33 +191,33 @@ func InvalidPattern(n Node) error {
 }
 
 // Collect all Access patterns recursively.
-func accessors(p Pattern) []Token {
+func accessors(p Node) []Token {
 	switch p := p.(type) {
 	case Access:
-		return append(accessors(p.Expr), p.Name)
+		return append(accessors(p.Receiver), p.Name)
 	default:
 		return []Token{}
 	}
 }
 
 // Get Args of Call{This, ...}
-func params(p Pattern) []Pattern {
+func params(p Node) []Node {
 	switch p := p.(type) {
 	case Access:
-		return params(p.Expr)
+		return params(p.Receiver)
 	case Call:
 		if _, ok := p.Func.(This); !ok {
 			panic(InvalidPattern(p))
 		}
 		return p.Args
 	default:
-		return []Pattern{}
+		return []Node{}
 	}
 }
 
 type PatternList struct {
 	Accessors []Token
-	Params    []Pattern
+	Params    []Node
 }
 
 func (p PatternList) Base() Token {
@@ -250,7 +250,7 @@ func (p PatternList) String() string {
 	return b.String()
 }
 
-var _ Pattern = PatternList{}
+var _ Node = PatternList{}
 
 // Returns the length of every Params in the list.
 func Arity(ps []PatternList) (int, error) {

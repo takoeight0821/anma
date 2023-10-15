@@ -23,12 +23,12 @@ func (p *Parser) Parse() (Node, error) {
 }
 
 // expr = let
-func (p *Parser) expr() Expr {
+func (p *Parser) expr() Node {
 	return p.let()
 }
 
 // let = "let" pattern "=" assert | "fn" pattern "{" expr (";" expr)* ";"? "}" | assert
-func (p *Parser) let() Expr {
+func (p *Parser) let() Node {
 	if p.match(LET) {
 		p.advance()
 		pattern := p.pattern()
@@ -40,7 +40,7 @@ func (p *Parser) let() Expr {
 		p.advance()
 		pattern := p.pattern()
 		p.consume(LEFT_BRACE, "expected `{`")
-		exprs := []Expr{p.expr()}
+		exprs := []Node{p.expr()}
 		for p.match(SEMICOLON) {
 			p.advance()
 			if p.match(RIGHT_BRACE) {
@@ -55,7 +55,7 @@ func (p *Parser) let() Expr {
 }
 
 // assert = binop (":" type)*
-func (p *Parser) assert() Expr {
+func (p *Parser) assert() Node {
 	expr := p.binop()
 	for p.match(COLON) {
 		p.advance()
@@ -66,7 +66,7 @@ func (p *Parser) assert() Expr {
 }
 
 // binop = access (operator access)*
-func (p *Parser) binop() Expr {
+func (p *Parser) binop() Node {
 	expr := p.access()
 	for p.match(OPERATOR) {
 		op := p.advance()
@@ -77,7 +77,7 @@ func (p *Parser) binop() Expr {
 }
 
 // access = call ("." IDENTIFIER)*
-func (p *Parser) access() Expr {
+func (p *Parser) access() Node {
 	expr := p.call()
 	for p.match(DOT) {
 		p.advance()
@@ -88,7 +88,7 @@ func (p *Parser) access() Expr {
 }
 
 // call = atom finishCall*
-func (p *Parser) call() Expr {
+func (p *Parser) call() Node {
 	expr := p.atom()
 	for p.match(LEFT_PAREN) {
 		expr = p.finishCall(expr)
@@ -97,9 +97,9 @@ func (p *Parser) call() Expr {
 }
 
 // finishCall = "(" ")" | "(" expr ("," expr)* ","? ")"
-func (p *Parser) finishCall(fun Expr) Expr {
+func (p *Parser) finishCall(fun Node) Node {
 	p.consume(LEFT_PAREN, "expected `(`")
-	args := []Expr{}
+	args := []Node{}
 	if !p.match(RIGHT_PAREN) {
 		args = append(args, p.expr())
 		for p.match(COMMA) {
@@ -115,7 +115,7 @@ func (p *Parser) finishCall(fun Expr) Expr {
 }
 
 // atom = IDENT | INTEGER | STRING | codata | "(" expr ("," expr)* ","? ")" | "(" ")"
-func (p *Parser) atom() Expr {
+func (p *Parser) atom() Node {
 	switch t := p.advance(); t.Kind {
 	case IDENT:
 		return Var{t}
@@ -128,16 +128,16 @@ func (p *Parser) atom() Expr {
 			p.advance()
 			return Paren{}
 		}
-		exprs := []Expr{p.expr()}
+		elems := []Node{p.expr()}
 		for p.match(COMMA) {
 			p.advance()
 			if p.match(RIGHT_PAREN) {
 				break
 			}
-			exprs = append(exprs, p.expr())
+			elems = append(elems, p.expr())
 		}
 		p.consume(RIGHT_PAREN, "expected `)`")
-		return Paren{exprs}
+		return Paren{elems}
 	default:
 		p.recover(parseError(t, "expected variable, literal, or parenthesized expression"))
 		return nil
@@ -145,7 +145,7 @@ func (p *Parser) atom() Expr {
 }
 
 // codata = "{" clause ("," clause)* ","? "}"
-func (p *Parser) codata() Expr {
+func (p *Parser) codata() Node {
 	clauses := []Clause{p.clause()}
 	for p.match(COMMA) {
 		p.advance()
@@ -162,7 +162,7 @@ func (p *Parser) codata() Expr {
 func (p *Parser) clause() Clause {
 	pattern := p.pattern()
 	p.consume(ARROW, "expected `->`")
-	exprs := []Expr{p.expr()}
+	exprs := []Node{p.expr()}
 	for p.match(SEMICOLON) {
 		p.advance()
 		if p.match(RIGHT_BRACE) {
@@ -174,12 +174,12 @@ func (p *Parser) clause() Clause {
 }
 
 // pattern = accessPat
-func (p *Parser) pattern() Pattern {
+func (p *Parser) pattern() Node {
 	return p.accessPat()
 }
 
 // accessPat = callPat ("." IDENTIFIER)*
-func (p *Parser) accessPat() Pattern {
+func (p *Parser) accessPat() Node {
 	pat := p.callPat()
 	for p.match(DOT) {
 		p.advance()
@@ -190,7 +190,7 @@ func (p *Parser) accessPat() Pattern {
 }
 
 // callPat = atomPat finishCallPat*
-func (p *Parser) callPat() Pattern {
+func (p *Parser) callPat() Node {
 	pat := p.atomPat()
 	for p.match(LEFT_PAREN) {
 		pat = p.finishCallPat(pat)
@@ -199,9 +199,9 @@ func (p *Parser) callPat() Pattern {
 }
 
 // finishCallPat = "(" ")" | "(" pattern ("," pattern)* ","? ")"
-func (p *Parser) finishCallPat(fun Pattern) Pattern {
+func (p *Parser) finishCallPat(fun Node) Node {
 	p.consume(LEFT_PAREN, "expected `(`")
-	args := []Pattern{}
+	args := []Node{}
 	if !p.match(RIGHT_PAREN) {
 		args = append(args, p.pattern())
 		for p.match(COMMA) {
@@ -217,7 +217,7 @@ func (p *Parser) finishCallPat(fun Pattern) Pattern {
 }
 
 // atomPat = IDENT | INTEGER | STRING | "(" pattern ")"
-func (p *Parser) atomPat() Pattern {
+func (p *Parser) atomPat() Node {
 	switch t := p.advance(); t.Kind {
 	case SHARP:
 		return This{t}
@@ -230,7 +230,7 @@ func (p *Parser) atomPat() Pattern {
 			p.advance()
 			return Paren{}
 		}
-		patterns := []Pattern{p.pattern()}
+		patterns := []Node{p.pattern()}
 		for p.match(COMMA) {
 			p.advance()
 			if p.match(RIGHT_PAREN) {
@@ -247,12 +247,12 @@ func (p *Parser) atomPat() Pattern {
 }
 
 // type = binopType
-func (p *Parser) typ() Type {
+func (p *Parser) typ() Node {
 	return p.binopType()
 }
 
 // binopType = callType (operator callType)*
-func (p *Parser) binopType() Type {
+func (p *Parser) binopType() Node {
 	typ := p.callType()
 	for p.match(OPERATOR) {
 		op := p.advance()
@@ -263,7 +263,7 @@ func (p *Parser) binopType() Type {
 }
 
 // callType = atomType finishCallType*
-func (p *Parser) callType() Type {
+func (p *Parser) callType() Node {
 	typ := p.atomType()
 	for p.match(LEFT_PAREN) {
 		typ = p.finishCallType(typ)
@@ -272,9 +272,9 @@ func (p *Parser) callType() Type {
 }
 
 // finishCallType = "(" ")" | "(" type ("," type)* ","? ")"
-func (p *Parser) finishCallType(fun Type) Type {
+func (p *Parser) finishCallType(fun Node) Node {
 	p.consume(LEFT_PAREN, "expected `(`")
-	args := []Type{}
+	args := []Node{}
 	if !p.match(RIGHT_PAREN) {
 		args = append(args, p.typ())
 		for p.match(COMMA) {
@@ -290,7 +290,7 @@ func (p *Parser) finishCallType(fun Type) Type {
 }
 
 // atomType = IDENT | "(" type ("," type)* ","? ")"
-func (p *Parser) atomType() Type {
+func (p *Parser) atomType() Node {
 	switch t := p.advance(); t.Kind {
 	case IDENT:
 		return Var{t}
@@ -299,7 +299,7 @@ func (p *Parser) atomType() Type {
 			p.advance()
 			return Paren{}
 		}
-		types := []Type{p.typ()}
+		types := []Node{p.typ()}
 		for p.match(COMMA) {
 			p.advance()
 			if p.match(RIGHT_PAREN) {
@@ -368,10 +368,6 @@ type Node interface {
 	Base() Token
 }
 
-type Expr interface {
-	Node
-}
-
 // var := IDENTIFIER
 type Var struct {
 	Name Token
@@ -385,11 +381,7 @@ func (v Var) Base() Token {
 	return v.Name
 }
 
-var (
-	_ Expr    = Var{}
-	_ Pattern = Var{}
-	_ Type    = Var{}
-)
+var _ Node = Var{}
 
 // literal := INTEGER | FLOAT | RUNE | STRING
 type Literal struct {
@@ -404,63 +396,53 @@ func (l Literal) Base() Token {
 	return l.Token
 }
 
-var (
-	_ Expr    = Literal{}
-	_ Pattern = Literal{}
-)
+var _ Node = Literal{}
 
 // paren := "(" expr ("," expr)* ","? ")" | "(" ")"
 // If len(Exprs) == 0, it is an empty tuple.
 // If len(Exprs) == 1, it is a parenthesized expression.
 // Otherwise, it is a tuple.
 type Paren struct {
-	Exprs []Expr
+	Elems []Node
 }
 
 func (p Paren) String() string {
-	ss := make([]fmt.Stringer, len(p.Exprs))
-	for i, expr := range p.Exprs {
-		ss[i] = expr
+	ss := make([]fmt.Stringer, len(p.Elems))
+	for i, elem := range p.Elems {
+		ss[i] = elem
 	}
 	return parenthesize("paren", ss...)
 }
 
 func (p Paren) Base() Token {
-	if len(p.Exprs) == 0 {
+	if len(p.Elems) == 0 {
 		return Token{}
 	}
-	return p.Exprs[0].Base()
+	return p.Elems[0].Base()
 }
 
-var (
-	_ Expr    = Paren{}
-	_ Pattern = Paren{}
-	_ Type    = Paren{}
-)
+var _ Node = Paren{}
 
 // access := expr "." IDENTIFIER
 type Access struct {
-	Expr
-	Name Token
+	Receiver Node
+	Name     Token
 }
 
 func (a Access) String() string {
-	return parenthesize("access", a.Expr, a.Name)
+	return parenthesize("access", a.Receiver, a.Name)
 }
 
 func (a Access) Base() Token {
 	return a.Name
 }
 
-var (
-	_ Expr    = Access{}
-	_ Pattern = Access{}
-)
+var _ Node = Access{}
 
 // call := expr "(" ")" | expr "(" expr ("," expr)* ","? ")"
 type Call struct {
-	Func Expr
-	Args []Expr
+	Func Node
+	Args []Node
 }
 
 func (c Call) String() string {
@@ -471,17 +453,13 @@ func (c Call) Base() Token {
 	return c.Func.Base()
 }
 
-var (
-	_ Expr    = Call{}
-	_ Pattern = Call{}
-	_ Type    = Call{}
-)
+var _ Node = Call{}
 
 // binary := expr operator expr
 type Binary struct {
-	Left  Expr
+	Left  Node
 	Op    Token
-	Right Expr
+	Right Node
 }
 
 func (b Binary) String() string {
@@ -492,15 +470,12 @@ func (b Binary) Base() Token {
 	return b.Op
 }
 
-var (
-	_ Expr = Binary{}
-	_ Type = Binary{}
-)
+var _ Node = Binary{}
 
 // assert := expr ":" type
 type Assert struct {
-	Expr
-	Type
+	Expr Node
+	Type Node
 }
 
 func (a Assert) String() string {
@@ -511,23 +486,23 @@ func (a Assert) Base() Token {
 	return a.Expr.Base()
 }
 
-var _ Expr = Assert{}
+var _ Node = Assert{}
 
 // let := "let" pattern "=" expr
 type Let struct {
-	Pattern
-	Expr
+	Bind Node
+	Body Node
 }
 
 func (l Let) String() string {
-	return parenthesize("let", l.Pattern, l.Expr)
+	return parenthesize("let", l.Bind, l.Body)
 }
 
 func (l Let) Base() Token {
-	return l.Pattern.Base()
+	return l.Bind.Base()
 }
 
-var _ Expr = Let{}
+var _ Node = Let{}
 
 // codata := "{" clause ("," clause)* ","? "}"
 type Codata struct {
@@ -545,12 +520,12 @@ func (c Codata) Base() Token {
 	return c.Clauses[0].Base()
 }
 
-var _ Expr = Codata{}
+var _ Node = Codata{}
 
 // clause := pattern "->" expr (";" expr)* ";"?
 type Clause struct {
-	Pattern
-	Exprs []Expr // len(Exprs) > 0
+	Pattern Node
+	Exprs   []Node // len(Exprs) > 0
 }
 
 func (c Clause) String() string {
@@ -568,8 +543,8 @@ var _ Node = Clause{}
 
 // lambda := "fn" pattern "{" expr (";" expr)* ";"? "}"
 type Lambda struct {
-	Pattern
-	Exprs []Expr // len(Exprs) > 0
+	Pattern Node
+	Exprs   []Node // len(Exprs) > 0
 }
 
 func (l Lambda) String() string {
@@ -580,23 +555,23 @@ func (l Lambda) Base() Token {
 	return l.Pattern.Base()
 }
 
-var _ Expr = Lambda{}
+var _ Node = Lambda{}
 
 // case := "case" expr "{" clause ("," clause)* ","? "}"
 type Case struct {
-	Expr
-	Clauses []Clause // len(Clauses) > 0
+	Scrutinee Node
+	Clauses   []Clause // len(Clauses) > 0
 }
 
 func (c Case) String() string {
-	return parenthesize("case", prepend(c.Expr, squash(c.Clauses))...)
+	return parenthesize("case", prepend(c.Scrutinee, squash(c.Clauses))...)
 }
 
 func (c Case) Base() Token {
-	return c.Expr.Base()
+	return c.Scrutinee.Base()
 }
 
-var _ Expr = Case{}
+var _ Node = Case{}
 
 // object := "{" field ("," field)* ","? "}"
 type Object struct {
@@ -611,16 +586,12 @@ func (o Object) Base() Token {
 	return o.Fields[0].Base()
 }
 
-var (
-	_ Expr    = Object{}
-	_ Pattern = Object{}
-	_ Type    = Object{}
-)
+var _ Node = Object{}
 
 // field := IDENTIFIER ":" expr
 type Field struct {
 	Name  string
-	Exprs []Expr
+	Exprs []Node
 }
 
 func (f Field) String() string {
@@ -633,14 +604,10 @@ func (f Field) Base() Token {
 
 var _ Node = Field{}
 
-type Stmt interface {
-	Node
-}
-
 // typeDecl := "type" IDENTIFIER "=" type
 type TypeDecl struct {
 	Name Token
-	Type
+	Type Node
 }
 
 func (t TypeDecl) String() string {
@@ -651,13 +618,13 @@ func (t TypeDecl) Base() Token {
 	return t.Name
 }
 
-var _ Stmt = TypeDecl{}
+var _ Node = TypeDecl{}
 
 // varDecl := "def" identifier "=" expr | "def" identifier ":" type | "def" identifier ":" type "=" expr
 type VarDecl struct {
 	Name Token
-	Type
-	Expr
+	Type Node
+	Expr Node
 }
 
 func (v VarDecl) String() string {
@@ -674,7 +641,7 @@ func (v VarDecl) Base() Token {
 	return v.Name
 }
 
-var _ Stmt = VarDecl{}
+var _ Node = VarDecl{}
 
 // infixDecl := ("infix" | "infixl" | "infixr") INTEGER IDENTIFIER
 type InfixDecl struct {
@@ -691,11 +658,7 @@ func (i InfixDecl) Base() Token {
 	return i.Assoc
 }
 
-var _ Stmt = InfixDecl{}
-
-type Type = Expr
-
-type Pattern = Expr
+var _ Node = InfixDecl{}
 
 type This struct {
 	Token
@@ -709,7 +672,7 @@ func (t This) Base() Token {
 	return t.Token
 }
 
-var _ Pattern = This{}
+var _ Node = This{}
 
 func parenthesize(head string, nodes ...fmt.Stringer) string {
 	var b strings.Builder

@@ -19,7 +19,7 @@ func completeFlatten(t *testing.T, input string, expected string, loc string) {
 		t.Errorf("Parse(%q) returned error: %v at %s", input, err, loc)
 	}
 
-	node = Flattern(node.(Expr))
+	node = Flattern(node)
 
 	actual := node.String()
 	if actual != expected {
