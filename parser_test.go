@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/motemen/go-testutil/dataloc"
-	. "github.com/takoeight0821/tenchi"
+	. "github.com/takoeight0821/anma"
 )
 
 func completeParse(t *testing.T, input string, expected string, loc string) {

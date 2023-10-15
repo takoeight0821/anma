@@ -30,7 +30,7 @@ func main() {
 	}
 }
 
-var history = filepath.Join(xdg.DataHome, "tenchi", ".tenchi_history")
+var history = filepath.Join(xdg.DataHome, "anma", ".anma_history")
 
 func RunPrompt() {
 	line := liner.NewLiner()

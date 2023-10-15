@@ -1,4 +1,4 @@
-module github.com/takoeight0821/tenchi
+module github.com/takoeight0821/anma
 
 go 1.21.1
 
