@@ -13,5 +13,8 @@
         "echo \"Error: no test specified\" && exit 1"
       ]
     }
+  },
+  "env": {
+    "PATH": "$PATH:/home/devbox/go/bin"
   }
 }

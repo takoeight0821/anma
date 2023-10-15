@@ -8,9 +8,9 @@
     "vscode": {
       "settings": {},
       "extensions": [
-		"jetpack-io.devbox",
-		"golang.go"
-	]
+        "jetpack-io.devbox",
+        "golang.go"
+      ]
     }
   },
   "remoteUser": "devbox"
