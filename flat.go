@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"strings"
-
-	"golang.org/x/exp/slices"
 )
 
 // [Flat] converts Copatterns ([Access] and [This] in [Pattern]) into [Object] and [Lambda].
@@ -59,16 +57,12 @@ func (b *Builder) Build(arity int, clauses []Clause) Node {
 func (b *Builder) Object(clauses []Clause) Object {
 	// Pop the first accessor of each clause and group remaining clauses by the popped accessor.
 	next := make(map[string][]Clause)
-	nextKeys := make([]string, 0) // for deterministic order
 	for _, c := range clauses {
 		plist := c.Pattern.(PatternList)
 		if field, plist, ok := Pop(plist); ok {
 			next[field.String()] = append(
 				next[field.String()],
 				Clause{Pattern: plist, Exprs: c.Exprs})
-			if !slices.Contains(nextKeys, field.String()) {
-				nextKeys = append(nextKeys, field.String())
-			}
 		} else {
 			panic(fmt.Errorf("not implemented: %v\nmix of pure pattern and copattern is not supported yet", c))
 		}
@@ -77,9 +71,8 @@ func (b *Builder) Object(clauses []Clause) Object {
 	fields := make([]Field, 0)
 
 	// Generate each field's body expression
-	for _, field := range nextKeys {
-		cs := next[field]
-
+	// Object fields are generated in the dictionary order of field names.
+	orderedFor(next, func(field string, cs []Clause) {
 		hasAccessors := func(c Clause) bool {
 			return len(c.Pattern.(PatternList).Accessors) != 0
 		}
@@ -147,7 +140,7 @@ func (b *Builder) Object(clauses []Clause) Object {
 					Exprs: cs[0].Exprs,
 				})
 		}
-	}
+	})
 	return Object{Fields: fields}
 }
 
