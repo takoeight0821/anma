@@ -5,15 +5,16 @@ import (
 
 	"github.com/motemen/go-testutil/dataloc"
 	. "github.com/takoeight0821/anma"
+	"github.com/takoeight0821/anma/parser"
 )
 
 func completeFlatten(t *testing.T, input string, expected string, loc string) {
-	tokens, err := Lex(input)
+	tokens, err := parser.Lex(input)
 	if err != nil {
 		t.Errorf("Lex(%q) returned error: %v at %s", input, err, loc)
 	}
 
-	p := NewParser(tokens)
+	p := parser.NewParser(tokens)
 	node, err := p.Parse()
 	if err != nil {
 		t.Errorf("Parse(%q) returned error: %v at %s", input, err, loc)

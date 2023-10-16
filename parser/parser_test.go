@@ -1,10 +1,10 @@
-package main_test
+package parser_test
 
 import (
 	"testing"
 
 	"github.com/motemen/go-testutil/dataloc"
-	. "github.com/takoeight0821/anma"
+	. "github.com/takoeight0821/anma/parser"
 )
 
 func completeParse(t *testing.T, input string, expected string, loc string) {

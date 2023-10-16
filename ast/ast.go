@@ -347,3 +347,175 @@ func squash[T fmt.Stringer](elems []T) []fmt.Stringer {
 func prepend(elem fmt.Stringer, slice []fmt.Stringer) []fmt.Stringer {
 	return append([]fmt.Stringer{elem}, slice...)
 }
+
+type Kind int
+
+const (
+	KExpr   Kind = 0b000001
+	KPat    Kind = 0b000010
+	KType   Kind = 0b000100
+	KStmt   Kind = 0b001000
+	KClause Kind = 0b010000
+	KField  Kind = 0b100000
+	Outer   Kind = 0b000000
+	Any     Kind = 0b111111
+)
+
+func (k Kind) String() string {
+	var b strings.Builder
+	if IsExpr(k) {
+		b.WriteString("expr")
+	}
+	if IsPat(k) {
+		if b.Len() > 0 {
+			b.WriteString("|")
+		}
+		b.WriteString("pat")
+	}
+	if IsType(k) {
+		if b.Len() > 0 {
+			b.WriteString("|")
+		}
+		b.WriteString("type")
+	}
+	if IsStmt(k) {
+		if b.Len() > 0 {
+			b.WriteString("|")
+		}
+		b.WriteString("stmt")
+	}
+	if IsClause(k) {
+		if b.Len() > 0 {
+			b.WriteString("|")
+		}
+		b.WriteString("clause")
+	}
+	if IsField(k) {
+		if b.Len() > 0 {
+			b.WriteString("|")
+		}
+		b.WriteString("field")
+	}
+	if IsOuter(k) {
+		if b.Len() > 0 {
+			b.WriteString("|")
+		}
+		b.WriteString("outer")
+	}
+	return b.String()
+}
+
+func IsExpr(k Kind) bool {
+	return k&KExpr != 0
+}
+
+func IsPat(k Kind) bool {
+	return k&KPat != 0
+}
+
+func IsType(k Kind) bool {
+	return k&KType != 0
+}
+
+func IsStmt(k Kind) bool {
+	return k&KStmt != 0
+}
+
+func IsClause(k Kind) bool {
+	return k&KClause != 0
+}
+
+func IsField(k Kind) bool {
+	return k&KField != 0
+}
+
+func IsOuter(k Kind) bool {
+	return k == Outer
+}
+
+// traverse the AST in depth-first order.
+// f is called for each node with the node and its kind.
+func Traverse(n Node, f func(Node, Kind) Node, k Kind) Node {
+	switch n := n.(type) {
+	case Var:
+		return f(n, (KExpr|KPat|KType)&k)
+	case Literal:
+		return f(n, (KExpr|KPat)&k)
+	case Paren:
+		for i, elem := range n.Elems {
+			n.Elems[i] = Traverse(elem, f, k)
+		}
+		return f(n, (KExpr|KPat|KType)&k)
+	case Access:
+		n.Receiver = Traverse(n.Receiver, f, k)
+		return f(n, (KExpr|KPat)&k)
+	case Call:
+		n.Func = Traverse(n.Func, f, k)
+		for i, arg := range n.Args {
+			n.Args[i] = Traverse(arg, f, k)
+		}
+		return f(n, (KExpr|KPat|KType)&k)
+	case Binary:
+		n.Left = Traverse(n.Left, f, k)
+		n.Right = Traverse(n.Right, f, k)
+		return f(n, (KExpr|KType)&k)
+	case Assert:
+		n.Expr = Traverse(n.Expr, f, KExpr)
+		n.Type = Traverse(n.Type, f, KType)
+		return f(n, KExpr)
+	case Let:
+		n.Bind = Traverse(n.Bind, f, KPat)
+		n.Body = Traverse(n.Body, f, KExpr)
+		return f(n, KExpr)
+	case Codata:
+		for i, clause := range n.Clauses {
+			n.Clauses[i] = Traverse(clause, f, KClause).(Clause)
+		}
+		return f(n, KExpr)
+	case Clause:
+		n.Pattern = Traverse(n.Pattern, f, KPat)
+		for i, expr := range n.Exprs {
+			n.Exprs[i] = Traverse(expr, f, KExpr)
+		}
+		return f(n, KClause)
+	case Lambda:
+		n.Pattern = Traverse(n.Pattern, f, KPat)
+		for i, expr := range n.Exprs {
+			n.Exprs[i] = Traverse(expr, f, KExpr)
+		}
+		return f(n, KExpr)
+	case Case:
+		n.Scrutinee = Traverse(n.Scrutinee, f, KExpr)
+		for i, clause := range n.Clauses {
+			n.Clauses[i] = Traverse(clause, f, KClause).(Clause)
+		}
+		return f(n, KExpr)
+	case Object:
+		for i, field := range n.Fields {
+			n.Fields[i] = Traverse(field, f, KField).(Field)
+		}
+		return f(n, KExpr)
+	case Field:
+		for i, expr := range n.Exprs {
+			n.Exprs[i] = Traverse(expr, f, KExpr)
+		}
+		return f(n, KField)
+	case TypeDecl:
+		n.Type = Traverse(n.Type, f, KType)
+		return f(n, KStmt)
+	case VarDecl:
+		if n.Type != nil {
+			n.Type = Traverse(n.Type, f, KType)
+		}
+		if n.Expr != nil {
+			n.Expr = Traverse(n.Expr, f, KExpr)
+		}
+		return f(n, KStmt)
+	case InfixDecl:
+		return f(n, KStmt)
+	case This:
+		return f(n, KPat)
+	default:
+		return f(n, Outer)
+	}
+}

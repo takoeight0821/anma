@@ -8,6 +8,7 @@ import (
 
 	"github.com/adrg/xdg"
 	"github.com/peterh/liner"
+	"github.com/takoeight0821/anma/parser"
 )
 
 func main() {
@@ -77,12 +78,12 @@ func RunFile(path string) error {
 }
 
 func Run(source string) error {
-	tokens, err := Lex(source)
+	tokens, err := parser.Lex(source)
 	if err != nil {
 		return err
 	}
 
-	p := NewParser(tokens)
+	p := parser.NewParser(tokens)
 	expr, err := p.Parse()
 	if err != nil {
 		return err

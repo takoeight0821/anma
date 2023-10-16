@@ -10,57 +10,14 @@ import (
 )
 
 func Flattern(n ast.Node) ast.Node {
-	switch n := n.(type) {
-	case ast.Codata:
+	return ast.Traverse(n, flattern, ast.Any)
+}
+
+func flattern(n ast.Node, k ast.Kind) ast.Node {
+	if n, ok := n.(ast.Codata); ok {
 		return flatternCodata(n)
-	case ast.Paren:
-		for i, e := range n.Elems {
-			n.Elems[i] = Flattern(e)
-		}
-		return n
-	case ast.Access:
-		n.Receiver = Flattern(n.Receiver)
-		return n
-	case ast.Call:
-		n.Func = Flattern(n.Func)
-		for i, a := range n.Args {
-			n.Args[i] = Flattern(a)
-		}
-		return n
-	case ast.Binary:
-		n.Left = Flattern(n.Left)
-		n.Right = Flattern(n.Right)
-		return n
-	case ast.Assert:
-		n.Expr = Flattern(n.Expr)
-		return n
-	case ast.Let:
-		n.Bind = Flattern(n.Bind)
-		n.Body = Flattern(n.Body)
-		return n
-	case ast.Lambda:
-		for i, e := range n.Exprs {
-			n.Exprs[i] = Flattern(e)
-		}
-		return n
-	case ast.Case:
-		n.Scrutinee = Flattern(n.Scrutinee)
-		for i, c := range n.Clauses {
-			for j, e := range c.Exprs {
-				n.Clauses[i].Exprs[j] = Flattern(e)
-			}
-		}
-		return n
-	case ast.Object:
-		for i, f := range n.Fields {
-			for j, e := range f.Exprs {
-				n.Fields[i].Exprs[j] = Flattern(e)
-			}
-		}
-		return n
-	default:
-		return n
 	}
+	return n
 }
 
 func flatternCodata(c ast.Codata) ast.Node {
@@ -72,9 +29,6 @@ func flatternCodata(c ast.Codata) ast.Node {
 			arity = len(c.Clauses[i].Pattern.(PatternList).Params)
 		} else if arity != len(c.Clauses[i].Pattern.(PatternList).Params) {
 			panic(fmt.Errorf("arity mismatch at %d: %v", c.Base().Line, c))
-		}
-		for j, e := range cl.Exprs {
-			c.Clauses[i].Exprs[j] = Flattern(e)
 		}
 	}
 
