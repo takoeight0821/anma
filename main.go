@@ -21,7 +21,11 @@ func main() {
 	flag.Parse()
 
 	if inputPath == "" {
-		RunPrompt()
+		err := RunPrompt()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	} else {
 		if err := RunFile(inputPath); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -32,7 +36,7 @@ func main() {
 
 var history = filepath.Join(xdg.DataHome, "anma", ".anma_history")
 
-func RunPrompt() {
+func RunPrompt() error {
 	line := liner.NewLiner()
 	defer func() {
 		if err := os.MkdirAll(filepath.Dir(history), os.ModePerm); err != nil {
@@ -55,14 +59,14 @@ func RunPrompt() {
 	}
 
 	for {
-		if input, err := line.Prompt("> "); err == nil {
-			line.AppendHistory(input)
-			err := Run(input)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-			}
-		} else {
-			break
+		input, err := line.Prompt("> ")
+		if err != nil {
+			return err
+		}
+		line.AppendHistory(input)
+		err = Run(input)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
 		}
 	}
 }
@@ -90,7 +94,6 @@ func Run(source string) error {
 
 	fmt.Println(expr)
 	fmt.Printf("flat:\n%v\n", Flat(expr))
-	fmt.Printf("original:\n%v\n", expr)
 
 	return nil
 }

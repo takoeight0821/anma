@@ -22,11 +22,13 @@ func flat(n Node, k NodeKind) Node {
 func flatCodata(c Codata) Node {
 	// Generate PatternList
 	arity := -1
+	clauses := make([]Clause, len(c.Clauses))
 	for i, cl := range c.Clauses {
-		c.Clauses[i].Pattern = PatternList{Accessors: accessors(cl.Pattern), Params: params(cl.Pattern)}
+		plist := PatternList{Accessors: accessors(cl.Pattern), Params: params(cl.Pattern)}
+		clauses[i] = Clause{Pattern: plist, Exprs: cl.Exprs}
 		if arity == -1 {
-			arity = len(c.Clauses[i].Pattern.(PatternList).Params)
-		} else if arity != len(c.Clauses[i].Pattern.(PatternList).Params) {
+			arity = len(plist.Params)
+		} else if arity != len(plist.Params) {
 			panic(fmt.Errorf("arity mismatch at %d: %v", c.Base().Line, c))
 		}
 	}
@@ -35,7 +37,7 @@ func flatCodata(c Codata) Node {
 		panic(fmt.Errorf("unreachable: arity is -1 at %d: %v", c.Base().Line, c))
 	}
 
-	return NewBuilder().Build(arity, c.Clauses)
+	return NewBuilder().Build(arity, clauses)
 }
 
 type Builder struct {
@@ -78,14 +80,11 @@ func (b *Builder) Object(clauses []Clause) Object {
 	for _, field := range nextKeys {
 		cs := next[field]
 
-		allHasAccessors := true
-		for _, c := range cs {
-			if len(c.Pattern.(PatternList).Accessors) == 0 {
-				allHasAccessors = false
-				break
-			}
+		hasAccessors := func(c Clause) bool {
+			return len(c.Pattern.(PatternList).Accessors) != 0
 		}
-		if allHasAccessors {
+
+		if all(cs, hasAccessors) {
 			// if all pattern lists have accessors, call Object recursively
 			fields = append(fields, Field{Name: field, Exprs: []Node{b.Object(cs)}})
 		} else if len(b.Scrutinees) != 0 {
@@ -117,17 +116,10 @@ func (b *Builder) Object(clauses []Clause) Object {
 				}
 			}
 
-			// make actual list of restClauses
-			restClausesKeys := make([]int, 0)
-			for k := range restClauses {
-				restClausesKeys = append(restClausesKeys, k)
-			}
-			slices.Sort(restClausesKeys)
-
-			restClausesList := make([]Clause, len(restClausesKeys))
-			for i, k := range restClausesKeys {
-				restClausesList[i] = restClauses[k]
-			}
+			restClausesList := make([]Clause, 0)
+			orderedFor(restClauses, func(i int, v Clause) {
+				restClausesList = append(restClausesList, v)
+			})
 
 			for i, c := range restClauses {
 				plist := c.Pattern.(PatternList)
