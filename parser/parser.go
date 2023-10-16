@@ -256,7 +256,7 @@ func (p *Parser) typ() ast.Node {
 // binopType = callType (operator callType)*
 func (p *Parser) binopType() ast.Node {
 	typ := p.callType()
-	for p.match(token.OPERATOR) {
+	for p.match(token.OPERATOR) || p.match(token.ARROW) {
 		op := p.advance()
 		right := p.callType()
 		typ = ast.Binary{Left: typ, Op: op, Right: right}

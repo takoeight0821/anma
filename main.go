@@ -8,6 +8,7 @@ import (
 
 	"github.com/adrg/xdg"
 	"github.com/peterh/liner"
+	"github.com/takoeight0821/anma/flat"
 	"github.com/takoeight0821/anma/parser"
 )
 
@@ -90,7 +91,7 @@ func Run(source string) error {
 	}
 
 	fmt.Println(expr)
-	fmt.Printf("flattened:\n%v\n", Flattern(expr))
+	fmt.Printf("flat:\n%v\n", flat.Flat(expr))
 	fmt.Printf("original:\n%v\n", expr)
 
 	return nil

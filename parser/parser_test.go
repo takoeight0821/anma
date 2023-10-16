@@ -45,10 +45,18 @@ func TestParse(t *testing.T) {
 		{"let x = 1 : Int", "(let (var x) (assert (literal 1) (var Int)))"},
 		{"let Cons(x, xs) = list", "(let (call (var Cons) (var x) (var xs)) (var list))"},
 		{"{ #(x, y) -> x + y }", "(codata (clause (call (this #) (var x) (var y)) (binary (var x) + (var y))))"},
+		{"{ #(x, y) -> x + y; x }", "(codata (clause (call (this #) (var x) (var y)) (binary (var x) + (var y)) (var x)))"},
+		{"{ #(x, y) -> x + y; x; }", "(codata (clause (call (this #) (var x) (var y)) (binary (var x) + (var y)) (var x)))"},
 		{"{ #(x, y) -> x + y, #(x, y) -> x - y }", "(codata (clause (call (this #) (var x) (var y)) (binary (var x) + (var y))) (clause (call (this #) (var x) (var y)) (binary (var x) - (var y))))"},
+		{"{ #(x, y) -> x + y, #(x, y) -> x - y, }", "(codata (clause (call (this #) (var x) (var y)) (binary (var x) + (var y))) (clause (call (this #) (var x) (var y)) (binary (var x) - (var y))))"},
 		{"fn x { x + 1 }", "(lambda (var x) (binary (var x) + (literal 1)))"},
 		{"(x, y, z)", "(paren (var x) (var y) (var z))"},
+		{"(x, y, z,)", "(paren (var x) (var y) (var z))"},
 		{"()", "(paren)"},
+		{"f : a -> b", "(assert (var f) (binary (var a) -> (var b)))"},
+		{"fn x { let y = 1; x + y }", "(lambda (var x) (let (var y) (literal 1)) (binary (var x) + (var y)))"},
+		{"fn x { let y = 1; x + y; }", "(lambda (var x) (let (var y) (literal 1)) (binary (var x) + (var y)))"},
+		{"{ #.head -> 1 }", "(codata (clause (access (this #) head) (literal 1)))"},
 	}
 	for _, testcase := range testcases {
 		completeParse(t, testcase.input, testcase.expected, dataloc.L(testcase.input))

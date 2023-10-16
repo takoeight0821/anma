@@ -1,4 +1,4 @@
-package main
+package flat
 
 import (
 	"fmt"
@@ -9,19 +9,19 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-// [Flattern] converts Copatterns ([Access] and [This] in [Pattern]) into [Object] and [Lambda].
-func Flattern(n ast.Node) ast.Node {
-	return ast.Traverse(n, flattern, ast.Any)
+// [Flat] converts Copatterns ([Access] and [This] in [Pattern]) into [Object] and [Lambda].
+func Flat(n ast.Node) ast.Node {
+	return ast.Traverse(n, flat, ast.Any)
 }
 
-func flattern(n ast.Node, k ast.Kind) ast.Node {
+func flat(n ast.Node, k ast.Kind) ast.Node {
 	if n, ok := n.(ast.Codata); ok {
-		return flatternCodata(n)
+		return flatCodata(n)
 	}
 	return n
 }
 
-func flatternCodata(c ast.Codata) ast.Node {
+func flatCodata(c ast.Codata) ast.Node {
 	// Generate PatternList
 	arity := -1
 	for i, cl := range c.Clauses {

@@ -1,14 +1,14 @@
-package main_test
+package flat_test
 
 import (
 	"testing"
 
 	"github.com/motemen/go-testutil/dataloc"
-	. "github.com/takoeight0821/anma"
+	"github.com/takoeight0821/anma/flat"
 	"github.com/takoeight0821/anma/parser"
 )
 
-func completeFlatten(t *testing.T, input string, expected string, loc string) {
+func completeFlat(t *testing.T, input string, expected string, loc string) {
 	tokens, err := parser.Lex(input)
 	if err != nil {
 		t.Errorf("Lex returned error: %v at %s", err, loc)
@@ -22,21 +22,21 @@ func completeFlatten(t *testing.T, input string, expected string, loc string) {
 
 	rendered := node.String()
 
-	flattern := Flattern(node)
+	flatNode := flat.Flat(node)
 
-	actual := flattern.String()
+	actual := flatNode.String()
 	if actual != expected {
-		t.Errorf("Flattern returned %q, expected %q at %s", actual, expected, loc)
+		t.Errorf("Flat returned %q, expected %q at %s", actual, expected, loc)
 	}
 
-	// Test Flattern is pure function
+	// Test Flat is pure function
 	original := node.String()
 	if original != rendered {
-		t.Errorf("After Flattern, the argument is %q, expected %q at %s", rendered, original, loc)
+		t.Errorf("After Flat, the argument is %q, expected %q at %s", rendered, original, loc)
 	}
 }
 
-func TestFlatten(t *testing.T) {
+func TestFlat(t *testing.T) {
 	testcases := []struct {
 		input    string
 		expected string
@@ -49,6 +49,6 @@ func TestFlatten(t *testing.T) {
 		{"{ #(x,y)->x+y}", "(lambda (paren (var x0) (var x1)) (case (paren (var x0) (var x1)) (clause (paren (var x) (var y)) (binary (var x) + (var y)))))"},
 	}
 	for _, testcase := range testcases {
-		completeFlatten(t, testcase.input, testcase.expected, dataloc.L(testcase.input))
+		completeFlat(t, testcase.input, testcase.expected, dataloc.L(testcase.input))
 	}
 }
