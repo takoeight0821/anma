@@ -11,20 +11,28 @@ import (
 func completeFlatten(t *testing.T, input string, expected string, loc string) {
 	tokens, err := parser.Lex(input)
 	if err != nil {
-		t.Errorf("Lex(%q) returned error: %v at %s", input, err, loc)
+		t.Errorf("Lex returned error: %v at %s", err, loc)
 	}
 
 	p := parser.NewParser(tokens)
 	node, err := p.Parse()
 	if err != nil {
-		t.Errorf("Parse(%q) returned error: %v at %s", input, err, loc)
+		t.Errorf("Parse returned error: %v at %s", err, loc)
 	}
 
-	node = Flattern(node)
+	rendered := node.String()
 
-	actual := node.String()
+	flattern := Flattern(node)
+
+	actual := flattern.String()
 	if actual != expected {
-		t.Errorf("Parse(%q) returned %q, expected %q at %s", input, actual, expected, loc)
+		t.Errorf("Flattern returned %q, expected %q at %s", actual, expected, loc)
+	}
+
+	// Test Flattern is pure function
+	original := node.String()
+	if original != rendered {
+		t.Errorf("After Flattern, the argument is %q, expected %q at %s", rendered, original, loc)
 	}
 }
 

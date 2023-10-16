@@ -9,6 +9,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+// [Flattern] converts Copatterns ([Access] and [This] in [Pattern]) into [Object] and [Lambda].
 func Flattern(n ast.Node) ast.Node {
 	return ast.Traverse(n, flattern, ast.Any)
 }
@@ -62,7 +63,9 @@ func (b *Builder) Object(clauses []ast.Clause) ast.Object {
 	for _, c := range clauses {
 		plist := c.Pattern.(PatternList)
 		if field, plist, ok := Pop(plist); ok {
-			next[field.String()] = append(next[field.String()], ast.Clause{Pattern: plist, Exprs: c.Exprs})
+			next[field.String()] = append(
+				next[field.String()],
+				ast.Clause{Pattern: plist, Exprs: c.Exprs})
 			if !slices.Contains(nextKeys, field.String()) {
 				nextKeys = append(nextKeys, field.String())
 			}
@@ -94,7 +97,11 @@ func (b *Builder) Object(clauses []ast.Clause) ast.Object {
 			for _, c := range cs {
 				plist := c.Pattern.(PatternList)
 				if len(plist.Accessors) == 0 {
-					caseClauses = append(caseClauses, ast.Clause{Pattern: ast.Paren{Elems: plist.Params}, Exprs: c.Exprs})
+					caseClauses = append(caseClauses,
+						ast.Clause{
+							Pattern: ast.Paren{Elems: plist.Params},
+							Exprs:   c.Exprs,
+						})
 				} else {
 					restClauses = append(restClauses, c)
 				}
@@ -102,12 +109,29 @@ func (b *Builder) Object(clauses []ast.Clause) ast.Object {
 
 			for _, c := range restClauses {
 				plist := c.Pattern.(PatternList)
-				caseClauses = append(caseClauses, ast.Clause{Pattern: ast.Paren{Elems: plist.Params}, Exprs: []ast.Node{b.Object(restClauses)}})
+				caseClauses = append(caseClauses,
+					ast.Clause{
+						Pattern: ast.Paren{Elems: plist.Params},
+						Exprs:   []ast.Node{b.Object(restClauses)},
+					})
 			}
-			fields = append(fields, ast.Field{Name: field, Exprs: []ast.Node{ast.Case{Scrutinee: ast.Paren{Elems: b.Scrutinees}, Clauses: caseClauses}}})
+			fields = append(fields,
+				ast.Field{
+					Name: field,
+					Exprs: []ast.Node{
+						ast.Case{
+							Scrutinee: ast.Paren{Elems: b.Scrutinees},
+							Clauses:   caseClauses,
+						},
+					},
+				})
 		} else {
 			// if there is no scrutinee, simply insert the clause's body expression
-			fields = append(fields, ast.Field{Name: field, Exprs: cs[0].Exprs})
+			fields = append(fields,
+				ast.Field{
+					Name:  field,
+					Exprs: cs[0].Exprs,
+				})
 		}
 	}
 	return ast.Object{Fields: fields}
@@ -135,7 +159,15 @@ func (b *Builder) Lambda(arity int, clauses []ast.Clause) ast.Lambda {
 		plist := c.Pattern.(PatternList)
 		caseClauses = append(caseClauses, ast.Clause{Pattern: ast.Paren{Elems: plist.Params}, Exprs: c.Exprs})
 	}
-	return ast.Lambda{Pattern: ast.Paren{Elems: b.Scrutinees}, Exprs: []ast.Node{ast.Case{Scrutinee: ast.Paren{Elems: b.Scrutinees}, Clauses: caseClauses}}}
+	return ast.Lambda{
+		Pattern: ast.Paren{Elems: b.Scrutinees},
+		Exprs: []ast.Node{
+			ast.Case{
+				Scrutinee: ast.Paren{Elems: b.Scrutinees},
+				Clauses:   caseClauses,
+			},
+		},
+	}
 }
 
 func InvalidPattern(n ast.Node) error {

@@ -90,9 +90,7 @@ func Run(source string) error {
 	}
 
 	fmt.Println(expr)
-
 	fmt.Printf("flattened:\n%v\n", Flattern(expr))
-
 	fmt.Printf("original:\n%v\n", expr)
 
 	return nil
