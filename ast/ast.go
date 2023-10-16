@@ -351,14 +351,12 @@ func prepend(elem fmt.Stringer, slice []fmt.Stringer) []fmt.Stringer {
 type Kind int
 
 const (
-	KExpr   Kind = 0b000001
-	KPat    Kind = 0b000010
-	KType   Kind = 0b000100
-	KStmt   Kind = 0b001000
-	KClause Kind = 0b010000
-	KField  Kind = 0b100000
-	Outer   Kind = 0b000000
-	Any     Kind = 0b111111
+	KExpr Kind = 0b0001
+	KPat  Kind = 0b0010
+	KType Kind = 0b0100
+	KStmt Kind = 0b1000
+	Other Kind = 0b0000
+	Any   Kind = 0b1111
 )
 
 func (k Kind) String() string {
@@ -384,19 +382,7 @@ func (k Kind) String() string {
 		}
 		b.WriteString("stmt")
 	}
-	if IsClause(k) {
-		if b.Len() > 0 {
-			b.WriteString("|")
-		}
-		b.WriteString("clause")
-	}
-	if IsField(k) {
-		if b.Len() > 0 {
-			b.WriteString("|")
-		}
-		b.WriteString("field")
-	}
-	if IsOuter(k) {
+	if IsOther(k) {
 		if b.Len() > 0 {
 			b.WriteString("|")
 		}
@@ -421,20 +407,14 @@ func IsStmt(k Kind) bool {
 	return k&KStmt != 0
 }
 
-func IsClause(k Kind) bool {
-	return k&KClause != 0
+func IsOther(k Kind) bool {
+	return k == Other
 }
 
-func IsField(k Kind) bool {
-	return k&KField != 0
-}
-
-func IsOuter(k Kind) bool {
-	return k == Outer
-}
-
-// traverse the [Node] in depth-first order.
+// Traverse the [Node] in depth-first order.
 // f is called for each node with the node and its [Kind].
+// If n has children, f is called for each child before n and the argument of f for n is allocated newly.
+// Otherwise, n is directly applied to f and the result of Traverse(n, f) is the result of f(n).
 func Traverse(n Node, f func(Node, Kind) Node, k Kind) Node {
 	switch n := n.(type) {
 	case Var:
@@ -465,7 +445,7 @@ func Traverse(n Node, f func(Node, Kind) Node, k Kind) Node {
 	case Codata:
 		clauses := make([]Clause, len(n.Clauses))
 		for i, clause := range n.Clauses {
-			clauses[i] = Traverse(clause, f, KClause).(Clause)
+			clauses[i] = Traverse(clause, f, Other).(Clause)
 		}
 		return f(Codata{Clauses: clauses}, KExpr)
 	case Clause:
@@ -474,7 +454,7 @@ func Traverse(n Node, f func(Node, Kind) Node, k Kind) Node {
 		for i, expr := range n.Exprs {
 			exprs[i] = Traverse(expr, f, KExpr)
 		}
-		return f(Clause{Pattern: pat, Exprs: exprs}, KClause)
+		return f(Clause{Pattern: pat, Exprs: exprs}, Other)
 	case Lambda:
 		pat := Traverse(n.Pattern, f, KPat)
 		exprs := make([]Node, len(n.Exprs))
@@ -486,13 +466,13 @@ func Traverse(n Node, f func(Node, Kind) Node, k Kind) Node {
 		scrutinee := Traverse(n.Scrutinee, f, KExpr)
 		clauses := make([]Clause, len(n.Clauses))
 		for i, clause := range n.Clauses {
-			clauses[i] = Traverse(clause, f, KClause).(Clause)
+			clauses[i] = Traverse(clause, f, Other).(Clause)
 		}
 		return f(Case{Scrutinee: scrutinee, Clauses: clauses}, KExpr)
 	case Object:
 		fields := make([]Field, len(n.Fields))
 		for i, field := range n.Fields {
-			fields[i] = Traverse(field, f, KField).(Field)
+			fields[i] = Traverse(field, f, Other).(Field)
 		}
 		return f(Object{Fields: fields}, KExpr)
 	case Field:
@@ -500,7 +480,7 @@ func Traverse(n Node, f func(Node, Kind) Node, k Kind) Node {
 		for i, expr := range n.Exprs {
 			exprs[i] = Traverse(expr, f, KExpr)
 		}
-		return f(Field{Name: n.Name, Exprs: exprs}, KField)
+		return f(Field{Name: n.Name, Exprs: exprs}, Other)
 	case TypeDecl:
 		return f(TypeDecl{Name: n.Name, Type: Traverse(n.Type, f, KType)}, KStmt)
 	case VarDecl:
@@ -510,51 +490,6 @@ func Traverse(n Node, f func(Node, Kind) Node, k Kind) Node {
 	case This:
 		return f(n, KPat)
 	default:
-		return f(n, Outer)
+		return f(n, Other)
 	}
-}
-
-func Clone(n Node) Node {
-	return Traverse(n, func(n Node, _ Kind) Node {
-		switch n := n.(type) {
-		case Var:
-			return Var{Name: n.Name}
-		case Literal:
-			return Literal{Token: n.Token}
-		case Paren:
-			return Paren{Elems: n.Elems}
-		case Access:
-			return Access{Receiver: n.Receiver, Name: n.Name}
-		case Call:
-			return Call{Func: n.Func, Args: n.Args}
-		case Binary:
-			return Binary{Left: n.Left, Op: n.Op, Right: n.Right}
-		case Assert:
-			return Assert{Expr: n.Expr, Type: n.Type}
-		case Let:
-			return Let{Bind: n.Bind, Body: n.Body}
-		case Codata:
-			return Codata{Clauses: n.Clauses}
-		case Clause:
-			return Clause{Pattern: n.Pattern, Exprs: n.Exprs}
-		case Lambda:
-			return Lambda{Pattern: n.Pattern, Exprs: n.Exprs}
-		case Case:
-			return Case{Scrutinee: n.Scrutinee, Clauses: n.Clauses}
-		case Object:
-			return Object{Fields: n.Fields}
-		case Field:
-			return Field{Name: n.Name, Exprs: n.Exprs}
-		case TypeDecl:
-			return TypeDecl{Name: n.Name, Type: n.Type}
-		case VarDecl:
-			return VarDecl{Name: n.Name, Type: n.Type, Expr: n.Expr}
-		case InfixDecl:
-			return InfixDecl{Assoc: n.Assoc, Precedence: n.Precedence, Name: n.Name}
-		case This:
-			return This{Token: n.Token}
-		default:
-			return n
-		}
-	}, Any)
 }
