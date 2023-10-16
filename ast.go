@@ -1,29 +1,27 @@
-package ast
+package main
 
 import (
 	"fmt"
 	"strings"
-
-	"github.com/takoeight0821/anma/token"
 )
 
 // AST
 
 type Node interface {
 	fmt.Stringer
-	Base() token.Token
+	Base() Token
 }
 
 // var := IDENTIFIER
 type Var struct {
-	Name token.Token
+	Name Token
 }
 
 func (v Var) String() string {
 	return parenthesize("var", v.Name)
 }
 
-func (v Var) Base() token.Token {
+func (v Var) Base() Token {
 	return v.Name
 }
 
@@ -31,14 +29,14 @@ var _ Node = Var{}
 
 // literal := INTEGER | FLOAT | RUNE | STRING
 type Literal struct {
-	token.Token
+	Token
 }
 
 func (l Literal) String() string {
 	return parenthesize("literal", l.Token)
 }
 
-func (l Literal) Base() token.Token {
+func (l Literal) Base() Token {
 	return l.Token
 }
 
@@ -60,9 +58,9 @@ func (p Paren) String() string {
 	return parenthesize("paren", ss...)
 }
 
-func (p Paren) Base() token.Token {
+func (p Paren) Base() Token {
 	if len(p.Elems) == 0 {
-		return token.Token{}
+		return Token{}
 	}
 	return p.Elems[0].Base()
 }
@@ -72,14 +70,14 @@ var _ Node = Paren{}
 // access := expr "." IDENTIFIER
 type Access struct {
 	Receiver Node
-	Name     token.Token
+	Name     Token
 }
 
 func (a Access) String() string {
 	return parenthesize("access", a.Receiver, a.Name)
 }
 
-func (a Access) Base() token.Token {
+func (a Access) Base() Token {
 	return a.Name
 }
 
@@ -95,7 +93,7 @@ func (c Call) String() string {
 	return parenthesize("call", prepend(c.Func, squash(c.Args))...)
 }
 
-func (c Call) Base() token.Token {
+func (c Call) Base() Token {
 	return c.Func.Base()
 }
 
@@ -104,7 +102,7 @@ var _ Node = Call{}
 // binary := expr operator expr
 type Binary struct {
 	Left  Node
-	Op    token.Token
+	Op    Token
 	Right Node
 }
 
@@ -112,7 +110,7 @@ func (b Binary) String() string {
 	return parenthesize("binary", b.Left, b.Op, b.Right)
 }
 
-func (b Binary) Base() token.Token {
+func (b Binary) Base() Token {
 	return b.Op
 }
 
@@ -128,7 +126,7 @@ func (a Assert) String() string {
 	return parenthesize("assert", a.Expr, a.Type)
 }
 
-func (a Assert) Base() token.Token {
+func (a Assert) Base() Token {
 	return a.Expr.Base()
 }
 
@@ -144,7 +142,7 @@ func (l Let) String() string {
 	return parenthesize("let", l.Bind, l.Body)
 }
 
-func (l Let) Base() token.Token {
+func (l Let) Base() Token {
 	return l.Bind.Base()
 }
 
@@ -159,9 +157,9 @@ func (c Codata) String() string {
 	return parenthesize("codata", squash(c.Clauses)...)
 }
 
-func (c Codata) Base() token.Token {
+func (c Codata) Base() Token {
 	if len(c.Clauses) == 0 {
-		return token.Token{}
+		return Token{}
 	}
 	return c.Clauses[0].Base()
 }
@@ -178,9 +176,9 @@ func (c Clause) String() string {
 	return parenthesize("clause", prepend(c.Pattern, squash(c.Exprs))...)
 }
 
-func (c Clause) Base() token.Token {
+func (c Clause) Base() Token {
 	if c.Pattern == nil {
-		return token.Token{}
+		return Token{}
 	}
 	return c.Pattern.Base()
 }
@@ -197,7 +195,7 @@ func (l Lambda) String() string {
 	return parenthesize("lambda", prepend(l.Pattern, squash(l.Exprs))...)
 }
 
-func (l Lambda) Base() token.Token {
+func (l Lambda) Base() Token {
 	return l.Pattern.Base()
 }
 
@@ -213,7 +211,7 @@ func (c Case) String() string {
 	return parenthesize("case", prepend(c.Scrutinee, squash(c.Clauses))...)
 }
 
-func (c Case) Base() token.Token {
+func (c Case) Base() Token {
 	return c.Scrutinee.Base()
 }
 
@@ -228,7 +226,7 @@ func (o Object) String() string {
 	return parenthesize("object", squash(o.Fields)...)
 }
 
-func (o Object) Base() token.Token {
+func (o Object) Base() Token {
 	return o.Fields[0].Base()
 }
 
@@ -244,7 +242,7 @@ func (f Field) String() string {
 	return parenthesize("field "+f.Name, squash(f.Exprs)...)
 }
 
-func (f Field) Base() token.Token {
+func (f Field) Base() Token {
 	return f.Exprs[0].Base()
 }
 
@@ -252,7 +250,7 @@ var _ Node = Field{}
 
 // typeDecl := "type" IDENTIFIER "=" type
 type TypeDecl struct {
-	Name token.Token
+	Name Token
 	Type Node
 }
 
@@ -260,7 +258,7 @@ func (t TypeDecl) String() string {
 	return parenthesize("type", t.Name, t.Type)
 }
 
-func (t TypeDecl) Base() token.Token {
+func (t TypeDecl) Base() Token {
 	return t.Name
 }
 
@@ -268,7 +266,7 @@ var _ Node = TypeDecl{}
 
 // varDecl := "def" identifier "=" expr | "def" identifier ":" type | "def" identifier ":" type "=" expr
 type VarDecl struct {
-	Name token.Token
+	Name Token
 	Type Node
 	Expr Node
 }
@@ -283,7 +281,7 @@ func (v VarDecl) String() string {
 	return parenthesize("var", v.Name, v.Type, v.Expr)
 }
 
-func (v VarDecl) Base() token.Token {
+func (v VarDecl) Base() Token {
 	return v.Name
 }
 
@@ -291,30 +289,30 @@ var _ Node = VarDecl{}
 
 // infixDecl := ("infix" | "infixl" | "infixr") INTEGER IDENTIFIER
 type InfixDecl struct {
-	Assoc      token.Token
-	Precedence token.Token
-	Name       token.Token
+	Assoc      Token
+	Precedence Token
+	Name       Token
 }
 
 func (i InfixDecl) String() string {
 	return parenthesize("infix", i.Assoc, i.Precedence, i.Name)
 }
 
-func (i InfixDecl) Base() token.Token {
+func (i InfixDecl) Base() Token {
 	return i.Assoc
 }
 
 var _ Node = InfixDecl{}
 
 type This struct {
-	token.Token
+	Token
 }
 
 func (t This) String() string {
 	return parenthesize("this", t.Token)
 }
 
-func (t This) Base() token.Token {
+func (t This) Base() Token {
 	return t.Token
 }
 
@@ -348,18 +346,18 @@ func prepend(elem fmt.Stringer, slice []fmt.Stringer) []fmt.Stringer {
 	return append([]fmt.Stringer{elem}, slice...)
 }
 
-type Kind int
+type NodeKind int
 
 const (
-	KExpr Kind = 0b0001
-	KPat  Kind = 0b0010
-	KType Kind = 0b0100
-	KStmt Kind = 0b1000
-	Other Kind = 0b0000
-	Any   Kind = 0b1111
+	KExpr NodeKind = 0b0001
+	KPat  NodeKind = 0b0010
+	KType NodeKind = 0b0100
+	KStmt NodeKind = 0b1000
+	Other NodeKind = 0b0000
+	Any   NodeKind = 0b1111
 )
 
-func (k Kind) String() string {
+func (k NodeKind) String() string {
 	var b strings.Builder
 	if IsExpr(k) {
 		b.WriteString("expr")
@@ -391,23 +389,23 @@ func (k Kind) String() string {
 	return b.String()
 }
 
-func IsExpr(k Kind) bool {
+func IsExpr(k NodeKind) bool {
 	return k&KExpr != 0
 }
 
-func IsPat(k Kind) bool {
+func IsPat(k NodeKind) bool {
 	return k&KPat != 0
 }
 
-func IsType(k Kind) bool {
+func IsType(k NodeKind) bool {
 	return k&KType != 0
 }
 
-func IsStmt(k Kind) bool {
+func IsStmt(k NodeKind) bool {
 	return k&KStmt != 0
 }
 
-func IsOther(k Kind) bool {
+func IsOther(k NodeKind) bool {
 	return k == Other
 }
 
@@ -415,7 +413,7 @@ func IsOther(k Kind) bool {
 // f is called for each node with the node and its [Kind].
 // If n has children, f is called for each child before n and the argument of f for n is allocated newly.
 // Otherwise, n is directly applied to f and the result of Traverse(n, f) is the result of f(n).
-func Traverse(n Node, f func(Node, Kind) Node, k Kind) Node {
+func Traverse(n Node, f func(Node, NodeKind) Node, k NodeKind) Node {
 	switch n := n.(type) {
 	case Var:
 		return f(n, (KExpr|KPat|KType)&k)

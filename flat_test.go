@@ -1,20 +1,19 @@
-package flat_test
+package main_test
 
 import (
 	"testing"
 
 	"github.com/motemen/go-testutil/dataloc"
-	"github.com/takoeight0821/anma/flat"
-	"github.com/takoeight0821/anma/parser"
+	. "github.com/takoeight0821/anma"
 )
 
 func completeFlat(t *testing.T, input string, expected string, loc string) {
-	tokens, err := parser.Lex(input)
+	tokens, err := Lex(input)
 	if err != nil {
 		t.Errorf("Lex returned error: %v at %s", err, loc)
 	}
 
-	p := parser.NewParser(tokens)
+	p := NewParser(tokens)
 	node, err := p.Parse()
 	if err != nil {
 		t.Errorf("Parse returned error: %v at %s", err, loc)
@@ -22,7 +21,7 @@ func completeFlat(t *testing.T, input string, expected string, loc string) {
 
 	rendered := node.String()
 
-	flatNode := flat.Flat(node)
+	flatNode := Flat(node)
 
 	actual := flatNode.String()
 	if actual != expected {

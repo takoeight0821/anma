@@ -1,19 +1,19 @@
-package parser_test
+package main_test
 
 import (
 	"testing"
 
 	"github.com/motemen/go-testutil/dataloc"
-	"github.com/takoeight0821/anma/parser"
+	. "github.com/takoeight0821/anma"
 )
 
 func completeParse(t *testing.T, input string, expected string, loc string) {
-	tokens, err := parser.Lex(input)
+	tokens, err := Lex(input)
 	if err != nil {
 		t.Errorf("Lex(%q) returned error: %v at %s", input, err, loc)
 	}
 
-	p := parser.NewParser(tokens)
+	p := NewParser(tokens)
 	node, err := p.Parse()
 	if err != nil {
 		t.Errorf("Parse(%q) returned error: %v at %s", input, err, loc)

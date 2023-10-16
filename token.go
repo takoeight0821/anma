@@ -1,10 +1,10 @@
-package token
+package main
 
-//go:generate go run golang.org/x/tools/cmd/stringer@v0.13.0 -type=Kind
-type Kind int
+//go:generate go run golang.org/x/tools/cmd/stringer@v0.13.0 -type=TokenKind
+type TokenKind int
 
 const (
-	EOF Kind = iota
+	EOF TokenKind = iota
 
 	// Single-character tokens.
 	LEFT_PAREN
@@ -36,7 +36,7 @@ const (
 )
 
 type Token struct {
-	Kind    Kind
+	Kind    TokenKind
 	Lexeme  string
 	Line    int
 	Literal any

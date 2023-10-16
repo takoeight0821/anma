@@ -8,8 +8,6 @@ import (
 
 	"github.com/adrg/xdg"
 	"github.com/peterh/liner"
-	"github.com/takoeight0821/anma/flat"
-	"github.com/takoeight0821/anma/parser"
 )
 
 func main() {
@@ -79,19 +77,19 @@ func RunFile(path string) error {
 }
 
 func Run(source string) error {
-	tokens, err := parser.Lex(source)
+	tokens, err := Lex(source)
 	if err != nil {
 		return err
 	}
 
-	p := parser.NewParser(tokens)
+	p := NewParser(tokens)
 	expr, err := p.Parse()
 	if err != nil {
 		return err
 	}
 
 	fmt.Println(expr)
-	fmt.Printf("flat:\n%v\n", flat.Flat(expr))
+	fmt.Printf("flat:\n%v\n", Flat(expr))
 	fmt.Printf("original:\n%v\n", expr)
 
 	return nil

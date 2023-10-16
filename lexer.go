@@ -1,18 +1,16 @@
-package parser
+package main
 
 import (
 	"errors"
 	"fmt"
 	"strconv"
 	"unicode"
-
-	"github.com/takoeight0821/anma/token"
 )
 
-func Lex(source string) ([]token.Token, error) {
+func Lex(source string) ([]Token, error) {
 	l := lexer{
 		source:  []rune(source),
-		tokens:  []token.Token{},
+		tokens:  []Token{},
 		start:   0,
 		current: 0,
 		line:    1,
@@ -24,13 +22,13 @@ func Lex(source string) ([]token.Token, error) {
 		err = errors.Join(err, l.scanToken())
 	}
 
-	l.tokens = append(l.tokens, token.Token{Kind: token.EOF, Lexeme: "", Line: l.line, Literal: nil})
+	l.tokens = append(l.tokens, Token{Kind: EOF, Lexeme: "", Line: l.line, Literal: nil})
 	return l.tokens, err
 }
 
 type lexer struct {
 	source []rune
-	tokens []token.Token
+	tokens []Token
 
 	start   int // start of current lexeme
 	current int // current position in source
@@ -53,9 +51,9 @@ func (l *lexer) advance() rune {
 	return l.source[l.current-1]
 }
 
-func (l *lexer) addToken(kind token.Kind, literal any) {
+func (l *lexer) addToken(kind TokenKind, literal any) {
 	text := string(l.source[l.start:l.current])
-	l.tokens = append(l.tokens, token.Token{Kind: kind, Lexeme: text, Line: l.line, Literal: literal})
+	l.tokens = append(l.tokens, Token{Kind: kind, Lexeme: text, Line: l.line, Literal: literal})
 }
 
 func (l *lexer) scanToken() error {
@@ -110,7 +108,7 @@ func (l *lexer) string() error {
 	}
 
 	value := string(l.source[l.start+1 : l.current-1])
-	l.addToken(token.STRING, value)
+	l.addToken(STRING, value)
 	return nil
 }
 
@@ -124,7 +122,7 @@ func (l *lexer) integer() error {
 	}
 
 	value, err := strconv.Atoi(string(l.source[l.start:l.current]))
-	l.addToken(token.INTEGER, value)
+	l.addToken(INTEGER, value)
 	return err
 }
 
@@ -142,19 +140,19 @@ func (l *lexer) identifier() error {
 	if k, ok := keywords[value]; ok {
 		l.addToken(k, nil)
 	} else {
-		l.addToken(token.IDENT, value)
+		l.addToken(IDENT, value)
 	}
 	return nil
 }
 
-var keywords = map[string]token.Kind{
-	"->":   token.ARROW,
-	"case": token.CASE,
-	"def":  token.DEF,
-	"=":    token.EQUAL,
-	"fn":   token.FN,
-	"let":  token.LET,
-	"type": token.TYPE,
+var keywords = map[string]TokenKind{
+	"->":   ARROW,
+	"case": CASE,
+	"def":  DEF,
+	"=":    EQUAL,
+	"fn":   FN,
+	"let":  LET,
+	"type": TYPE,
 }
 
 func isSymbol(c rune) bool {
@@ -163,18 +161,18 @@ func isSymbol(c rune) bool {
 }
 
 // These characters are reserved symbols, but they are not included in operator.
-var reservedSymbols = map[rune]token.Kind{
-	'(': token.LEFT_PAREN,
-	')': token.RIGHT_PAREN,
-	'{': token.LEFT_BRACE,
-	'}': token.RIGHT_BRACE,
-	'[': token.LEFT_BRACKET,
-	']': token.RIGHT_BRACKET,
-	':': token.COLON,
-	',': token.COMMA,
-	'.': token.DOT,
-	';': token.SEMICOLON,
-	'#': token.SHARP,
+var reservedSymbols = map[rune]TokenKind{
+	'(': LEFT_PAREN,
+	')': RIGHT_PAREN,
+	'{': LEFT_BRACE,
+	'}': RIGHT_BRACE,
+	'[': LEFT_BRACKET,
+	']': RIGHT_BRACKET,
+	':': COLON,
+	',': COMMA,
+	'.': DOT,
+	';': SEMICOLON,
+	'#': SHARP,
 }
 
 func (l *lexer) operator() error {
@@ -186,7 +184,7 @@ func (l *lexer) operator() error {
 	if k, ok := keywords[value]; ok {
 		l.addToken(k, nil)
 	} else {
-		l.addToken(token.OPERATOR, value)
+		l.addToken(OPERATOR, value)
 	}
 	return nil
 }
