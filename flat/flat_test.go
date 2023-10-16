@@ -26,7 +26,7 @@ func completeFlat(t *testing.T, input string, expected string, loc string) {
 
 	actual := flatNode.String()
 	if actual != expected {
-		t.Errorf("Flat returned %q, expected %q at %s", actual, expected, loc)
+		t.Errorf("Flat returned\n%q, expected\n%q at %s", actual, expected, loc)
 	}
 
 	// Test Flat is pure function

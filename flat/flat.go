@@ -92,29 +92,53 @@ func (b *Builder) Object(clauses []ast.Clause) ast.Object {
 			fields = append(fields, ast.Field{Name: field, Exprs: []ast.Node{b.Object(cs)}})
 		} else if len(b.Scrutinees) != 0 {
 			// if any of cs has no accessors and has guards, generate Case expression
-			caseClauses := make([]ast.Clause, 0)
-			restClauses := make([]ast.Clause, 0)
-			for _, c := range cs {
+
+			/*
+				case b.Scrutinee {
+					caseClauses[0] (p0 -> e0)
+					caseClauses[1] (p1 -> {restClauses})
+					caseClauses[2] (p2 -> {restClauses})
+				}
+				(restClauses = caseClauses[1, 2])
+			*/
+
+			// case-clauses
+			caseClauses := make([]ast.Clause, len(cs))
+			// case-clauses that have other accessors
+			// for keeping order of clauses, use map[int]ast.Clause instead of []ast.Clause
+			restClauses := make(map[int]ast.Clause)
+			for i, c := range cs {
 				plist := c.Pattern.(PatternList)
 				if len(plist.Accessors) == 0 {
-					caseClauses = append(caseClauses,
-						ast.Clause{
-							Pattern: ast.Paren{Elems: plist.Params},
-							Exprs:   c.Exprs,
-						})
+					caseClauses[i] = ast.Clause{
+						Pattern: ast.Paren{Elems: plist.Params},
+						Exprs:   c.Exprs,
+					}
 				} else {
-					restClauses = append(restClauses, c)
+					restClauses[i] = c
 				}
 			}
 
-			for _, c := range restClauses {
-				plist := c.Pattern.(PatternList)
-				caseClauses = append(caseClauses,
-					ast.Clause{
-						Pattern: ast.Paren{Elems: plist.Params},
-						Exprs:   []ast.Node{b.Object(restClauses)},
-					})
+			// make actual list of restClauses
+			restClausesKeys := make([]int, 0)
+			for k := range restClauses {
+				restClausesKeys = append(restClausesKeys, k)
 			}
+			slices.Sort(restClausesKeys)
+
+			restClausesList := make([]ast.Clause, len(restClausesKeys))
+			for i, k := range restClausesKeys {
+				restClausesList[i] = restClauses[k]
+			}
+
+			for i, c := range restClauses {
+				plist := c.Pattern.(PatternList)
+				caseClauses[i] = ast.Clause{
+					Pattern: ast.Paren{Elems: plist.Params},
+					Exprs:   []ast.Node{b.Object(restClausesList)},
+				}
+			}
+
 			fields = append(fields,
 				ast.Field{
 					Name: field,
