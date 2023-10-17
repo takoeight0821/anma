@@ -29,6 +29,7 @@ func (p *Parser) ParseDecl() ([]Node, error) {
 	for !p.IsAtEnd() {
 		node, err := p.decl()
 		if err != nil {
+			// if we can't parse any partial declarations, we can't recover a declaration.
 			p.recover(err)
 			break
 		}
@@ -354,11 +355,22 @@ func (p *Parser) finishCallType(fun Node) Call {
 	return Call{Func: fun, Args: args}
 }
 
-// atomType = IDENT | "(" type ("," type)* ","? ")" ;
+// atomType = IDENT | "{" fieldType ("," fieldType)* ","? "}" | "(" type ("," type)* ","? ")" ;
 func (p *Parser) atomType() Node {
 	switch t := p.advance(); t.Kind {
 	case IDENT:
 		return Var{Name: t}
+	case LEFT_BRACE:
+		fields := []Field{p.fieldType()}
+		for p.match(COMMA) {
+			p.advance()
+			if p.match(RIGHT_BRACE) {
+				break
+			}
+			fields = append(fields, p.fieldType())
+		}
+		p.consume(RIGHT_BRACE, "expected `}`")
+		return Object{Fields: fields}
 	case LEFT_PAREN:
 		if p.match(RIGHT_PAREN) {
 			p.advance()
@@ -378,6 +390,14 @@ func (p *Parser) atomType() Node {
 		p.recover(parseError(t, "expected variable or parenthesized type"))
 		return nil
 	}
+}
+
+// fieldType = IDENTIFIER ":" type ;
+func (p *Parser) fieldType() Field {
+	name := p.consume(IDENT, "expected identifier")
+	p.consume(COLON, "expected `:`")
+	typ := p.typ()
+	return Field{Name: name.Lexeme, Exprs: []Node{typ}}
 }
 
 func (p *Parser) recover(err error) {

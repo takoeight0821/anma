@@ -42,5 +42,7 @@ binopType = callType (operator callType)* ; (* func binopType *)
 
 callType = atomType ("(" ")" | "(" type ("," type)* ","? ")")* ; (* func callType *)
 
-atomType = IDENT | "(" type ("," type)* ","? ")" ; (* func atomType *)
+atomType = IDENT | "{" fieldType ("," fieldType)* ","? "}" | "(" type ("," type)* ","? ")" ; (* func atomType *)
+
+fieldType = IDENTIFIER ":" type ; (* func fieldType *)
 
