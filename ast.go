@@ -5,11 +5,8 @@ import (
 	"strings"
 )
 
-//go:generate go run ./tools/main.go -comment -in ast.go -out docs/syntax.ebnf
-
 // AST
 
-// expr = let | fn | assert ;
 type Node interface {
 	fmt.Stringer
 	Base() Token
@@ -30,7 +27,7 @@ func (v Var) Base() Token {
 
 var _ Node = Var{}
 
-// literal = INTEGER | FLOAT | RUNE | STRING ;
+// literal = INTEGER | STRING ;
 type Literal struct {
 	Token
 }
@@ -70,7 +67,7 @@ func (p Paren) Base() Token {
 
 var _ Node = Paren{}
 
-// access = expr "." IDENTIFIER ;
+// access = call ("." IDENTIFIER)* ;
 type Access struct {
 	Receiver Node
 	Name     Token
@@ -86,7 +83,7 @@ func (a Access) Base() Token {
 
 var _ Node = Access{}
 
-// call = expr "(" ")" | expr "(" expr ("," expr)* ","? ")" ;
+// call = atom ("(" ")" | "(" expr ("," expr)* ","? ")")* ;
 type Call struct {
 	Func Node
 	Args []Node
@@ -102,7 +99,7 @@ func (c Call) Base() Token {
 
 var _ Node = Call{}
 
-// binary = expr operator expr ;
+// binary = access (operator access)* ;
 type Binary struct {
 	Left  Node
 	Op    Token
@@ -119,7 +116,7 @@ func (b Binary) Base() Token {
 
 var _ Node = Binary{}
 
-// assert = binop (":" type)* ;
+// assert = binary (":" type)* ;
 type Assert struct {
 	Expr Node
 	Type Node
@@ -416,6 +413,8 @@ func IsOther(k NodeKind) bool {
 // f is called for each node with the node and its [Kind].
 // If n has children, f is called for each child before n and the argument of f for n is allocated newly.
 // Otherwise, n is directly applied to f and the result of Traverse(n, f) is the result of f(n).
+//
+//tool:ignore
 func Traverse(n Node, f func(Node, NodeKind) Node, k NodeKind) Node {
 	switch n := n.(type) {
 	case Var:

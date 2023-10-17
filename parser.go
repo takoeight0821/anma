@@ -5,6 +5,8 @@ import (
 	"fmt"
 )
 
+//go:generate go run ./tools/main.go -comment -in parser.go -out docs/syntax.ebnf
+
 type Parser struct {
 	tokens  []Token
 	current int
@@ -21,12 +23,13 @@ func (p *Parser) Parse() (Node, error) {
 	return node, p.err
 }
 
-// expr = let
+// expr = let | fn | assert ;
 func (p *Parser) expr() Node {
 	return p.let()
 }
 
-// let = "let" pattern "=" assert | "fn" pattern "{" expr (";" expr)* ";"? "}" | assert
+// let = "let" pattern "=" assert ;
+// fn = "fn" pattern "{" expr (";" expr)* ";"? "}" ;
 func (p *Parser) let() Node {
 	if p.match(LET) {
 		p.advance()
@@ -53,9 +56,39 @@ func (p *Parser) let() Node {
 	return p.assert()
 }
 
-// assert = binop (":" type)*
+// atom = var | literal | paren | codata ;
+func (p *Parser) atom() Node {
+	switch t := p.advance(); t.Kind {
+	case IDENT:
+		return Var{Name: t}
+	case INTEGER, STRING:
+		return Literal{Token: t}
+	case LEFT_PAREN:
+		if p.match(RIGHT_PAREN) {
+			p.advance()
+			return Paren{}
+		}
+		elems := []Node{p.expr()}
+		for p.match(COMMA) {
+			p.advance()
+			if p.match(RIGHT_PAREN) {
+				break
+			}
+			elems = append(elems, p.expr())
+		}
+		p.consume(RIGHT_PAREN, "expected `)`")
+		return Paren{Elems: elems}
+	case LEFT_BRACE:
+		return p.codata()
+	default:
+		p.recover(parseError(t, "expected variable, literal, or parenthesized expression"))
+		return nil
+	}
+}
+
+// assert = binop (":" type)* ;
 func (p *Parser) assert() Node {
-	expr := p.binop()
+	expr := p.binary()
 	for p.match(COLON) {
 		p.advance()
 		typ := p.typ()
@@ -64,8 +97,8 @@ func (p *Parser) assert() Node {
 	return expr
 }
 
-// binop = access (operator access)*
-func (p *Parser) binop() Node {
+// binary = access (operator access)* ;
+func (p *Parser) binary() Node {
 	expr := p.access()
 	for p.match(OPERATOR) {
 		op := p.advance()
@@ -75,7 +108,7 @@ func (p *Parser) binop() Node {
 	return expr
 }
 
-// access = call ("." IDENTIFIER)*
+// access = call ("." IDENTIFIER)* ;
 func (p *Parser) access() Node {
 	expr := p.call()
 	for p.match(DOT) {
@@ -86,7 +119,7 @@ func (p *Parser) access() Node {
 	return expr
 }
 
-// call = atom finishCall*
+// call = atom ("(" ")" | "(" expr ("," expr)* ","? ")")* ;
 func (p *Parser) call() Node {
 	expr := p.atom()
 	for p.match(LEFT_PAREN) {
@@ -95,7 +128,6 @@ func (p *Parser) call() Node {
 	return expr
 }
 
-// finishCall = "(" ")" | "(" expr ("," expr)* ","? ")"
 func (p *Parser) finishCall(fun Node) Call {
 	p.consume(LEFT_PAREN, "expected `(`")
 	args := []Node{}
@@ -113,37 +145,7 @@ func (p *Parser) finishCall(fun Node) Call {
 	return Call{Func: fun, Args: args}
 }
 
-// atom = IDENT | INTEGER | STRING | codata | "(" expr ("," expr)* ","? ")" | "(" ")"
-func (p *Parser) atom() Node {
-	switch t := p.advance(); t.Kind {
-	case IDENT:
-		return Var{Name: t}
-	case INTEGER, STRING:
-		return Literal{Token: t}
-	case LEFT_BRACE:
-		return p.codata()
-	case LEFT_PAREN:
-		if p.match(RIGHT_PAREN) {
-			p.advance()
-			return Paren{}
-		}
-		elems := []Node{p.expr()}
-		for p.match(COMMA) {
-			p.advance()
-			if p.match(RIGHT_PAREN) {
-				break
-			}
-			elems = append(elems, p.expr())
-		}
-		p.consume(RIGHT_PAREN, "expected `)`")
-		return Paren{Elems: elems}
-	default:
-		p.recover(parseError(t, "expected variable, literal, or parenthesized expression"))
-		return nil
-	}
-}
-
-// codata = "{" clause ("," clause)* ","? "}"
+// codata = "{" clause ("," clause)* ","? "}" ;
 func (p *Parser) codata() Codata {
 	clauses := []Clause{p.clause()}
 	for p.match(COMMA) {
@@ -157,7 +159,7 @@ func (p *Parser) codata() Codata {
 	return Codata{Clauses: clauses}
 }
 
-// clause = pattern "->" expr (";" expr)* ";"?
+// clause = pattern "->" expr (";" expr)* ";"? ;
 func (p *Parser) clause() Clause {
 	pattern := p.pattern()
 	p.consume(ARROW, "expected `->`")
@@ -172,12 +174,12 @@ func (p *Parser) clause() Clause {
 	return Clause{Pattern: pattern, Exprs: exprs}
 }
 
-// pattern = accessPat
+// pattern = accessPat ;
 func (p *Parser) pattern() Node {
 	return p.accessPat()
 }
 
-// accessPat = callPat ("." IDENTIFIER)*
+// accessPat = callPat ("." IDENTIFIER)* ;
 func (p *Parser) accessPat() Node {
 	pat := p.callPat()
 	for p.match(DOT) {
@@ -188,7 +190,7 @@ func (p *Parser) accessPat() Node {
 	return pat
 }
 
-// callPat = atomPat finishCallPat*
+// callPat = atomPat ("(" ")" | "(" pattern ("," pattern)* ","? ")")* ;
 func (p *Parser) callPat() Node {
 	pat := p.atomPat()
 	for p.match(LEFT_PAREN) {
@@ -197,7 +199,6 @@ func (p *Parser) callPat() Node {
 	return pat
 }
 
-// finishCallPat = "(" ")" | "(" pattern ("," pattern)* ","? ")"
 func (p *Parser) finishCallPat(fun Node) Call {
 	p.consume(LEFT_PAREN, "expected `(`")
 	args := []Node{}
@@ -215,7 +216,7 @@ func (p *Parser) finishCallPat(fun Node) Call {
 	return Call{Func: fun, Args: args}
 }
 
-// atomPat = IDENT | INTEGER | STRING | "(" pattern ")"
+// atomPat = IDENT | INTEGER | STRING | "(" pattern ("," pattern)* ","? ")" ;
 func (p *Parser) atomPat() Node {
 	switch t := p.advance(); t.Kind {
 	case SHARP:
@@ -245,12 +246,12 @@ func (p *Parser) atomPat() Node {
 	}
 }
 
-// type = binopType
+// type = binopType ;
 func (p *Parser) typ() Node {
 	return p.binopType()
 }
 
-// binopType = callType (operator callType)*
+// binopType = callType (operator callType)* ;
 func (p *Parser) binopType() Node {
 	typ := p.callType()
 	for p.match(OPERATOR) || p.match(ARROW) {
@@ -261,7 +262,7 @@ func (p *Parser) binopType() Node {
 	return typ
 }
 
-// callType = atomType finishCallType*
+// callType = atomType ("(" ")" | "(" type ("," type)* ","? ")")* ;
 func (p *Parser) callType() Node {
 	typ := p.atomType()
 	for p.match(LEFT_PAREN) {
@@ -270,7 +271,6 @@ func (p *Parser) callType() Node {
 	return typ
 }
 
-// finishCallType = "(" ")" | "(" type ("," type)* ","? ")"
 func (p *Parser) finishCallType(fun Node) Call {
 	p.consume(LEFT_PAREN, "expected `(`")
 	args := []Node{}
@@ -288,7 +288,7 @@ func (p *Parser) finishCallType(fun Node) Call {
 	return Call{Func: fun, Args: args}
 }
 
-// atomType = IDENT | "(" type ("," type)* ","? ")"
+// atomType = IDENT | "(" type ("," type)* ","? ")" ;
 func (p *Parser) atomType() Node {
 	switch t := p.advance(); t.Kind {
 	case IDENT:
