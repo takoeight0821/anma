@@ -63,6 +63,7 @@ func RunPrompt() error {
 		if err != nil {
 			return err
 		}
+		println(input)
 		line.AppendHistory(input)
 		err = Run(input)
 		if err != nil {
@@ -87,13 +88,21 @@ func Run(source string) error {
 	}
 
 	p := NewParser(tokens)
-	expr, err := p.Parse()
-	if err != nil {
+
+	if decls, err := p.ParseDecl(); err == nil {
+		for _, decl := range decls {
+			fmt.Println(decl)
+		}
+		fmt.Println("flat:")
+		for _, decl := range decls {
+			fmt.Printf("%v\n", Flat(decl))
+		}
+	} else if expr, err := p.ParseExpr(); err == nil {
+		fmt.Println(expr)
+		fmt.Printf("flat:\n%v\n", Flat(expr))
+	} else {
 		return err
 	}
-
-	fmt.Println(expr)
-	fmt.Printf("flat:\n%v\n", Flat(expr))
 
 	return nil
 }

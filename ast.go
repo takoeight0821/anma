@@ -273,12 +273,12 @@ type VarDecl struct {
 
 func (v VarDecl) String() string {
 	if v.Type == nil {
-		return parenthesize("var", v.Name, v.Expr)
+		return parenthesize("def", v.Name, v.Expr)
 	}
 	if v.Expr == nil {
-		return parenthesize("var", v.Name, v.Type)
+		return parenthesize("def", v.Name, v.Type)
 	}
-	return parenthesize("var", v.Name, v.Type, v.Expr)
+	return parenthesize("def", v.Name, v.Type, v.Expr)
 }
 
 func (v VarDecl) Base() Token {

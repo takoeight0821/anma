@@ -17,43 +17,109 @@ func NewParser(tokens []Token) *Parser {
 	return &Parser{tokens, 0, nil}
 }
 
-func (p *Parser) Parse() (Node, error) {
+func (p *Parser) ParseExpr() (Node, error) {
 	p.err = nil
 	node := p.expr()
 	return node, p.err
 }
 
+func (p *Parser) ParseDecl() ([]Node, error) {
+	p.err = nil
+	nodes := []Node{}
+	for !p.IsAtEnd() {
+		node, err := p.decl()
+		if err != nil {
+			p.recover(err)
+			break
+		}
+		nodes = append(nodes, node)
+	}
+	return nodes, p.err
+}
+
+// decl = typeDecl | varDecl | infixDecl ;
+func (p *Parser) decl() (Node, error) {
+	if p.match(TYPE) {
+		return p.typeDecl(), nil
+	}
+	if p.match(DEF) {
+		return p.varDecl(), nil
+	}
+	if p.match(INFIX) || p.match(INFIXL) || p.match(INFIXR) {
+		return p.infixDecl(), nil
+	}
+	return nil, parseError(p.peek(), "expected declaration")
+}
+
+// typeDecl = "type" IDENTIFIER "=" type ;
+func (p *Parser) typeDecl() TypeDecl {
+	p.consume(TYPE, "expected `type`")
+	name := p.consume(IDENT, "expected identifier")
+	p.consume(EQUAL, "expected `=`")
+	typ := p.typ()
+	return TypeDecl{Name: name, Type: typ}
+}
+
+// varDecl = "def" identifier "=" expr | "def" identifier ":" type | "def" identifier ":" type "=" expr ;
+func (p *Parser) varDecl() VarDecl {
+	p.consume(DEF, "expected `def`")
+	name := p.consume(IDENT, "expected identifier")
+	var typ Node
+	var expr Node
+	if p.match(COLON) {
+		p.advance()
+		typ = p.typ()
+	}
+	if p.match(EQUAL) {
+		p.advance()
+		expr = p.expr()
+	}
+	return VarDecl{Name: name, Type: typ, Expr: expr}
+}
+
+// infixDecl = ("infix" | "infixl" | "infixr") INTEGER OPERATOR ;
+func (p *Parser) infixDecl() InfixDecl {
+	kind := p.advance()
+	precedence := p.consume(INTEGER, "expected integer")
+	name := p.consume(OPERATOR, "expected operator")
+	return InfixDecl{Assoc: kind, Precedence: precedence, Name: name}
+}
+
 // expr = let | fn | assert ;
 func (p *Parser) expr() Node {
-	return p.let()
+	if p.match(LET) {
+		return p.let()
+	}
+	if p.match(FN) {
+		return p.fn()
+	}
+	return p.assert()
 }
 
 // let = "let" pattern "=" assert ;
+func (p *Parser) let() Let {
+	p.consume(LET, "expected `let`")
+	pattern := p.pattern()
+	p.consume(EQUAL, "expected `=`")
+	expr := p.assert()
+	return Let{Bind: pattern, Body: expr}
+}
+
 // fn = "fn" pattern "{" expr (";" expr)* ";"? "}" ;
-func (p *Parser) let() Node {
-	if p.match(LET) {
+func (p *Parser) fn() Lambda {
+	p.consume(FN, "expected `fn`")
+	pattern := p.pattern()
+	p.consume(LEFT_BRACE, "expected `{`")
+	exprs := []Node{p.expr()}
+	for p.match(SEMICOLON) {
 		p.advance()
-		pattern := p.pattern()
-		p.consume(EQUAL, "expected `=`")
-		expr := p.assert()
-		return Let{Bind: pattern, Body: expr}
-	}
-	if p.match(FN) {
-		p.advance()
-		pattern := p.pattern()
-		p.consume(LEFT_BRACE, "expected `{`")
-		exprs := []Node{p.expr()}
-		for p.match(SEMICOLON) {
-			p.advance()
-			if p.match(RIGHT_BRACE) {
-				break
-			}
-			exprs = append(exprs, p.expr())
+		if p.match(RIGHT_BRACE) {
+			break
 		}
-		p.consume(RIGHT_BRACE, "expected `}`")
-		return Lambda{Pattern: pattern, Exprs: exprs}
+		exprs = append(exprs, p.expr())
 	}
-	return p.assert()
+	p.consume(RIGHT_BRACE, "expected `}`")
+	return Lambda{Pattern: pattern, Exprs: exprs}
 }
 
 // atom = var | literal | paren | codata ;

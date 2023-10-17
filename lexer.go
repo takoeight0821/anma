@@ -146,13 +146,16 @@ func (l *lexer) identifier() error {
 }
 
 var keywords = map[string]TokenKind{
-	"->":   ARROW,
-	"case": CASE,
-	"def":  DEF,
-	"=":    EQUAL,
-	"fn":   FN,
-	"let":  LET,
-	"type": TYPE,
+	"->":     ARROW,
+	"=":      EQUAL,
+	"case":   CASE,
+	"def":    DEF,
+	"fn":     FN,
+	"infix":  INFIX,
+	"infixl": INFIXL,
+	"infixr": INFIXR,
+	"let":    LET,
+	"type":   TYPE,
 }
 
 func isSymbol(c rune) bool {

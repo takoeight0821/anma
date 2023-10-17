@@ -31,6 +31,9 @@ const (
 	DEF
 	EQUAL
 	FN
+	INFIX
+	INFIXL
+	INFIXR
 	LET
 	TYPE
 )
