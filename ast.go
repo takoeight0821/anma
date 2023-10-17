@@ -5,14 +5,17 @@ import (
 	"strings"
 )
 
+//go:generate go run ./tools/main.go -comment -in ast.go -out docs/syntax.ebnf
+
 // AST
 
+// expr = let | fn | assert ;
 type Node interface {
 	fmt.Stringer
 	Base() Token
 }
 
-// var := IDENTIFIER
+// var = IDENTIFIER ;
 type Var struct {
 	Name Token
 }
@@ -27,7 +30,7 @@ func (v Var) Base() Token {
 
 var _ Node = Var{}
 
-// literal := INTEGER | FLOAT | RUNE | STRING
+// literal = INTEGER | FLOAT | RUNE | STRING ;
 type Literal struct {
 	Token
 }
@@ -42,11 +45,11 @@ func (l Literal) Base() Token {
 
 var _ Node = Literal{}
 
-// paren := "(" expr ("," expr)* ","? ")" | "(" ")"
-// If len(Exprs) == 0, it is an empty tuple.
-// If len(Exprs) == 1, it is a parenthesized expression.
-// Otherwise, it is a tuple.
+// paren = "(" expr ("," expr)* ","? ")" | "(" ")" ;
 type Paren struct {
+	// If len(Exprs) == 0, it is an empty tuple.
+	// If len(Exprs) == 1, it is a parenthesized expression.
+	// Otherwise, it is a tuple.
 	Elems []Node
 }
 
@@ -67,7 +70,7 @@ func (p Paren) Base() Token {
 
 var _ Node = Paren{}
 
-// access := expr "." IDENTIFIER
+// access = expr "." IDENTIFIER ;
 type Access struct {
 	Receiver Node
 	Name     Token
@@ -83,7 +86,7 @@ func (a Access) Base() Token {
 
 var _ Node = Access{}
 
-// call := expr "(" ")" | expr "(" expr ("," expr)* ","? ")"
+// call = expr "(" ")" | expr "(" expr ("," expr)* ","? ")" ;
 type Call struct {
 	Func Node
 	Args []Node
@@ -99,7 +102,7 @@ func (c Call) Base() Token {
 
 var _ Node = Call{}
 
-// binary := expr operator expr
+// binary = expr operator expr ;
 type Binary struct {
 	Left  Node
 	Op    Token
@@ -116,7 +119,7 @@ func (b Binary) Base() Token {
 
 var _ Node = Binary{}
 
-// assert := expr ":" type
+// assert = binop (":" type)* ;
 type Assert struct {
 	Expr Node
 	Type Node
@@ -132,7 +135,7 @@ func (a Assert) Base() Token {
 
 var _ Node = Assert{}
 
-// let := "let" pattern "=" expr
+// let = "let" pattern "=" assert ;
 type Let struct {
 	Bind Node
 	Body Node
@@ -148,7 +151,7 @@ func (l Let) Base() Token {
 
 var _ Node = Let{}
 
-// codata := "{" clause ("," clause)* ","? "}"
+// codata = "{" clause ("," clause)* ","? "}" ;
 type Codata struct {
 	Clauses []Clause // len(Clauses) > 0
 }
@@ -166,7 +169,7 @@ func (c Codata) Base() Token {
 
 var _ Node = Codata{}
 
-// clause := pattern "->" expr (";" expr)* ";"?
+// clause = pattern "->" expr (";" expr)* ";"? ;
 type Clause struct {
 	Pattern Node
 	Exprs   []Node // len(Exprs) > 0
@@ -185,7 +188,7 @@ func (c Clause) Base() Token {
 
 var _ Node = Clause{}
 
-// lambda := "fn" pattern "{" expr (";" expr)* ";"? "}"
+// fn = "fn" pattern "{" expr (";" expr)* ";"? "}" ;
 type Lambda struct {
 	Pattern Node
 	Exprs   []Node // len(Exprs) > 0
@@ -201,7 +204,7 @@ func (l Lambda) Base() Token {
 
 var _ Node = Lambda{}
 
-// case := "case" expr "{" clause ("," clause)* ","? "}"
+// case = "case" expr "{" clause ("," clause)* ","? "}" ;
 type Case struct {
 	Scrutinee Node
 	Clauses   []Clause // len(Clauses) > 0
@@ -217,7 +220,7 @@ func (c Case) Base() Token {
 
 var _ Node = Case{}
 
-// object := "{" field ("," field)* ","? "}"
+// object = "{" field ("," field)* ","? "}" ;
 type Object struct {
 	Fields []Field // len(Fields) > 0
 }
@@ -232,7 +235,7 @@ func (o Object) Base() Token {
 
 var _ Node = Object{}
 
-// field := IDENTIFIER ":" expr
+// field = IDENTIFIER ":" expr ;
 type Field struct {
 	Name  string
 	Exprs []Node
@@ -248,7 +251,7 @@ func (f Field) Base() Token {
 
 var _ Node = Field{}
 
-// typeDecl := "type" IDENTIFIER "=" type
+// typeDecl = "type" IDENTIFIER "=" type ;
 type TypeDecl struct {
 	Name Token
 	Type Node
@@ -264,7 +267,7 @@ func (t TypeDecl) Base() Token {
 
 var _ Node = TypeDecl{}
 
-// varDecl := "def" identifier "=" expr | "def" identifier ":" type | "def" identifier ":" type "=" expr
+// varDecl = "def" identifier "=" expr | "def" identifier ":" type | "def" identifier ":" type "=" expr ;
 type VarDecl struct {
 	Name Token
 	Type Node
@@ -287,7 +290,7 @@ func (v VarDecl) Base() Token {
 
 var _ Node = VarDecl{}
 
-// infixDecl := ("infix" | "infixl" | "infixr") INTEGER IDENTIFIER
+// infixDecl = ("infix" | "infixl" | "infixr") INTEGER IDENTIFIER ;
 type InfixDecl struct {
 	Assoc      Token
 	Precedence Token
@@ -349,12 +352,12 @@ func prepend(elem fmt.Stringer, slice []fmt.Stringer) []fmt.Stringer {
 type NodeKind int
 
 const (
-	KExpr NodeKind = 0b0001
-	KPat  NodeKind = 0b0010
-	KType NodeKind = 0b0100
-	KStmt NodeKind = 0b1000
-	Other NodeKind = 0b0000
-	Any   NodeKind = 0b1111
+	KExpr NodeKind = 1 << iota
+	KPat
+	KType
+	KStmt
+	Other
+	Any NodeKind = -1
 )
 
 func (k NodeKind) String() string {
