@@ -1,7 +1,7 @@
 {
   "lockfile_version": "1",
   "packages": {
-    "gibo@1.0.6": {
+    "gibo@latest": {
       "last_modified": "2023-09-27T18:02:17Z",
       "resolved": "github:NixOS/nixpkgs/517501bcf14ae6ec47efd6a17dda0ca8e6d866f9#gibo",
       "source": "devbox-search",
@@ -21,7 +21,7 @@
         }
       }
     },
-    "go@1.21.1": {
+    "go@latest": {
       "last_modified": "2023-09-27T18:02:17Z",
       "resolved": "github:NixOS/nixpkgs/517501bcf14ae6ec47efd6a17dda0ca8e6d866f9#go_1_21",
       "source": "devbox-search",

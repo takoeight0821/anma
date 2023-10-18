@@ -1,7 +1,7 @@
 {
   "packages": [
-    "go@1.21.1",
-    "gibo@1.0.6",
+    "go@latest",
+    "gibo@latest",
     "golangci-lint@latest"
   ],
   "shell": {
