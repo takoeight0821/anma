@@ -19,9 +19,6 @@ func NewParser(tokens []Token) *Parser {
 
 func (p *Parser) ParseExpr() (Node, error) {
 	p.err = nil
-	if p.IsAtEnd() {
-		return nil, parseError(p.peek(), "expected expression")
-	}
 	node := p.expr()
 	return node, p.err
 }
