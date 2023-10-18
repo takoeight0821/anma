@@ -10,6 +10,8 @@ jobs:
 
       - name: Install devbox
         uses: jetpack-io/devbox-install-action@v0.6.0
+        with:
+          enable-cache: true
 
       - name: Run tests
         run: |
