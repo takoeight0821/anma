@@ -27,29 +27,20 @@ func (p *Parser) ParseDecl() ([]Node, error) {
 	p.err = nil
 	nodes := []Node{}
 	for !p.IsAtEnd() {
-		node, err := p.decl()
-		if err != nil {
-			// if we can't parse any partial declarations, we can't recover a declaration.
-			p.recover(err)
-			break
-		}
-		nodes = append(nodes, node)
+		nodes = append(nodes, p.decl())
 	}
 	return nodes, p.err
 }
 
 // decl = typeDecl | varDecl | infixDecl ;
-func (p *Parser) decl() (Node, error) {
+func (p *Parser) decl() Node {
 	if p.match(TYPE) {
-		return p.typeDecl(), nil
+		return p.typeDecl()
 	}
 	if p.match(DEF) {
-		return p.varDecl(), nil
+		return p.varDecl()
 	}
-	if p.match(INFIX) || p.match(INFIXL) || p.match(INFIXR) {
-		return p.infixDecl(), nil
-	}
-	return nil, parseError(p.peek(), "expected declaration")
+	return p.infixDecl()
 }
 
 // typeDecl = "type" IDENTIFIER "=" type ;
@@ -81,6 +72,10 @@ func (p *Parser) varDecl() VarDecl {
 // infixDecl = ("infix" | "infixl" | "infixr") INTEGER OPERATOR ;
 func (p *Parser) infixDecl() InfixDecl {
 	kind := p.advance()
+	if kind.Kind != INFIX && kind.Kind != INFIXL && kind.Kind != INFIXR {
+		p.recover(parseError(kind, "expected `infix`, `infixl`, or `infixr`"))
+		return InfixDecl{}
+	}
 	precedence := p.consume(INTEGER, "expected integer")
 	name := p.consume(OPERATOR, "expected operator")
 	return InfixDecl{Assoc: kind, Precedence: precedence, Name: name}
@@ -99,7 +94,7 @@ func (p *Parser) expr() Node {
 
 // let = "let" pattern "=" assert ;
 func (p *Parser) let() Let {
-	p.consume(LET, "expected `let`")
+	p.advance()
 	pattern := p.pattern()
 	p.consume(EQUAL, "expected `=`")
 	expr := p.assert()
@@ -108,7 +103,7 @@ func (p *Parser) let() Let {
 
 // fn = "fn" pattern "{" expr (";" expr)* ";"? "}" ;
 func (p *Parser) fn() Lambda {
-	p.consume(FN, "expected `fn`")
+	p.advance()
 	pattern := p.pattern()
 	p.consume(LEFT_BRACE, "expected `{`")
 	exprs := []Node{p.expr()}
