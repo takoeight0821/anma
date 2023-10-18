@@ -19,6 +19,9 @@ func NewParser(tokens []Token) *Parser {
 
 func (p *Parser) ParseExpr() (Node, error) {
 	p.err = nil
+	if p.IsAtEnd() {
+		return nil, parseError(p.peek(), "expected expression")
+	}
 	node := p.expr()
 	return node, p.err
 }
@@ -83,6 +86,10 @@ func (p *Parser) infixDecl() InfixDecl {
 
 // expr = let | fn | assert ;
 func (p *Parser) expr() Node {
+	if p.IsAtEnd() {
+		p.recover(parseError(p.peek(), "expected expression"))
+		return nil
+	}
 	if p.match(LET) {
 		return p.let()
 	}
@@ -238,6 +245,10 @@ func (p *Parser) clause() Clause {
 
 // pattern = accessPat ;
 func (p *Parser) pattern() Node {
+	if p.IsAtEnd() {
+		p.recover(parseError(p.peek(), "expected pattern"))
+		return nil
+	}
 	return p.accessPat()
 }
 
@@ -310,6 +321,10 @@ func (p *Parser) atomPat() Node {
 
 // type = binopType ;
 func (p *Parser) typ() Node {
+	if p.IsAtEnd() {
+		p.recover(parseError(p.peek(), "expected type"))
+		return nil
+	}
 	return p.binopType()
 }
 

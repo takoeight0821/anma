@@ -22,6 +22,7 @@
 # Go workspace file
 go.work
 
+testdata/
 
 ### https://raw.github.com/github/gitignore/4488915eec0b3a45b5c63ead28f286819c0917de/Global/VisualStudioCode.gitignore
 

@@ -93,6 +93,9 @@ func (l *lexer) string() error {
 		}
 		if l.peek() == '\\' {
 			l.advance()
+			if l.isAtEnd() {
+				return fmt.Errorf("unterminated string")
+			}
 		}
 		l.advance()
 	}
