@@ -78,7 +78,7 @@ func (p *Parser) infixDecl() InfixDecl {
 	}
 	precedence := p.consume(INTEGER, "expected integer")
 	name := p.consume(OPERATOR, "expected operator")
-	return InfixDecl{Assoc: kind, Precedence: precedence, Name: name}
+	return InfixDecl{Assoc: kind, Prec: precedence, Name: name}
 }
 
 // expr = let | fn | assert ;

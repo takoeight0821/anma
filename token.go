@@ -48,3 +48,9 @@ type Token struct {
 func (t Token) String() string {
 	return t.Lexeme
 }
+
+func (t Token) Base() Token {
+	return t
+}
+
+var _ Node = Token{}

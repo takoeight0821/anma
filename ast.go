@@ -51,11 +51,7 @@ type Paren struct {
 }
 
 func (p Paren) String() string {
-	ss := make([]fmt.Stringer, len(p.Elems))
-	for i, elem := range p.Elems {
-		ss[i] = elem
-	}
-	return parenthesize("paren", ss...)
+	return parenthesize("paren", p.Elems...)
 }
 
 func (p Paren) Base() Token {
@@ -90,7 +86,7 @@ type Call struct {
 }
 
 func (c Call) String() string {
-	return parenthesize("call", prepend(c.Func, squash(c.Args))...)
+	return parenthesize("call", prepend(c.Func, c.Args)...)
 }
 
 func (c Call) Base() Token {
@@ -173,7 +169,7 @@ type Clause struct {
 }
 
 func (c Clause) String() string {
-	return parenthesize("clause", prepend(c.Pattern, squash(c.Exprs))...)
+	return parenthesize("clause", prepend(c.Pattern, c.Exprs)...)
 }
 
 func (c Clause) Base() Token {
@@ -192,7 +188,7 @@ type Lambda struct {
 }
 
 func (l Lambda) String() string {
-	return parenthesize("lambda", prepend(l.Pattern, squash(l.Exprs))...)
+	return parenthesize("lambda", prepend(l.Pattern, l.Exprs)...)
 }
 
 func (l Lambda) Base() Token {
@@ -239,7 +235,7 @@ type Field struct {
 }
 
 func (f Field) String() string {
-	return parenthesize("field "+f.Name, squash(f.Exprs)...)
+	return parenthesize("field "+f.Name, f.Exprs...)
 }
 
 func (f Field) Base() Token {
@@ -289,13 +285,13 @@ var _ Node = VarDecl{}
 
 // infixDecl = ("infix" | "infixl" | "infixr") INTEGER IDENTIFIER ;
 type InfixDecl struct {
-	Assoc      Token
-	Precedence Token
-	Name       Token
+	Assoc Token
+	Prec  Token
+	Name  Token
 }
 
 func (i InfixDecl) String() string {
-	return parenthesize("infix", i.Assoc, i.Precedence, i.Name)
+	return parenthesize("infix", i.Assoc, i.Prec, i.Name)
 }
 
 func (i InfixDecl) Base() Token {
@@ -318,7 +314,7 @@ func (t This) Base() Token {
 
 var _ Node = This{}
 
-func parenthesize(head string, nodes ...fmt.Stringer) string {
+func parenthesize(head string, nodes ...Node) string {
 	var b strings.Builder
 	b.WriteString("(")
 	b.WriteString(head)
@@ -334,16 +330,16 @@ func parenthesize(head string, nodes ...fmt.Stringer) string {
 	return b.String()
 }
 
-func squash[T fmt.Stringer](elems []T) []fmt.Stringer {
-	nodes := make([]fmt.Stringer, len(elems))
+func squash[T Node](elems []T) []Node {
+	nodes := make([]Node, len(elems))
 	for i, elem := range elems {
 		nodes[i] = elem
 	}
 	return nodes
 }
 
-func prepend(elem fmt.Stringer, slice []fmt.Stringer) []fmt.Stringer {
-	return append([]fmt.Stringer{elem}, slice...)
+func prepend(elem Node, slice []Node) []Node {
+	return append([]Node{elem}, slice...)
 }
 
 type NodeKind int
@@ -418,26 +414,32 @@ func IsOther(k NodeKind) bool {
 func Traverse(n Node, f func(Node, NodeKind) Node, k NodeKind) Node {
 	switch n := n.(type) {
 	case Var:
-		return f(n, (KExpr|KPat|KType)&k)
+		k = (KExpr | KPat | KType) & k
+		return f(n, k)
 	case Literal:
-		return f(n, (KExpr|KPat)&k)
+		k = (KExpr | KPat) & k
+		return f(n, k)
 	case Paren:
+		k = (KExpr | KPat | KType) & k
 		elems := make([]Node, len(n.Elems))
 		for i, elem := range n.Elems {
 			elems[i] = Traverse(elem, f, k)
 		}
-		return f(Paren{Elems: elems}, (KExpr|KPat|KType)&k)
+		return f(Paren{Elems: elems}, k)
 	case Access:
-		return f(Access{Receiver: Traverse(n.Receiver, f, k), Name: n.Name}, (KExpr|KPat)&k)
+		k = (KExpr | KPat) & k
+		return f(Access{Receiver: Traverse(n.Receiver, f, k), Name: n.Name}, k)
 	case Call:
+		k = (KExpr | KPat | KType) & k
 		fun := Traverse(n.Func, f, k)
 		args := make([]Node, len(n.Args))
 		for i, arg := range n.Args {
 			args[i] = Traverse(arg, f, k)
 		}
-		return f(Call{Func: fun, Args: args}, (KExpr|KPat|KType)&k)
+		return f(Call{Func: fun, Args: args}, k)
 	case Binary:
-		return f(Binary{Left: Traverse(n.Left, f, k), Op: n.Op, Right: Traverse(n.Right, f, k)}, (KExpr|KType)&k)
+		k = (KExpr | KType) & k
+		return f(Binary{Left: Traverse(n.Left, f, k), Op: n.Op, Right: Traverse(n.Right, f, k)}, k)
 	case Assert:
 		return f(Assert{Expr: Traverse(n.Expr, f, KExpr), Type: Traverse(n.Type, f, KType)}, KExpr)
 	case Let:

@@ -58,6 +58,7 @@ func RunPrompt() error {
 		}
 	}
 
+	r := NewRunner()
 	for {
 		input, err := line.Prompt("> ")
 		if err != nil {
@@ -65,7 +66,7 @@ func RunPrompt() error {
 		}
 		println(input)
 		line.AppendHistory(input)
-		err = Run(input)
+		err = r.Run(input)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		}
@@ -73,36 +74,62 @@ func RunPrompt() error {
 }
 
 func RunFile(path string) error {
+	r := NewRunner()
 	bytes, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
 
-	return Run(string(bytes))
+	return r.Run(string(bytes))
 }
 
-func Run(source string) error {
+type Runner struct {
+	nodes []Node
+	infix *InfixResolver
+}
+
+func NewRunner() *Runner {
+	return &Runner{nodes: []Node{}, infix: NewInfixResolver()}
+}
+
+func (r *Runner) Run(source string) error {
 	tokens, err := Lex(source)
 	if err != nil {
 		return err
 	}
 
-	p := NewParser(tokens)
-
-	if decls, err := p.ParseDecl(); err == nil {
-		for _, decl := range decls {
-			fmt.Println(decl)
-		}
-		fmt.Println("flat:")
-		for _, decl := range decls {
-			fmt.Printf("%v\n", Flat(decl))
-		}
-	} else if expr, err := p.ParseExpr(); err == nil {
-		fmt.Println(expr)
-		fmt.Printf("flat:\n%v\n", Flat(expr))
+	var newNodes []Node
+	if decls, err := NewParser(tokens).ParseDecl(); err == nil {
+		newNodes = decls
+	} else if expr, err := NewParser(tokens).ParseExpr(); err == nil {
+		newNodes = []Node{expr}
 	} else {
 		return err
 	}
+
+	for _, node := range newNodes {
+		fmt.Println(node)
+	}
+
+	fmt.Println("flat:")
+
+	for i, node := range newNodes {
+		newNodes[i] = Flat(node)
+		fmt.Println(newNodes[i])
+	}
+
+	fmt.Println("resolve:")
+
+	for _, node := range newNodes {
+		r.infix.Load(node)
+	}
+
+	for i, node := range newNodes {
+		newNodes[i] = r.infix.Resolve(node)
+		fmt.Println(newNodes[i])
+	}
+
+	r.nodes = append(r.nodes, newNodes...)
 
 	return nil
 }
