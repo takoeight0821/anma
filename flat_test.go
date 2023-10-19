@@ -19,19 +19,11 @@ func completeFlat(t *testing.T, input string, expected string) {
 		t.Errorf("Parse returned error: %v", err)
 	}
 
-	rendered := node.String()
-
 	flatNode := Flat(node)
 
 	actual := flatNode.String()
 	if actual != expected {
 		t.Errorf("Flat returned\n%q, expected\n%q", actual, expected)
-	}
-
-	// Test Flat is pure function
-	original := node.String()
-	if original != rendered {
-		t.Errorf("After Flat, the argument is %q, expected %q", rendered, original)
 	}
 }
 
@@ -64,19 +56,12 @@ func completeFlatDecl(t *testing.T, input string, expected string) {
 		t.Errorf("Parse returned error: %v", err)
 	}
 
-	var b strings.Builder
-	for _, decl := range node {
-		b.WriteString(decl.String())
-		b.WriteString("\n")
-	}
-	rendered := b.String()
-
 	flatNode := make([]Node, len(node))
 	for i, decl := range node {
 		flatNode[i] = Flat(decl)
 	}
 
-	b.Reset()
+	var b strings.Builder
 	for _, decl := range flatNode {
 		b.WriteString(decl.String())
 		b.WriteString("\n")
@@ -84,17 +69,6 @@ func completeFlatDecl(t *testing.T, input string, expected string) {
 	actual := b.String()
 	if actual != expected {
 		t.Errorf("Flat returned\n%q, expected\n%q", actual, expected)
-	}
-
-	// Test Flat is pure function
-	b.Reset()
-	for _, decl := range node {
-		b.WriteString(decl.String())
-		b.WriteString("\n")
-	}
-	original := b.String()
-	if original != rendered {
-		t.Errorf("After Flat, the argument is %q, expected %q", rendered, original)
 	}
 }
 

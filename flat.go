@@ -20,10 +20,9 @@ func flat(n Node) Node {
 func flatCodata(c Codata) Node {
 	// Generate PatternList
 	arity := -1
-	clauses := make([]Clause, len(c.Clauses))
 	for i, cl := range c.Clauses {
 		plist := PatternList{Accessors: accessors(cl.Pattern), Params: params(cl.Pattern)}
-		clauses[i] = Clause{Pattern: plist, Exprs: cl.Exprs}
+		c.Clauses[i] = Clause{Pattern: plist, Exprs: cl.Exprs}
 		if arity == -1 {
 			arity = len(plist.Params)
 		} else if arity != len(plist.Params) {
@@ -35,7 +34,7 @@ func flatCodata(c Codata) Node {
 		panic(fmt.Errorf("unreachable: arity is -1 at %d: %v", c.Base().Line, c))
 	}
 
-	return NewBuilder().Build(arity, clauses)
+	return NewBuilder().Build(arity, c.Clauses)
 }
 
 type Builder struct {
