@@ -7,10 +7,10 @@ import (
 
 // [Flat] converts Copatterns ([Access] and [This] in [Pattern]) into [Object] and [Lambda].
 func Flat(n Node) Node {
-	return Traverse(n, flat, Any)
+	return Transform(n, flat)
 }
 
-func flat(n Node, k NodeKind) Node {
+func flat(n Node) Node {
 	if n, ok := n.(Codata); ok {
 		return flatCodata(n)
 	}
@@ -110,7 +110,7 @@ func (b *Builder) Object(clauses []Clause) Object {
 			}
 
 			restClausesList := make([]Clause, 0)
-			orderedFor(restClauses, func(i int, v Clause) {
+			orderedFor(restClauses, func(_ int, v Clause) {
 				restClausesList = append(restClausesList, v)
 			})
 

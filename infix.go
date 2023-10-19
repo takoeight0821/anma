@@ -16,17 +16,17 @@ func NewInfixResolver() *InfixResolver {
 }
 
 func (r *InfixResolver) Load(node Node) {
-	Traverse(node, func(n Node, nk NodeKind) Node {
+	Transform(node, func(n Node) Node {
 		switch n := n.(type) {
 		case InfixDecl:
 			r.add(n)
 		}
 		return n
-	}, Any)
+	})
 }
 
 func (r *InfixResolver) Resolve(node Node) Node {
-	return Traverse(node, func(n Node, nk NodeKind) Node {
+	return Transform(node, func(n Node) Node {
 		switch n := n.(type) {
 		case Binary:
 			return r.mkBinary(n.Op, n.Left, n.Right)
@@ -36,7 +36,7 @@ func (r *InfixResolver) Resolve(node Node) Node {
 			}
 		}
 		return n
-	}, Any)
+	})
 }
 
 func (r *InfixResolver) add(infix InfixDecl) {

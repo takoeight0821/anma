@@ -14,15 +14,6 @@ func all[T any](slice []T, pred func(T) bool) bool {
 	return true
 }
 
-func some[T any](slice []T, pred func(T) bool) bool {
-	for _, v := range slice {
-		if pred(v) {
-			return true
-		}
-	}
-	return false
-}
-
 func orderedFor[I constraints.Ordered, V any](m map[I]V, f func(I, V)) {
 	keys := make([]I, 0, len(m))
 	for k := range m {
