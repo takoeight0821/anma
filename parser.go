@@ -109,16 +109,16 @@ func (p *Parser) let() Let {
 func (p *Parser) fn() Lambda {
 	p.advance()
 	pattern := p.pattern()
-	p.consume(LEFT_BRACE, "expected `{`")
+	p.consume(LEFTBRACE, "expected `{`")
 	exprs := []Node{p.expr()}
 	for p.match(SEMICOLON) {
 		p.advance()
-		if p.match(RIGHT_BRACE) {
+		if p.match(RIGHTBRACE) {
 			break
 		}
 		exprs = append(exprs, p.expr())
 	}
-	p.consume(RIGHT_BRACE, "expected `}`")
+	p.consume(RIGHTBRACE, "expected `}`")
 	return Lambda{Pattern: pattern, Exprs: exprs}
 }
 
@@ -129,22 +129,22 @@ func (p *Parser) atom() Node {
 		return Var{Name: t}
 	case INTEGER, STRING:
 		return Literal{Token: t}
-	case LEFT_PAREN:
-		if p.match(RIGHT_PAREN) {
+	case LEFTPAREN:
+		if p.match(RIGHTPAREN) {
 			p.advance()
 			return Paren{}
 		}
 		elems := []Node{p.expr()}
 		for p.match(COMMA) {
 			p.advance()
-			if p.match(RIGHT_PAREN) {
+			if p.match(RIGHTPAREN) {
 				break
 			}
 			elems = append(elems, p.expr())
 		}
-		p.consume(RIGHT_PAREN, "expected `)`")
+		p.consume(RIGHTPAREN, "expected `)`")
 		return Paren{Elems: elems}
-	case LEFT_BRACE:
+	case LEFTBRACE:
 		return p.codata()
 	default:
 		p.recover(parseError(t, "expected variable, literal, or parenthesized expression"))
@@ -188,26 +188,26 @@ func (p *Parser) access() Node {
 // call = atom ("(" ")" | "(" expr ("," expr)* ","? ")")* ;
 func (p *Parser) call() Node {
 	expr := p.atom()
-	for p.match(LEFT_PAREN) {
+	for p.match(LEFTPAREN) {
 		expr = p.finishCall(expr)
 	}
 	return expr
 }
 
 func (p *Parser) finishCall(fun Node) Call {
-	p.consume(LEFT_PAREN, "expected `(`")
+	p.consume(LEFTPAREN, "expected `(`")
 	args := []Node{}
-	if !p.match(RIGHT_PAREN) {
+	if !p.match(RIGHTPAREN) {
 		args = append(args, p.expr())
 		for p.match(COMMA) {
 			p.advance()
-			if p.match(RIGHT_PAREN) {
+			if p.match(RIGHTPAREN) {
 				break
 			}
 			args = append(args, p.expr())
 		}
 	}
-	p.consume(RIGHT_PAREN, "expected `)`")
+	p.consume(RIGHTPAREN, "expected `)`")
 	return Call{Func: fun, Args: args}
 }
 
@@ -216,12 +216,12 @@ func (p *Parser) codata() Codata {
 	clauses := []Clause{p.clause()}
 	for p.match(COMMA) {
 		p.advance()
-		if p.match(RIGHT_BRACE) {
+		if p.match(RIGHTBRACE) {
 			break
 		}
 		clauses = append(clauses, p.clause())
 	}
-	p.consume(RIGHT_BRACE, "expected `}`")
+	p.consume(RIGHTBRACE, "expected `}`")
 	return Codata{Clauses: clauses}
 }
 
@@ -232,7 +232,7 @@ func (p *Parser) clause() Clause {
 	exprs := []Node{p.expr()}
 	for p.match(SEMICOLON) {
 		p.advance()
-		if p.match(RIGHT_BRACE) {
+		if p.match(RIGHTBRACE) {
 			break
 		}
 		exprs = append(exprs, p.expr())
@@ -263,26 +263,26 @@ func (p *Parser) accessPat() Node {
 // callPat = atomPat ("(" ")" | "(" pattern ("," pattern)* ","? ")")* ;
 func (p *Parser) callPat() Node {
 	pat := p.atomPat()
-	for p.match(LEFT_PAREN) {
+	for p.match(LEFTPAREN) {
 		pat = p.finishCallPat(pat)
 	}
 	return pat
 }
 
 func (p *Parser) finishCallPat(fun Node) Call {
-	p.consume(LEFT_PAREN, "expected `(`")
+	p.consume(LEFTPAREN, "expected `(`")
 	args := []Node{}
-	if !p.match(RIGHT_PAREN) {
+	if !p.match(RIGHTPAREN) {
 		args = append(args, p.pattern())
 		for p.match(COMMA) {
 			p.advance()
-			if p.match(RIGHT_PAREN) {
+			if p.match(RIGHTPAREN) {
 				break
 			}
 			args = append(args, p.pattern())
 		}
 	}
-	p.consume(RIGHT_PAREN, "expected `)`")
+	p.consume(RIGHTPAREN, "expected `)`")
 	return Call{Func: fun, Args: args}
 }
 
@@ -295,20 +295,20 @@ func (p *Parser) atomPat() Node {
 		return Var{Name: t}
 	case INTEGER, STRING:
 		return Literal{Token: t}
-	case LEFT_PAREN:
-		if p.match(RIGHT_PAREN) {
+	case LEFTPAREN:
+		if p.match(RIGHTPAREN) {
 			p.advance()
 			return Paren{}
 		}
 		patterns := []Node{p.pattern()}
 		for p.match(COMMA) {
 			p.advance()
-			if p.match(RIGHT_PAREN) {
+			if p.match(RIGHTPAREN) {
 				break
 			}
 			patterns = append(patterns, p.pattern())
 		}
-		p.consume(RIGHT_PAREN, "expected `)`")
+		p.consume(RIGHTPAREN, "expected `)`")
 		return Paren{Elems: patterns}
 	default:
 		p.recover(parseError(t, "expected variable, literal, or parenthesized pattern"))
@@ -339,26 +339,26 @@ func (p *Parser) binopType() Node {
 // callType = atomType ("(" ")" | "(" type ("," type)* ","? ")")* ;
 func (p *Parser) callType() Node {
 	typ := p.atomType()
-	for p.match(LEFT_PAREN) {
+	for p.match(LEFTPAREN) {
 		typ = p.finishCallType(typ)
 	}
 	return typ
 }
 
 func (p *Parser) finishCallType(fun Node) Call {
-	p.consume(LEFT_PAREN, "expected `(`")
+	p.consume(LEFTPAREN, "expected `(`")
 	args := []Node{}
-	if !p.match(RIGHT_PAREN) {
+	if !p.match(RIGHTPAREN) {
 		args = append(args, p.typ())
 		for p.match(COMMA) {
 			p.advance()
-			if p.match(RIGHT_PAREN) {
+			if p.match(RIGHTPAREN) {
 				break
 			}
 			args = append(args, p.typ())
 		}
 	}
-	p.consume(RIGHT_PAREN, "expected `)`")
+	p.consume(RIGHTPAREN, "expected `)`")
 	return Call{Func: fun, Args: args}
 }
 
@@ -367,31 +367,31 @@ func (p *Parser) atomType() Node {
 	switch t := p.advance(); t.Kind {
 	case IDENT:
 		return Var{Name: t}
-	case LEFT_BRACE:
+	case LEFTBRACE:
 		fields := []Field{p.fieldType()}
 		for p.match(COMMA) {
 			p.advance()
-			if p.match(RIGHT_BRACE) {
+			if p.match(RIGHTBRACE) {
 				break
 			}
 			fields = append(fields, p.fieldType())
 		}
-		p.consume(RIGHT_BRACE, "expected `}`")
+		p.consume(RIGHTBRACE, "expected `}`")
 		return Object{Fields: fields}
-	case LEFT_PAREN:
-		if p.match(RIGHT_PAREN) {
+	case LEFTPAREN:
+		if p.match(RIGHTPAREN) {
 			p.advance()
 			return Paren{}
 		}
 		types := []Node{p.typ()}
 		for p.match(COMMA) {
 			p.advance()
-			if p.match(RIGHT_PAREN) {
+			if p.match(RIGHTPAREN) {
 				break
 			}
 			types = append(types, p.typ())
 		}
-		p.consume(RIGHT_PAREN, "expected `)`")
+		p.consume(RIGHTPAREN, "expected `)`")
 		return Paren{Elems: types}
 	default:
 		p.recover(parseError(t, "expected variable or parenthesized type"))

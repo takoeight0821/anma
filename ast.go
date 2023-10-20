@@ -12,7 +12,6 @@ type Node interface {
 	Base() Token
 }
 
-// var = IDENTIFIER ;
 type Var struct {
 	Name Token
 }
@@ -27,7 +26,6 @@ func (v Var) Base() Token {
 
 var _ Node = Var{}
 
-// literal = INTEGER | STRING ;
 type Literal struct {
 	Token
 }
@@ -42,7 +40,6 @@ func (l Literal) Base() Token {
 
 var _ Node = Literal{}
 
-// paren = "(" expr ("," expr)* ","? ")" | "(" ")" ;
 type Paren struct {
 	// If len(Exprs) == 0, it is an empty tuple.
 	// If len(Exprs) == 1, it is a parenthesized expression.
@@ -63,7 +60,6 @@ func (p Paren) Base() Token {
 
 var _ Node = Paren{}
 
-// access = call ("." IDENTIFIER)* ;
 type Access struct {
 	Receiver Node
 	Name     Token
@@ -79,7 +75,6 @@ func (a Access) Base() Token {
 
 var _ Node = Access{}
 
-// call = atom ("(" ")" | "(" expr ("," expr)* ","? ")")* ;
 type Call struct {
 	Func Node
 	Args []Node
@@ -95,7 +90,6 @@ func (c Call) Base() Token {
 
 var _ Node = Call{}
 
-// binary = access (operator access)* ;
 type Binary struct {
 	Left  Node
 	Op    Token
@@ -112,7 +106,6 @@ func (b Binary) Base() Token {
 
 var _ Node = Binary{}
 
-// assert = binary (":" type)* ;
 type Assert struct {
 	Expr Node
 	Type Node
@@ -128,7 +121,6 @@ func (a Assert) Base() Token {
 
 var _ Node = Assert{}
 
-// let = "let" pattern "=" assert ;
 type Let struct {
 	Bind Node
 	Body Node
@@ -144,7 +136,6 @@ func (l Let) Base() Token {
 
 var _ Node = Let{}
 
-// codata = "{" clause ("," clause)* ","? "}" ;
 type Codata struct {
 	Clauses []Clause // len(Clauses) > 0
 }
@@ -162,7 +153,6 @@ func (c Codata) Base() Token {
 
 var _ Node = Codata{}
 
-// clause = pattern "->" expr (";" expr)* ";"? ;
 type Clause struct {
 	Pattern Node
 	Exprs   []Node // len(Exprs) > 0
@@ -181,7 +171,6 @@ func (c Clause) Base() Token {
 
 var _ Node = Clause{}
 
-// fn = "fn" pattern "{" expr (";" expr)* ";"? "}" ;
 type Lambda struct {
 	Pattern Node
 	Exprs   []Node // len(Exprs) > 0
@@ -197,7 +186,6 @@ func (l Lambda) Base() Token {
 
 var _ Node = Lambda{}
 
-// case = "case" expr "{" clause ("," clause)* ","? "}" ;
 type Case struct {
 	Scrutinee Node
 	Clauses   []Clause // len(Clauses) > 0
@@ -213,7 +201,6 @@ func (c Case) Base() Token {
 
 var _ Node = Case{}
 
-// object = "{" field ("," field)* ","? "}" ;
 type Object struct {
 	Fields []Field // len(Fields) > 0
 }
@@ -228,7 +215,6 @@ func (o Object) Base() Token {
 
 var _ Node = Object{}
 
-// field = IDENTIFIER ":" expr ;
 type Field struct {
 	Name  string
 	Exprs []Node
@@ -244,7 +230,6 @@ func (f Field) Base() Token {
 
 var _ Node = Field{}
 
-// typeDecl = "type" IDENTIFIER "=" type ;
 type TypeDecl struct {
 	Name Token
 	Type Node
@@ -260,7 +245,6 @@ func (t TypeDecl) Base() Token {
 
 var _ Node = TypeDecl{}
 
-// varDecl = "def" identifier "=" expr | "def" identifier ":" type | "def" identifier ":" type "=" expr ;
 type VarDecl struct {
 	Name Token
 	Type Node
@@ -283,7 +267,6 @@ func (v VarDecl) Base() Token {
 
 var _ Node = VarDecl{}
 
-// infixDecl = ("infix" | "infixl" | "infixr") INTEGER IDENTIFIER ;
 type InfixDecl struct {
 	Assoc Token
 	Prec  Token

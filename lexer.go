@@ -168,12 +168,12 @@ func isSymbol(c rune) bool {
 
 // These characters are reserved symbols, but they are not included in operator.
 var reservedSymbols = map[rune]TokenKind{
-	'(': LEFT_PAREN,
-	')': RIGHT_PAREN,
-	'{': LEFT_BRACE,
-	'}': RIGHT_BRACE,
-	'[': LEFT_BRACKET,
-	']': RIGHT_BRACKET,
+	'(': LEFTPAREN,
+	')': RIGHTPAREN,
+	'{': LEFTBRACE,
+	'}': RIGHTBRACE,
+	'[': LEFTBRACKET,
+	']': RIGHTBRACKET,
 	':': COLON,
 	',': COMMA,
 	'.': DOT,
