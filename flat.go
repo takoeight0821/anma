@@ -11,18 +11,18 @@ func Flat(n Node) Node {
 }
 
 func flat(n Node) Node {
-	if n, ok := n.(Codata); ok {
+	if n, ok := n.(*Codata); ok {
 		return flatCodata(n)
 	}
 	return n
 }
 
-func flatCodata(c Codata) Node {
+func flatCodata(c *Codata) Node {
 	// Generate PatternList
 	arity := -1
 	for i, cl := range c.Clauses {
 		plist := patternList{accessors: accessors(cl.Pattern), params: params(cl.Pattern)}
-		c.Clauses[i] = Clause{Pattern: plist, Exprs: cl.Exprs}
+		c.Clauses[i] = &Clause{Pattern: plist, Exprs: cl.Exprs}
 		if arity == -1 {
 			arity = len(plist.params)
 		} else if arity != len(plist.params) {
@@ -46,39 +46,39 @@ func newBuilder() *builder {
 }
 
 // dispatch to Object or Lambda based on arity
-func (b *builder) build(arity int, clauses []Clause) Node {
+func (b *builder) build(arity int, clauses []*Clause) Node {
 	if arity == 0 {
 		return b.object(clauses)
 	}
 	return b.lambda(arity, clauses)
 }
 
-func (b builder) object(clauses []Clause) Object {
+func (b builder) object(clauses []*Clause) Node {
 	// Pop the first accessor of each clause and group remaining clauses by the popped accessor.
-	next := make(map[string][]Clause)
+	next := make(map[string][]*Clause)
 	for _, c := range clauses {
 		plist := c.Pattern.(patternList)
 		if field, plist, ok := pop(plist); ok {
 			next[field.String()] = append(
 				next[field.String()],
-				Clause{Pattern: plist, Exprs: c.Exprs})
+				&Clause{Pattern: plist, Exprs: c.Exprs})
 		} else {
 			panic(fmt.Errorf("not implemented: %v\nmix of pure pattern and copattern is not supported yet", c))
 		}
 	}
 
-	fields := make([]Field, 0)
+	fields := make([]*Field, 0)
 
 	// Generate each field's body expression
 	// Object fields are generated in the dictionary order of field names.
-	orderedFor(next, func(field string, cs []Clause) {
-		hasAccessors := func(c Clause) bool {
+	orderedFor(next, func(field string, cs []*Clause) {
+		hasAccessors := func(c *Clause) bool {
 			return len(c.Pattern.(patternList).accessors) != 0
 		}
 
 		if all(cs, hasAccessors) {
 			// if all pattern lists have accessors, call Object recursively
-			fields = append(fields, Field{Name: field, Exprs: []Node{b.object(cs)}})
+			fields = append(fields, &Field{Name: field, Exprs: []Node{b.object(cs)}})
 		} else if len(b.scrutinees) != 0 {
 			// if any of cs has no accessors and has guards, generate Case expression
 
@@ -92,15 +92,15 @@ func (b builder) object(clauses []Clause) Object {
 			*/
 
 			// case-clauses
-			caseClauses := make([]Clause, len(cs))
+			caseClauses := make([]*Clause, len(cs))
 			// case-clauses that have other accessors
 			// for keeping order of clauses, use map[int]Clause instead of []Clause
-			restClauses := make(map[int]Clause)
+			restClauses := make(map[int]*Clause)
 			for i, c := range cs {
 				plist := c.Pattern.(patternList)
 				if len(plist.accessors) == 0 {
-					caseClauses[i] = Clause{
-						Pattern: Paren{Elems: plist.params},
+					caseClauses[i] = &Clause{
+						Pattern: &Paren{Elems: plist.params},
 						Exprs:   c.Exprs,
 					}
 				} else {
@@ -108,25 +108,25 @@ func (b builder) object(clauses []Clause) Object {
 				}
 			}
 
-			restClausesList := make([]Clause, 0)
-			orderedFor(restClauses, func(_ int, v Clause) {
+			restClausesList := make([]*Clause, 0)
+			orderedFor(restClauses, func(_ int, v *Clause) {
 				restClausesList = append(restClausesList, v)
 			})
 
 			for i, c := range restClauses {
 				plist := c.Pattern.(patternList)
-				caseClauses[i] = Clause{
-					Pattern: Paren{Elems: plist.params},
+				caseClauses[i] = &Clause{
+					Pattern: &Paren{Elems: plist.params},
 					Exprs:   []Node{b.object(restClausesList)},
 				}
 			}
 
 			fields = append(fields,
-				Field{
+				&Field{
 					Name: field,
 					Exprs: []Node{
-						Case{
-							Scrutinee: Paren{Elems: b.scrutinees},
+						&Case{
+							Scrutinee: &Paren{Elems: b.scrutinees},
 							Clauses:   caseClauses,
 						},
 					},
@@ -134,42 +134,42 @@ func (b builder) object(clauses []Clause) Object {
 		} else {
 			// if there is no scrutinee, simply insert the clause's body expression
 			fields = append(fields,
-				Field{
+				&Field{
 					Name:  field,
 					Exprs: cs[0].Exprs,
 				})
 		}
 	})
-	return Object{Fields: fields}
+	return &Object{Fields: fields}
 }
 
 // Generate lambda and dispatch body expression to Object or Case based on existence of accessors.
-func (b *builder) lambda(arity int, clauses []Clause) Lambda {
-	baseToken := Codata{Clauses: clauses}.Base()
+func (b *builder) lambda(arity int, clauses []*Clause) Node {
+	baseToken := clauses[0].Base()
 	// Generate Scrutinees
 	b.scrutinees = make([]Node, arity)
 	for i := 0; i < arity; i++ {
-		b.scrutinees[i] = Var{Name: Token{Kind: IDENT, Lexeme: fmt.Sprintf("x%d", i), Line: baseToken.Line, Literal: nil}}
+		b.scrutinees[i] = &Var{Name: Token{Kind: IDENT, Lexeme: fmt.Sprintf("x%d", i), Line: baseToken.Line, Literal: nil}}
 	}
 
 	// If any of clauses has accessors, body expression is Object.
 	for _, c := range clauses {
 		if len(c.Pattern.(patternList).accessors) != 0 {
-			return Lambda{Pattern: Paren{Elems: b.scrutinees}, Exprs: []Node{b.object(clauses)}}
+			return &Lambda{Pattern: &Paren{Elems: b.scrutinees}, Exprs: []Node{b.object(clauses)}}
 		}
 	}
 
 	// otherwise, body expression is Case.
-	caseClauses := make([]Clause, 0)
+	caseClauses := make([]*Clause, 0)
 	for _, c := range clauses {
 		plist := c.Pattern.(patternList)
-		caseClauses = append(caseClauses, Clause{Pattern: Paren{Elems: plist.params}, Exprs: c.Exprs})
+		caseClauses = append(caseClauses, &Clause{Pattern: &Paren{Elems: plist.params}, Exprs: c.Exprs})
 	}
-	return Lambda{
-		Pattern: Paren{Elems: b.scrutinees},
+	return &Lambda{
+		Pattern: &Paren{Elems: b.scrutinees},
 		Exprs: []Node{
-			Case{
-				Scrutinee: Paren{Elems: b.scrutinees},
+			&Case{
+				Scrutinee: &Paren{Elems: b.scrutinees},
 				Clauses:   caseClauses,
 			},
 		},
@@ -183,7 +183,7 @@ func invalidPattern(n Node) error {
 // Collect all Access patterns recursively.
 func accessors(p Node) []Token {
 	switch p := p.(type) {
-	case Access:
+	case *Access:
 		return append(accessors(p.Receiver), p.Name)
 	default:
 		return []Token{}
@@ -193,10 +193,10 @@ func accessors(p Node) []Token {
 // Get Args of Call{This, ...}
 func params(p Node) []Node {
 	switch p := p.(type) {
-	case Access:
+	case *Access:
 		return params(p.Receiver)
-	case Call:
-		if _, ok := p.Func.(This); !ok {
+	case *Call:
+		if _, ok := p.Func.(*This); !ok {
 			panic(invalidPattern(p))
 		}
 		return p.Args

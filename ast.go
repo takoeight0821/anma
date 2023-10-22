@@ -20,11 +20,11 @@ func (v Var) String() string {
 	return parenthesize("var", v.Name)
 }
 
-func (v Var) Base() Token {
+func (v *Var) Base() Token {
 	return v.Name
 }
 
-var _ Node = Var{}
+var _ Node = &Var{}
 
 type Literal struct {
 	Token
@@ -34,11 +34,11 @@ func (l Literal) String() string {
 	return parenthesize("literal", l.Token)
 }
 
-func (l Literal) Base() Token {
+func (l *Literal) Base() Token {
 	return l.Token
 }
 
-var _ Node = Literal{}
+var _ Node = &Literal{}
 
 type Paren struct {
 	// If len(Exprs) == 0, it is an empty tuple.
@@ -51,14 +51,14 @@ func (p Paren) String() string {
 	return parenthesize("paren", p.Elems...)
 }
 
-func (p Paren) Base() Token {
+func (p *Paren) Base() Token {
 	if len(p.Elems) == 0 {
 		return Token{}
 	}
 	return p.Elems[0].Base()
 }
 
-var _ Node = Paren{}
+var _ Node = &Paren{}
 
 type Access struct {
 	Receiver Node
@@ -69,11 +69,11 @@ func (a Access) String() string {
 	return parenthesize("access", a.Receiver, a.Name)
 }
 
-func (a Access) Base() Token {
+func (a *Access) Base() Token {
 	return a.Name
 }
 
-var _ Node = Access{}
+var _ Node = &Access{}
 
 type Call struct {
 	Func Node
@@ -84,11 +84,11 @@ func (c Call) String() string {
 	return parenthesize("call", prepend(c.Func, c.Args)...)
 }
 
-func (c Call) Base() Token {
+func (c *Call) Base() Token {
 	return c.Func.Base()
 }
 
-var _ Node = Call{}
+var _ Node = &Call{}
 
 type Binary struct {
 	Left  Node
@@ -100,11 +100,11 @@ func (b Binary) String() string {
 	return parenthesize("binary", b.Left, b.Op, b.Right)
 }
 
-func (b Binary) Base() Token {
+func (b *Binary) Base() Token {
 	return b.Op
 }
 
-var _ Node = Binary{}
+var _ Node = &Binary{}
 
 type Assert struct {
 	Expr Node
@@ -115,11 +115,11 @@ func (a Assert) String() string {
 	return parenthesize("assert", a.Expr, a.Type)
 }
 
-func (a Assert) Base() Token {
+func (a *Assert) Base() Token {
 	return a.Expr.Base()
 }
 
-var _ Node = Assert{}
+var _ Node = &Assert{}
 
 type Let struct {
 	Bind Node
@@ -130,28 +130,28 @@ func (l Let) String() string {
 	return parenthesize("let", l.Bind, l.Body)
 }
 
-func (l Let) Base() Token {
+func (l *Let) Base() Token {
 	return l.Bind.Base()
 }
 
-var _ Node = Let{}
+var _ Node = &Let{}
 
 type Codata struct {
-	Clauses []Clause // len(Clauses) > 0
+	Clauses []*Clause // len(Clauses) > 0
 }
 
 func (c Codata) String() string {
 	return parenthesize("codata", squash(c.Clauses)...)
 }
 
-func (c Codata) Base() Token {
+func (c *Codata) Base() Token {
 	if len(c.Clauses) == 0 {
 		return Token{}
 	}
 	return c.Clauses[0].Base()
 }
 
-var _ Node = Codata{}
+var _ Node = &Codata{}
 
 type Clause struct {
 	Pattern Node
@@ -162,14 +162,14 @@ func (c Clause) String() string {
 	return parenthesize("clause", prepend(c.Pattern, c.Exprs)...)
 }
 
-func (c Clause) Base() Token {
+func (c *Clause) Base() Token {
 	if c.Pattern == nil {
 		return Token{}
 	}
 	return c.Pattern.Base()
 }
 
-var _ Node = Clause{}
+var _ Node = &Clause{}
 
 type Lambda struct {
 	Pattern Node
@@ -180,40 +180,40 @@ func (l Lambda) String() string {
 	return parenthesize("lambda", prepend(l.Pattern, l.Exprs)...)
 }
 
-func (l Lambda) Base() Token {
+func (l *Lambda) Base() Token {
 	return l.Pattern.Base()
 }
 
-var _ Node = Lambda{}
+var _ Node = &Lambda{}
 
 type Case struct {
 	Scrutinee Node
-	Clauses   []Clause // len(Clauses) > 0
+	Clauses   []*Clause // len(Clauses) > 0
 }
 
 func (c Case) String() string {
 	return parenthesize("case", prepend(c.Scrutinee, squash(c.Clauses))...)
 }
 
-func (c Case) Base() Token {
+func (c *Case) Base() Token {
 	return c.Scrutinee.Base()
 }
 
-var _ Node = Case{}
+var _ Node = &Case{}
 
 type Object struct {
-	Fields []Field // len(Fields) > 0
+	Fields []*Field // len(Fields) > 0
 }
 
 func (o Object) String() string {
 	return parenthesize("object", squash(o.Fields)...)
 }
 
-func (o Object) Base() Token {
+func (o *Object) Base() Token {
 	return o.Fields[0].Base()
 }
 
-var _ Node = Object{}
+var _ Node = &Object{}
 
 type Field struct {
 	Name  string
@@ -224,11 +224,11 @@ func (f Field) String() string {
 	return parenthesize("field "+f.Name, f.Exprs...)
 }
 
-func (f Field) Base() Token {
+func (f *Field) Base() Token {
 	return f.Exprs[0].Base()
 }
 
-var _ Node = Field{}
+var _ Node = &Field{}
 
 type TypeDecl struct {
 	Name Token
@@ -239,11 +239,11 @@ func (t TypeDecl) String() string {
 	return parenthesize("type", t.Name, t.Type)
 }
 
-func (t TypeDecl) Base() Token {
+func (t *TypeDecl) Base() Token {
 	return t.Name
 }
 
-var _ Node = TypeDecl{}
+var _ Node = &TypeDecl{}
 
 type VarDecl struct {
 	Name Token
@@ -261,11 +261,11 @@ func (v VarDecl) String() string {
 	return parenthesize("def", v.Name, v.Type, v.Expr)
 }
 
-func (v VarDecl) Base() Token {
+func (v *VarDecl) Base() Token {
 	return v.Name
 }
 
-var _ Node = VarDecl{}
+var _ Node = &VarDecl{}
 
 type InfixDecl struct {
 	Assoc Token
@@ -277,11 +277,11 @@ func (i InfixDecl) String() string {
 	return parenthesize("infix", i.Assoc, i.Prec, i.Name)
 }
 
-func (i InfixDecl) Base() Token {
+func (i *InfixDecl) Base() Token {
 	return i.Assoc
 }
 
-var _ Node = InfixDecl{}
+var _ Node = &InfixDecl{}
 
 type This struct {
 	Token
@@ -291,11 +291,11 @@ func (t This) String() string {
 	return parenthesize("this", t.Token)
 }
 
-func (t This) Base() Token {
+func (t *This) Base() Token {
 	return t.Token
 }
 
-var _ Node = This{}
+var _ Node = &This{}
 
 func parenthesize(head string, nodes ...Node) string {
 	var b strings.Builder
@@ -333,79 +333,79 @@ func prepend(elem Node, slice []Node) []Node {
 //tool:ignore
 func Transform(n Node, f func(Node) Node) Node {
 	switch n := n.(type) {
-	case Var:
+	case *Var:
 		return f(n)
-	case Literal:
+	case *Literal:
 		return f(n)
-	case Paren:
+	case *Paren:
 		for i, elem := range n.Elems {
 			n.Elems[i] = Transform(elem, f)
 		}
 		return f(n)
-	case Access:
+	case *Access:
 		n.Receiver = Transform(n.Receiver, f)
 		return f(n)
-	case Call:
+	case *Call:
 		n.Func = Transform(n.Func, f)
 		for i, arg := range n.Args {
 			n.Args[i] = Transform(arg, f)
 		}
 		return f(n)
-	case Binary:
+	case *Binary:
 		n.Left = Transform(n.Left, f)
 		n.Right = Transform(n.Right, f)
 		return f(n)
-	case Assert:
+	case *Assert:
 		n.Expr = Transform(n.Expr, f)
 		n.Type = Transform(n.Type, f)
 		return f(n)
-	case Let:
+	case *Let:
 		n.Bind = Transform(n.Bind, f)
 		n.Body = Transform(n.Body, f)
 		return f(n)
-	case Codata:
+	case *Codata:
 		for i, clause := range n.Clauses {
-			n.Clauses[i] = Transform(clause, f).(Clause)
+			n.Clauses[i] = Transform(clause, f).(*Clause)
 		}
 		return f(n)
-	case Clause:
+	case *Clause:
 		n.Pattern = Transform(n.Pattern, f)
 		for i, expr := range n.Exprs {
 			n.Exprs[i] = Transform(expr, f)
 		}
 		return f(n)
-	case Lambda:
+	case *Lambda:
 		n.Pattern = Transform(n.Pattern, f)
 		for i, expr := range n.Exprs {
 			n.Exprs[i] = Transform(expr, f)
 		}
 		return f(n)
-	case Case:
+	case *Case:
 		n.Scrutinee = Transform(n.Scrutinee, f)
 		for i, clause := range n.Clauses {
-			n.Clauses[i] = Transform(clause, f).(Clause)
+			n.Clauses[i] = Transform(clause, f).(*Clause)
 		}
 		return f(n)
-	case Object:
+	case *Object:
 		for i, field := range n.Fields {
-			n.Fields[i] = Transform(field, f).(Field)
+			n.Fields[i] = Transform(field, f).(*Field)
 		}
 		return f(n)
-	case Field:
+	case *Field:
 		for i, expr := range n.Exprs {
 			n.Exprs[i] = Transform(expr, f)
 		}
 		return f(n)
-	case TypeDecl:
+	case *TypeDecl:
 		n.Type = Transform(n.Type, f)
 		return f(n)
-	case VarDecl:
+	case *VarDecl:
 		n.Type = Transform(n.Type, f)
 		n.Expr = Transform(n.Expr, f)
 		return f(n)
-	case InfixDecl:
+	case *InfixDecl:
 		return f(n)
-	case This:
+	case *This:
 		return f(n)
 	default:
 		return f(n)

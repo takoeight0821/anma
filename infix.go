@@ -8,7 +8,7 @@ import (
 // In infix.go, we will fix this.
 
 type InfixResolver struct {
-	decls []InfixDecl
+	decls []*InfixDecl
 }
 
 func NewInfixResolver() *InfixResolver {
@@ -18,7 +18,7 @@ func NewInfixResolver() *InfixResolver {
 func (r *InfixResolver) Load(node Node) {
 	Transform(node, func(n Node) Node {
 		switch n := n.(type) {
-		case InfixDecl:
+		case *InfixDecl:
 			r.add(n)
 		}
 		return n
@@ -28,9 +28,9 @@ func (r *InfixResolver) Load(node Node) {
 func (r *InfixResolver) Resolve(node Node) Node {
 	return Transform(node, func(n Node) Node {
 		switch n := n.(type) {
-		case Binary:
+		case *Binary:
 			return r.mkBinary(n.Op, n.Left, n.Right)
-		case Paren:
+		case *Paren:
 			if len(n.Elems) == 1 {
 				return n.Elems[0]
 			}
@@ -39,7 +39,7 @@ func (r *InfixResolver) Resolve(node Node) Node {
 	})
 }
 
-func (r *InfixResolver) add(infix InfixDecl) {
+func (r *InfixResolver) add(infix *InfixDecl) {
 	r.decls = append(r.decls, infix)
 }
 
@@ -63,15 +63,15 @@ func (r InfixResolver) assoc(op Token) TokenKind {
 
 func (r InfixResolver) mkBinary(op Token, left, right Node) Node {
 	switch left := left.(type) {
-	case Binary:
+	case *Binary:
 		// (left.Left left.Op left.Right) op right
 		if r.assocRight(left.Op, op) {
 			// left.Left left.Op (left.Right op right)
 			newRight := r.mkBinary(op, left.Right, right)
-			return Binary{Left: left.Left, Op: left.Op, Right: newRight}
+			return &Binary{Left: left.Left, Op: left.Op, Right: newRight}
 		}
 	}
-	return Binary{Left: left, Op: op, Right: right}
+	return &Binary{Left: left, Op: op, Right: right}
 }
 
 func (r InfixResolver) assocRight(op1, op2 Token) bool {

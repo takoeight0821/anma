@@ -44,16 +44,16 @@ func (p *Parser) decl() Node {
 }
 
 // typeDecl = "type" IDENTIFIER "=" type ;
-func (p *Parser) typeDecl() TypeDecl {
+func (p *Parser) typeDecl() *TypeDecl {
 	p.consume(TYPE, "expected `type`")
 	name := p.consume(IDENT, "expected identifier")
 	p.consume(EQUAL, "expected `=`")
 	typ := p.typ()
-	return TypeDecl{Name: name, Type: typ}
+	return &TypeDecl{Name: name, Type: typ}
 }
 
 // varDecl = "def" identifier "=" expr | "def" identifier ":" type | "def" identifier ":" type "=" expr ;
-func (p *Parser) varDecl() VarDecl {
+func (p *Parser) varDecl() *VarDecl {
 	p.consume(DEF, "expected `def`")
 	name := p.consume(IDENT, "expected identifier")
 	var typ Node
@@ -66,19 +66,19 @@ func (p *Parser) varDecl() VarDecl {
 		p.advance()
 		expr = p.expr()
 	}
-	return VarDecl{Name: name, Type: typ, Expr: expr}
+	return &VarDecl{Name: name, Type: typ, Expr: expr}
 }
 
 // infixDecl = ("infix" | "infixl" | "infixr") INTEGER OPERATOR ;
-func (p *Parser) infixDecl() InfixDecl {
+func (p *Parser) infixDecl() *InfixDecl {
 	kind := p.advance()
 	if kind.Kind != INFIX && kind.Kind != INFIXL && kind.Kind != INFIXR {
 		p.recover(parseError(kind, "expected `infix`, `infixl`, or `infixr`"))
-		return InfixDecl{}
+		return &InfixDecl{}
 	}
 	precedence := p.consume(INTEGER, "expected integer")
 	name := p.consume(OPERATOR, "expected operator")
-	return InfixDecl{Assoc: kind, Prec: precedence, Name: name}
+	return &InfixDecl{Assoc: kind, Prec: precedence, Name: name}
 }
 
 // expr = let | fn | assert ;
@@ -97,16 +97,16 @@ func (p *Parser) expr() Node {
 }
 
 // let = "let" pattern "=" assert ;
-func (p *Parser) let() Let {
+func (p *Parser) let() *Let {
 	p.advance()
 	pattern := p.pattern()
 	p.consume(EQUAL, "expected `=`")
 	expr := p.assert()
-	return Let{Bind: pattern, Body: expr}
+	return &Let{Bind: pattern, Body: expr}
 }
 
 // fn = "fn" pattern "{" expr (";" expr)* ";"? "}" ;
-func (p *Parser) fn() Lambda {
+func (p *Parser) fn() *Lambda {
 	p.advance()
 	pattern := p.pattern()
 	p.consume(LEFTBRACE, "expected `{`")
@@ -119,20 +119,20 @@ func (p *Parser) fn() Lambda {
 		exprs = append(exprs, p.expr())
 	}
 	p.consume(RIGHTBRACE, "expected `}`")
-	return Lambda{Pattern: pattern, Exprs: exprs}
+	return &Lambda{Pattern: pattern, Exprs: exprs}
 }
 
 // atom = var | literal | paren | codata ;
 func (p *Parser) atom() Node {
 	switch t := p.advance(); t.Kind {
 	case IDENT:
-		return Var{Name: t}
+		return &Var{Name: t}
 	case INTEGER, STRING:
-		return Literal{Token: t}
+		return &Literal{Token: t}
 	case LEFTPAREN:
 		if p.match(RIGHTPAREN) {
 			p.advance()
-			return Paren{}
+			return &Paren{}
 		}
 		elems := []Node{p.expr()}
 		for p.match(COMMA) {
@@ -143,7 +143,7 @@ func (p *Parser) atom() Node {
 			elems = append(elems, p.expr())
 		}
 		p.consume(RIGHTPAREN, "expected `)`")
-		return Paren{Elems: elems}
+		return &Paren{Elems: elems}
 	case LEFTBRACE:
 		return p.codata()
 	default:
@@ -158,7 +158,7 @@ func (p *Parser) assert() Node {
 	for p.match(COLON) {
 		p.advance()
 		typ := p.typ()
-		expr = Assert{Expr: expr, Type: typ}
+		expr = &Assert{Expr: expr, Type: typ}
 	}
 	return expr
 }
@@ -169,7 +169,7 @@ func (p *Parser) binary() Node {
 	for p.match(OPERATOR) {
 		op := p.advance()
 		right := p.access()
-		expr = Binary{Left: expr, Op: op, Right: right}
+		expr = &Binary{Left: expr, Op: op, Right: right}
 	}
 	return expr
 }
@@ -180,7 +180,7 @@ func (p *Parser) access() Node {
 	for p.match(DOT) {
 		p.advance()
 		name := p.consume(IDENT, "expected identifier")
-		expr = Access{Receiver: expr, Name: name}
+		expr = &Access{Receiver: expr, Name: name}
 	}
 	return expr
 }
@@ -194,7 +194,7 @@ func (p *Parser) call() Node {
 	return expr
 }
 
-func (p *Parser) finishCall(fun Node) Call {
+func (p *Parser) finishCall(fun Node) *Call {
 	p.consume(LEFTPAREN, "expected `(`")
 	args := []Node{}
 	if !p.match(RIGHTPAREN) {
@@ -208,12 +208,12 @@ func (p *Parser) finishCall(fun Node) Call {
 		}
 	}
 	p.consume(RIGHTPAREN, "expected `)`")
-	return Call{Func: fun, Args: args}
+	return &Call{Func: fun, Args: args}
 }
 
 // codata = "{" clause ("," clause)* ","? "}" ;
-func (p *Parser) codata() Codata {
-	clauses := []Clause{p.clause()}
+func (p *Parser) codata() *Codata {
+	clauses := []*Clause{p.clause()}
 	for p.match(COMMA) {
 		p.advance()
 		if p.match(RIGHTBRACE) {
@@ -222,11 +222,11 @@ func (p *Parser) codata() Codata {
 		clauses = append(clauses, p.clause())
 	}
 	p.consume(RIGHTBRACE, "expected `}`")
-	return Codata{Clauses: clauses}
+	return &Codata{Clauses: clauses}
 }
 
 // clause = pattern "->" expr (";" expr)* ";"? ;
-func (p *Parser) clause() Clause {
+func (p *Parser) clause() *Clause {
 	pattern := p.pattern()
 	p.consume(ARROW, "expected `->`")
 	exprs := []Node{p.expr()}
@@ -237,7 +237,7 @@ func (p *Parser) clause() Clause {
 		}
 		exprs = append(exprs, p.expr())
 	}
-	return Clause{Pattern: pattern, Exprs: exprs}
+	return &Clause{Pattern: pattern, Exprs: exprs}
 }
 
 // pattern = accessPat ;
@@ -255,7 +255,7 @@ func (p *Parser) accessPat() Node {
 	for p.match(DOT) {
 		p.advance()
 		name := p.consume(IDENT, "expected identifier")
-		pat = Access{Receiver: pat, Name: name}
+		pat = &Access{Receiver: pat, Name: name}
 	}
 	return pat
 }
@@ -269,7 +269,7 @@ func (p *Parser) callPat() Node {
 	return pat
 }
 
-func (p *Parser) finishCallPat(fun Node) Call {
+func (p *Parser) finishCallPat(fun Node) *Call {
 	p.consume(LEFTPAREN, "expected `(`")
 	args := []Node{}
 	if !p.match(RIGHTPAREN) {
@@ -283,22 +283,22 @@ func (p *Parser) finishCallPat(fun Node) Call {
 		}
 	}
 	p.consume(RIGHTPAREN, "expected `)`")
-	return Call{Func: fun, Args: args}
+	return &Call{Func: fun, Args: args}
 }
 
 // atomPat = IDENT | INTEGER | STRING | "(" pattern ("," pattern)* ","? ")" ;
 func (p *Parser) atomPat() Node {
 	switch t := p.advance(); t.Kind {
 	case SHARP:
-		return This{Token: t}
+		return &This{Token: t}
 	case IDENT:
-		return Var{Name: t}
+		return &Var{Name: t}
 	case INTEGER, STRING:
-		return Literal{Token: t}
+		return &Literal{Token: t}
 	case LEFTPAREN:
 		if p.match(RIGHTPAREN) {
 			p.advance()
-			return Paren{}
+			return &Paren{}
 		}
 		patterns := []Node{p.pattern()}
 		for p.match(COMMA) {
@@ -309,7 +309,7 @@ func (p *Parser) atomPat() Node {
 			patterns = append(patterns, p.pattern())
 		}
 		p.consume(RIGHTPAREN, "expected `)`")
-		return Paren{Elems: patterns}
+		return &Paren{Elems: patterns}
 	default:
 		p.recover(parseError(t, "expected variable, literal, or parenthesized pattern"))
 		return nil
@@ -331,7 +331,7 @@ func (p *Parser) binopType() Node {
 	for p.match(OPERATOR) || p.match(ARROW) {
 		op := p.advance()
 		right := p.callType()
-		typ = Binary{Left: typ, Op: op, Right: right}
+		typ = &Binary{Left: typ, Op: op, Right: right}
 	}
 	return typ
 }
@@ -345,7 +345,7 @@ func (p *Parser) callType() Node {
 	return typ
 }
 
-func (p *Parser) finishCallType(fun Node) Call {
+func (p *Parser) finishCallType(fun Node) *Call {
 	p.consume(LEFTPAREN, "expected `(`")
 	args := []Node{}
 	if !p.match(RIGHTPAREN) {
@@ -359,16 +359,16 @@ func (p *Parser) finishCallType(fun Node) Call {
 		}
 	}
 	p.consume(RIGHTPAREN, "expected `)`")
-	return Call{Func: fun, Args: args}
+	return &Call{Func: fun, Args: args}
 }
 
 // atomType = IDENT | "{" fieldType ("," fieldType)* ","? "}" | "(" type ("," type)* ","? ")" ;
 func (p *Parser) atomType() Node {
 	switch t := p.advance(); t.Kind {
 	case IDENT:
-		return Var{Name: t}
+		return &Var{Name: t}
 	case LEFTBRACE:
-		fields := []Field{p.fieldType()}
+		fields := []*Field{p.fieldType()}
 		for p.match(COMMA) {
 			p.advance()
 			if p.match(RIGHTBRACE) {
@@ -377,11 +377,11 @@ func (p *Parser) atomType() Node {
 			fields = append(fields, p.fieldType())
 		}
 		p.consume(RIGHTBRACE, "expected `}`")
-		return Object{Fields: fields}
+		return &Object{Fields: fields}
 	case LEFTPAREN:
 		if p.match(RIGHTPAREN) {
 			p.advance()
-			return Paren{}
+			return &Paren{}
 		}
 		types := []Node{p.typ()}
 		for p.match(COMMA) {
@@ -392,7 +392,7 @@ func (p *Parser) atomType() Node {
 			types = append(types, p.typ())
 		}
 		p.consume(RIGHTPAREN, "expected `)`")
-		return Paren{Elems: types}
+		return &Paren{Elems: types}
 	default:
 		p.recover(parseError(t, "expected variable or parenthesized type"))
 		return nil
@@ -400,11 +400,11 @@ func (p *Parser) atomType() Node {
 }
 
 // fieldType = IDENTIFIER ":" type ;
-func (p *Parser) fieldType() Field {
+func (p *Parser) fieldType() *Field {
 	name := p.consume(IDENT, "expected identifier")
 	p.consume(COLON, "expected `:`")
 	typ := p.typ()
-	return Field{Name: name.Lexeme, Exprs: []Node{typ}}
+	return &Field{Name: name.Lexeme, Exprs: []Node{typ}}
 }
 
 func (p *Parser) recover(err error) {
