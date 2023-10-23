@@ -27,18 +27,26 @@ func (r *Renamer) assign(node Node) {
 	})
 }
 
-func (r *Renamer) new(name string) (int, error) {
+func (r *Renamer) new(name string) int {
 	if _, ok := r.env.table[name]; ok {
-		return -1, fmt.Errorf("%v is already defined", name)
+		panic(fmt.Errorf("%v is already defined", name))
 	}
 	r.env.table[name] = r.unique()
-	return r.env.table[name], nil
+	return r.env.table[name]
 }
 
 func (r *Renamer) unique() int {
 	u := r.supply
 	r.supply++
 	return u
+}
+
+func (r *Renamer) lookup(name string) int {
+	if uniq, err := r.env.lookup(name); err != nil {
+		panic(err)
+	} else {
+		return uniq
+	}
 }
 
 type Env struct {
@@ -63,11 +71,7 @@ func (e *Env) lookup(name string) (int, error) {
 func (r *Renamer) Solve(node Node) Node {
 	switch n := node.(type) {
 	case *Var:
-		var err error
-		n.Name.Literal, err = r.env.lookup(n.Name.Lexeme)
-		if err != nil {
-			panic(err)
-		}
+		n.Name.Literal = r.lookup(n.Name.Lexeme)
 		return n
 	case *Literal:
 		return n
@@ -149,19 +153,11 @@ func (r *Renamer) Solve(node Node) Node {
 		})
 		return n
 	case *TypeDecl:
-		var err error
-		n.Name.Literal, err = r.new(n.Name.Lexeme)
-		if err != nil {
-			panic(err)
-		}
+		n.Name.Literal = r.new(n.Name.Lexeme)
 		n.Type = r.Solve(n.Type)
 		return n
 	case *VarDecl:
-		var err error
-		n.Name.Literal, err = r.new(n.Name.Lexeme)
-		if err != nil {
-			panic(err)
-		}
+		n.Name.Literal = r.new(n.Name.Lexeme)
 		if n.Type != nil {
 			n.Type = r.Solve(n.Type)
 		}
