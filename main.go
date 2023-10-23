@@ -64,11 +64,10 @@ func RunPrompt() error {
 		if err != nil {
 			return err
 		}
-		println(input)
 		line.AppendHistory(input)
 		err = r.Run(input)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		}
 	}
 }

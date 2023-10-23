@@ -41,6 +41,10 @@ func (r *Runner) Load(source string) error {
 		program[i] = r.rename.Solve(r.infix.Resolve(node))
 	}
 
+	if err = r.rename.PopError(); err != nil {
+		return err
+	}
+
 	r.program = append(r.program, program...)
 
 	return nil

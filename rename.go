@@ -1,14 +1,28 @@
 package main
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 type Renamer struct {
 	supply int
 	env    *Env
+	err    error
 }
 
 func NewRenamer() *Renamer {
-	return &Renamer{supply: 0, env: NewEnv(nil)}
+	return &Renamer{supply: 0, env: NewEnv(nil), err: nil}
+}
+
+func (r *Renamer) PopError() error {
+	err := r.err
+	r.err = nil
+	return err
+}
+
+func (r *Renamer) error(err error) {
+	r.err = errors.Join(r.err, err)
 }
 
 func (r *Renamer) scoped(f func()) {
@@ -29,7 +43,8 @@ func (r *Renamer) assign(node Node) {
 
 func (r *Renamer) new(name string) int {
 	if _, ok := r.env.table[name]; ok {
-		panic(fmt.Errorf("%v is already defined", name))
+		r.error(fmt.Errorf("%v is already defined", name))
+		return -1
 	}
 	r.env.table[name] = r.unique()
 	return r.env.table[name]
@@ -42,11 +57,11 @@ func (r *Renamer) unique() int {
 }
 
 func (r *Renamer) lookup(name string) int {
-	if uniq, err := r.env.lookup(name); err != nil {
-		panic(err)
-	} else {
-		return uniq
+	uniq, err := r.env.lookup(name)
+	if err != nil {
+		r.error(err)
 	}
+	return uniq
 }
 
 type Env struct {
@@ -170,6 +185,7 @@ func (r *Renamer) Solve(node Node) Node {
 	case *This:
 		return n
 	default:
-		panic(fmt.Errorf("Renamer.Solve not implemented: %v", n))
+		r.error(fmt.Errorf("Renamer.Solve not implemented: %v", n))
+		return n
 	}
 }
