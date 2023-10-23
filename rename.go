@@ -25,17 +25,9 @@ func (r *Renamer) error(err error) {
 	r.err = errors.Join(r.err, err)
 }
 
-func (r *Renamer) scoped(nodes []Node, f func()) {
+func (r *Renamer) scoped(f func()) {
 	r.env = NewEnv(r.env)
-	for _, node := range nodes {
-		r.assign(node)
-	}
 	f()
-	if r.err != nil {
-		for _, node := range nodes {
-			r.delete(node)
-		}
-	}
 	r.env = r.env.parent
 }
 
@@ -114,19 +106,19 @@ func (r *Renamer) Solve(node Node) Node {
 	case *Literal:
 		return n
 	case *Paren:
-		r.scoped(nil, func() {
+		r.scoped(func() {
 			for i, elem := range n.Elems {
 				n.Elems[i] = r.Solve(elem)
 			}
 		})
 		return n
 	case *Access:
-		r.scoped(nil, func() {
+		r.scoped(func() {
 			n.Receiver = r.Solve(n.Receiver)
 		})
 		return n
 	case *Call:
-		r.scoped(nil, func() {
+		r.scoped(func() {
 			n.Func = r.Solve(n.Func)
 			for _, arg := range n.Args {
 				r.Solve(arg)
@@ -134,19 +126,20 @@ func (r *Renamer) Solve(node Node) Node {
 		})
 		return n
 	case *Binary:
-		r.scoped(nil, func() {
+		r.scoped(func() {
 			n.Left = r.Solve(n.Left)
 			n.Right = r.Solve(n.Right)
 		})
 		return n
 	case *Assert:
-		r.scoped(nil, func() {
+		r.scoped(func() {
 			n.Expr = r.Solve(n.Expr)
 			n.Type = r.Solve(n.Type)
 		})
 		return n
 	case *Let:
-		r.scoped([]Node{n.Bind}, func() {
+		r.scoped(func() {
+			r.assign(n.Bind)
 			n.Bind = r.Solve(n.Bind)
 			n.Body = r.Solve(n.Body)
 		})
@@ -157,7 +150,8 @@ func (r *Renamer) Solve(node Node) Node {
 		}
 		return n
 	case *Clause:
-		r.scoped([]Node{n.Pattern}, func() {
+		r.scoped(func() {
+			r.assign(n.Pattern)
 			n.Pattern = r.Solve(n.Pattern)
 			for i, expr := range n.Exprs {
 				n.Exprs[i] = r.Solve(expr)
@@ -165,7 +159,8 @@ func (r *Renamer) Solve(node Node) Node {
 		})
 		return n
 	case *Lambda:
-		r.scoped([]Node{n.Pattern}, func() {
+		r.scoped(func() {
+			r.assign(n.Pattern)
 			n.Pattern = r.Solve(n.Pattern)
 			for i, expr := range n.Exprs {
 				n.Exprs[i] = r.Solve(expr)
@@ -173,7 +168,7 @@ func (r *Renamer) Solve(node Node) Node {
 		})
 		return n
 	case *Case:
-		r.scoped(nil, func() {
+		r.scoped(func() {
 			n.Scrutinee = r.Solve(n.Scrutinee)
 			for i, clause := range n.Clauses {
 				n.Clauses[i] = r.Solve(clause).(*Clause)
@@ -181,7 +176,7 @@ func (r *Renamer) Solve(node Node) Node {
 		})
 		return n
 	case *Object:
-		r.scoped(nil, func() {
+		r.scoped(func() {
 			for i, field := range n.Fields {
 				n.Fields[i] = r.Solve(field).(*Field)
 			}
