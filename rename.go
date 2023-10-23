@@ -25,29 +25,52 @@ func (r *Renamer) error(err error) {
 	r.err = errors.Join(r.err, err)
 }
 
-func (r *Renamer) scoped(f func()) {
+func (r *Renamer) scoped(nodes []Node, f func()) {
 	r.env = NewEnv(r.env)
+	for _, node := range nodes {
+		r.assign(node)
+	}
 	f()
+	if r.err != nil {
+		for _, node := range nodes {
+			r.delete(node)
+		}
+	}
 	r.env = r.env.parent
 }
 
 func (r *Renamer) assign(node Node) {
+	addTable := func(name string) {
+		if _, ok := r.env.table[name]; ok {
+			r.error(fmt.Errorf("%v is already defined", name))
+			return
+		}
+		r.env.table[name] = r.unique()
+	}
 	Transform(node, func(n Node) Node {
 		switch n := n.(type) {
 		case *Var:
-			r.new(n.Name.Lexeme)
+			addTable(n.Name.Lexeme)
+		case Token:
+			addTable(n.Lexeme)
 		}
 		return n
 	})
 }
 
-func (r *Renamer) new(name string) int {
-	if _, ok := r.env.table[name]; ok {
-		r.error(fmt.Errorf("%v is already defined", name))
-		return -1
+func (r *Renamer) delete(node Node) {
+	deleteTable := func(name string) {
+		delete(r.env.table, name)
 	}
-	r.env.table[name] = r.unique()
-	return r.env.table[name]
+	Transform(node, func(n Node) Node {
+		switch n := n.(type) {
+		case *Var:
+			deleteTable(n.Name.Lexeme)
+		case Token:
+			deleteTable(n.Lexeme)
+		}
+		return n
+	})
 }
 
 func (r *Renamer) unique() int {
@@ -91,19 +114,19 @@ func (r *Renamer) Solve(node Node) Node {
 	case *Literal:
 		return n
 	case *Paren:
-		r.scoped(func() {
+		r.scoped(nil, func() {
 			for i, elem := range n.Elems {
 				n.Elems[i] = r.Solve(elem)
 			}
 		})
 		return n
 	case *Access:
-		r.scoped(func() {
+		r.scoped(nil, func() {
 			n.Receiver = r.Solve(n.Receiver)
 		})
 		return n
 	case *Call:
-		r.scoped(func() {
+		r.scoped(nil, func() {
 			n.Func = r.Solve(n.Func)
 			for _, arg := range n.Args {
 				r.Solve(arg)
@@ -111,20 +134,19 @@ func (r *Renamer) Solve(node Node) Node {
 		})
 		return n
 	case *Binary:
-		r.scoped(func() {
+		r.scoped(nil, func() {
 			n.Left = r.Solve(n.Left)
 			n.Right = r.Solve(n.Right)
 		})
 		return n
 	case *Assert:
-		r.scoped(func() {
+		r.scoped(nil, func() {
 			n.Expr = r.Solve(n.Expr)
 			n.Type = r.Solve(n.Type)
 		})
 		return n
 	case *Let:
-		r.scoped(func() {
-			r.assign(n.Bind)
+		r.scoped([]Node{n.Bind}, func() {
 			n.Bind = r.Solve(n.Bind)
 			n.Body = r.Solve(n.Body)
 		})
@@ -135,8 +157,7 @@ func (r *Renamer) Solve(node Node) Node {
 		}
 		return n
 	case *Clause:
-		r.scoped(func() {
-			r.assign(n.Pattern)
+		r.scoped([]Node{n.Pattern}, func() {
 			n.Pattern = r.Solve(n.Pattern)
 			for i, expr := range n.Exprs {
 				n.Exprs[i] = r.Solve(expr)
@@ -144,8 +165,7 @@ func (r *Renamer) Solve(node Node) Node {
 		})
 		return n
 	case *Lambda:
-		r.scoped(func() {
-			r.assign(n.Pattern)
+		r.scoped([]Node{n.Pattern}, func() {
 			n.Pattern = r.Solve(n.Pattern)
 			for i, expr := range n.Exprs {
 				n.Exprs[i] = r.Solve(expr)
@@ -153,7 +173,7 @@ func (r *Renamer) Solve(node Node) Node {
 		})
 		return n
 	case *Case:
-		r.scoped(func() {
+		r.scoped(nil, func() {
 			n.Scrutinee = r.Solve(n.Scrutinee)
 			for i, clause := range n.Clauses {
 				n.Clauses[i] = r.Solve(clause).(*Clause)
@@ -161,23 +181,31 @@ func (r *Renamer) Solve(node Node) Node {
 		})
 		return n
 	case *Object:
-		r.scoped(func() {
+		r.scoped(nil, func() {
 			for i, field := range n.Fields {
 				n.Fields[i] = r.Solve(field).(*Field)
 			}
 		})
 		return n
 	case *TypeDecl:
-		n.Name.Literal = r.new(n.Name.Lexeme)
+		r.assign(n.Name)
+		n.Name.Literal = r.lookup(n.Name.Lexeme)
 		n.Type = r.Solve(n.Type)
+		if r.err != nil {
+			r.delete(n.Name)
+		}
 		return n
 	case *VarDecl:
-		n.Name.Literal = r.new(n.Name.Lexeme)
+		r.assign(n.Name)
+		n.Name.Literal = r.lookup(n.Name.Lexeme)
 		if n.Type != nil {
 			n.Type = r.Solve(n.Type)
 		}
 		if n.Expr != nil {
 			n.Expr = r.Solve(n.Expr)
+		}
+		if r.err != nil {
+			r.delete(n.Name)
 		}
 		return n
 	case *InfixDecl:

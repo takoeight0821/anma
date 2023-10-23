@@ -67,7 +67,13 @@ func RunPrompt() error {
 		line.AppendHistory(input)
 		err = r.Run(input)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			if errs, ok := err.(interface{ Unwrap() []error }); ok {
+				for _, err := range errs.Unwrap() {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				}
+			} else {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			}
 		}
 	}
 }

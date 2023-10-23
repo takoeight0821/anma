@@ -336,81 +336,58 @@ func prepend(elem Node, slice []Node) []Node {
 //tool:ignore
 func Transform(n Node, f func(Node) Node) Node {
 	switch n := n.(type) {
-	case *Var:
-		return f(n)
-	case *Literal:
-		return f(n)
 	case *Paren:
 		for i, elem := range n.Elems {
 			n.Elems[i] = Transform(elem, f)
 		}
-		return f(n)
 	case *Access:
 		n.Receiver = Transform(n.Receiver, f)
-		return f(n)
 	case *Call:
 		n.Func = Transform(n.Func, f)
 		for i, arg := range n.Args {
 			n.Args[i] = Transform(arg, f)
 		}
-		return f(n)
 	case *Binary:
 		n.Left = Transform(n.Left, f)
 		n.Right = Transform(n.Right, f)
-		return f(n)
 	case *Assert:
 		n.Expr = Transform(n.Expr, f)
 		n.Type = Transform(n.Type, f)
-		return f(n)
 	case *Let:
 		n.Bind = Transform(n.Bind, f)
 		n.Body = Transform(n.Body, f)
-		return f(n)
 	case *Codata:
 		for i, clause := range n.Clauses {
 			n.Clauses[i] = Transform(clause, f).(*Clause)
 		}
-		return f(n)
 	case *Clause:
 		n.Pattern = Transform(n.Pattern, f)
 		for i, expr := range n.Exprs {
 			n.Exprs[i] = Transform(expr, f)
 		}
-		return f(n)
 	case *Lambda:
 		n.Pattern = Transform(n.Pattern, f)
 		for i, expr := range n.Exprs {
 			n.Exprs[i] = Transform(expr, f)
 		}
-		return f(n)
 	case *Case:
 		n.Scrutinee = Transform(n.Scrutinee, f)
 		for i, clause := range n.Clauses {
 			n.Clauses[i] = Transform(clause, f).(*Clause)
 		}
-		return f(n)
 	case *Object:
 		for i, field := range n.Fields {
 			n.Fields[i] = Transform(field, f).(*Field)
 		}
-		return f(n)
 	case *Field:
 		for i, expr := range n.Exprs {
 			n.Exprs[i] = Transform(expr, f)
 		}
-		return f(n)
 	case *TypeDecl:
 		n.Type = Transform(n.Type, f)
-		return f(n)
 	case *VarDecl:
 		n.Type = Transform(n.Type, f)
 		n.Expr = Transform(n.Expr, f)
-		return f(n)
-	case *InfixDecl:
-		return f(n)
-	case *This:
-		return f(n)
-	default:
-		return f(n)
 	}
+	return f(n)
 }
