@@ -143,7 +143,7 @@ func (l *lexer) identifier() error {
 	if k, ok := keywords[value]; ok {
 		l.addToken(k, nil)
 	} else {
-		l.addToken(IDENT, value)
+		l.addToken(IDENT, nil)
 	}
 	return nil
 }
@@ -190,7 +190,7 @@ func (l *lexer) operator() error {
 	if k, ok := keywords[value]; ok {
 		l.addToken(k, nil)
 	} else {
-		l.addToken(OPERATOR, value)
+		l.addToken(OPERATOR, nil)
 	}
 	return nil
 }

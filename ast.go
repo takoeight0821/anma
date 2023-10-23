@@ -17,6 +17,9 @@ type Var struct {
 }
 
 func (v Var) String() string {
+	if v.Name.Literal == nil {
+		return parenthesize("var", v.Name)
+	}
 	return parenthesize("var", v.Name)
 }
 

@@ -6,10 +6,11 @@ import "fmt"
 type Runner struct {
 	program []Node
 	infix   *InfixResolver
+	rename  *Renamer
 }
 
 func NewRunner() *Runner {
-	return &Runner{program: []Node{}, infix: NewInfixResolver()}
+	return &Runner{program: []Node{}, infix: NewInfixResolver(), rename: NewRenamer()}
 }
 
 // Load parses the source code and adds it to the program.
@@ -37,7 +38,7 @@ func (r *Runner) Load(source string) error {
 	}
 
 	for i, node := range program {
-		program[i] = r.infix.Resolve(node)
+		program[i] = r.rename.Solve(r.infix.Resolve(node))
 	}
 
 	r.program = append(r.program, program...)

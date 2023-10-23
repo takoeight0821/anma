@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 //go:generate go run golang.org/x/tools/cmd/stringer@v0.13.0 -type=TokenKind
 type TokenKind int
 
@@ -46,6 +48,9 @@ type Token struct {
 }
 
 func (t Token) String() string {
+	if t.Kind == IDENT && t.Literal != nil {
+		return fmt.Sprintf("%s.%#v", t.Lexeme, t.Literal)
+	}
 	return t.Lexeme
 }
 
