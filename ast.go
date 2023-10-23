@@ -330,7 +330,7 @@ func prepend(elem Node, slice []Node) []Node {
 
 // Transform the [Node] in depth-first order.
 // f is called for each node.
-// If n has children, Transform modifies each child before n.
+// If n is defined in ast.go and has children, Transform modifies each child before n.
 // Otherwise, n is directly applied to f.
 //
 //tool:ignore
