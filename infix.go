@@ -84,12 +84,12 @@ func (r InfixResolver) assocRight(op1, op2 Token) bool {
 	}
 	// same precedence
 	if r.assoc(op1) != r.assoc(op2) {
-		panic(parseError(op2, fmt.Sprintf("cannot mix %v and %v. need parentheses", op1, op2)))
+		panic(errorAt(op2, fmt.Sprintf("cannot mix %v and %v. need parentheses", op1, op2)))
 	}
 	if r.assoc(op1) == INFIXL {
 		return false
 	} else if r.assoc(op1) == INFIXR {
 		return true
 	}
-	panic(parseError(op1, fmt.Sprintf("cannot mix %v and %v. need parentheses", op1, op2)))
+	panic(errorAt(op1, fmt.Sprintf("cannot mix %v and %v. need parentheses", op1, op2)))
 }

@@ -27,12 +27,12 @@ func flatCodata(c *Codata) Node {
 		if arity == -1 {
 			arity = len(plist.params)
 		} else if arity != len(plist.params) {
-			panic(fmt.Errorf("arity mismatch at %d: %v", c.Base().Line, c))
+			panic(errorAt(c.Base(), fmt.Sprintf("arity mismatch %v", c)))
 		}
 	}
 
 	if arity == -1 {
-		panic(fmt.Errorf("unreachable: arity is -1 at %d: %v", c.Base().Line, c))
+		panic(errorAt(c.Base(), fmt.Sprintf("unreachable: arity is -1 %v", c)))
 	}
 
 	log.Printf("[debug]: pattern list %v", c)
@@ -66,7 +66,7 @@ func (b builder) object(clauses []*Clause) Node {
 				next[field.String()],
 				&Clause{Pattern: plist, Exprs: c.Exprs})
 		} else {
-			panic(fmt.Errorf("not implemented: %v\nmix of pure pattern and copattern is not supported yet", c))
+			panic(errorAt(c.Base(), fmt.Sprintf("not implemented: %v\nmix of pure pattern and copattern is not supported yet", c)))
 		}
 	}
 
@@ -180,7 +180,7 @@ func (b *builder) lambda(arity int, clauses []*Clause) Node {
 }
 
 func invalidPattern(n Node) error {
-	return fmt.Errorf("invalid pattern: %v", n)
+	return errorAt(n.Base(), fmt.Sprintf("invalid pattern %v", n))
 }
 
 // Collect all Access patterns recursively.

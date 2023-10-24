@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"golang.org/x/exp/constraints"
 	"golang.org/x/exp/slices"
 )
@@ -23,4 +25,11 @@ func orderedFor[I constraints.Ordered, V any](m map[I]V, f func(I, V)) {
 	for _, k := range keys {
 		f(k, m[k])
 	}
+}
+
+func errorAt(t Token, msg string) error {
+	if t.Kind == EOF {
+		return fmt.Errorf("at end: %s", msg)
+	}
+	return fmt.Errorf("at %d: `%s`, %s", t.Line, t.Lexeme, msg)
 }

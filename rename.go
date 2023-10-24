@@ -34,7 +34,7 @@ func (r *Renamer) scoped(f func()) {
 func (r *Renamer) assign(node Node, overridable bool) {
 	addTable := func(name Token) {
 		if _, ok := r.env.table[name.Lexeme]; ok && !overridable {
-			r.error(fmt.Errorf("%v is already defined", name))
+			r.error(errorAt(name.Base(), fmt.Sprintf("%v is already defined", name)))
 			return
 		}
 		r.env.table[name.Lexeme] = r.unique()
@@ -215,7 +215,7 @@ func (r *Renamer) Solve(node Node) Node {
 	case *This:
 		return n
 	default:
-		r.error(fmt.Errorf("Renamer.Solve not implemented: %v", n))
+		r.error(errorAt(n.Base(), fmt.Sprintf("Renamer.Solve not implemented: %v", n)))
 		return n
 	}
 }
