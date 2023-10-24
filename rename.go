@@ -6,10 +6,9 @@ import (
 )
 
 type Renamer struct {
-	supply  int
-	env     *Env
-	err     error
-	configs []Config
+	supply int
+	env    *Env
+	err    error
 }
 
 func NewRenamer() *Renamer {
@@ -22,29 +21,6 @@ func (r *Renamer) PopError() error {
 	return err
 }
 
-type Config interface {
-	Overriable(Token) bool
-}
-
-type Override Token
-
-func (o Override) Overriable(t Token) bool {
-	return Token(o) == t
-}
-
-func (r *Renamer) AddConfig(configs ...Config) {
-	r.configs = append(r.configs, configs...)
-}
-
-func (r *Renamer) Overriable(t Token) bool {
-	for _, config := range r.configs {
-		if config.Overriable(t) {
-			return true
-		}
-	}
-	return false
-}
-
 func (r *Renamer) error(err error) {
 	r.err = errors.Join(r.err, err)
 }
@@ -55,9 +31,9 @@ func (r *Renamer) scoped(f func()) {
 	r.env = r.env.parent
 }
 
-func (r *Renamer) assign(node Node) {
+func (r *Renamer) assign(node Node, overridable bool) {
 	addTable := func(name Token) {
-		if _, ok := r.env.table[name.Lexeme]; ok && !r.Overriable(name) {
+		if _, ok := r.env.table[name.Lexeme]; ok && !overridable {
 			r.error(fmt.Errorf("%v is already defined", name))
 			return
 		}
@@ -163,7 +139,7 @@ func (r *Renamer) Solve(node Node) Node {
 		return n
 	case *Let:
 		r.scoped(func() {
-			r.assign(n.Bind)
+			r.assign(n.Bind, false)
 			n.Bind = r.Solve(n.Bind)
 			n.Body = r.Solve(n.Body)
 		})
@@ -175,7 +151,7 @@ func (r *Renamer) Solve(node Node) Node {
 		return n
 	case *Clause:
 		r.scoped(func() {
-			r.assign(n.Pattern)
+			r.assign(n.Pattern, false)
 			n.Pattern = r.Solve(n.Pattern)
 			for i, expr := range n.Exprs {
 				n.Exprs[i] = r.Solve(expr)
@@ -184,7 +160,7 @@ func (r *Renamer) Solve(node Node) Node {
 		return n
 	case *Lambda:
 		r.scoped(func() {
-			r.assign(n.Pattern)
+			r.assign(n.Pattern, false)
 			n.Pattern = r.Solve(n.Pattern)
 			for i, expr := range n.Exprs {
 				n.Exprs[i] = r.Solve(expr)
@@ -200,14 +176,20 @@ func (r *Renamer) Solve(node Node) Node {
 		})
 		return n
 	case *Object:
+		for i, field := range n.Fields {
+			n.Fields[i] = r.Solve(field).(*Field)
+		}
+		return n
+	case *Field:
 		r.scoped(func() {
-			for i, field := range n.Fields {
-				n.Fields[i] = r.Solve(field).(*Field)
+			for i, expr := range n.Exprs {
+				n.Exprs[i] = r.Solve(expr)
 			}
 		})
 		return n
 	case *TypeDecl:
-		r.assign(n.Name)
+		// Type definition can override existential definition
+		r.assign(n.Name, true)
 		n.Name.Literal = r.lookup(n.Name)
 		n.Type = r.Solve(n.Type)
 		if r.err != nil {
@@ -215,7 +197,8 @@ func (r *Renamer) Solve(node Node) Node {
 		}
 		return n
 	case *VarDecl:
-		r.assign(n.Name)
+		// Toplevel variable definition can override existential definition
+		r.assign(n.Name, true)
 		n.Name.Literal = r.lookup(n.Name)
 		if n.Type != nil {
 			n.Type = r.Solve(n.Type)

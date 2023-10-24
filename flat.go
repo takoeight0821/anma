@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"strings"
 )
 
@@ -33,6 +34,8 @@ func flatCodata(c *Codata) Node {
 	if arity == -1 {
 		panic(fmt.Errorf("unreachable: arity is -1 at %d: %v", c.Base().Line, c))
 	}
+
+	log.Printf("[debug]: pattern list %v", c)
 
 	return newBuilder().build(arity, c.Clauses)
 }
