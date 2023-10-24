@@ -14,7 +14,7 @@ func NewRunner() *Runner {
 }
 
 // Load parses the source code and adds it to the program.
-func (r *Runner) Load(source string) error {
+func (r *Runner) Load(source string, isFile bool) error {
 	tokens, err := Lex(source)
 	if err != nil {
 		return err
@@ -37,6 +37,21 @@ func (r *Runner) Load(source string) error {
 		r.infix.Load(node)
 	}
 
+	if !isFile {
+		// in REPL, toplevel definitions are overridable
+		for _, node := range program {
+			Transform(node, func(n Node) Node {
+				switch n := node.(type) {
+				case *TypeDecl:
+					r.rename.AddConfig(Override(n.Name))
+				case *VarDecl:
+					r.rename.AddConfig(Override(n.Name))
+				}
+				return n
+			})
+		}
+	}
+
 	for i, node := range program {
 		program[i] = r.rename.Solve(r.infix.Resolve(node))
 	}
@@ -50,8 +65,8 @@ func (r *Runner) Load(source string) error {
 	return nil
 }
 
-func (r *Runner) Run(source string) error {
-	if err := r.Load(source); err != nil {
+func (r *Runner) Run(source string, isFile bool) error {
+	if err := r.Load(source, isFile); err != nil {
 		return err
 	}
 

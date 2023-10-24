@@ -6,9 +6,10 @@ import (
 )
 
 type Renamer struct {
-	supply int
-	env    *Env
-	err    error
+	supply  int
+	env     *Env
+	err     error
+	configs []Config
 }
 
 func NewRenamer() *Renamer {
@@ -19,6 +20,29 @@ func (r *Renamer) PopError() error {
 	err := r.err
 	r.err = nil
 	return err
+}
+
+type Config interface {
+	Overriable(Token) bool
+}
+
+type Override Token
+
+func (o Override) Overriable(t Token) bool {
+	return Token(o) == t
+}
+
+func (r *Renamer) AddConfig(configs ...Config) {
+	r.configs = append(r.configs, configs...)
+}
+
+func (r *Renamer) Overriable(t Token) bool {
+	for _, config := range r.configs {
+		if config.Overriable(t) {
+			return true
+		}
+	}
+	return false
 }
 
 func (r *Renamer) error(err error) {
@@ -32,19 +56,19 @@ func (r *Renamer) scoped(f func()) {
 }
 
 func (r *Renamer) assign(node Node) {
-	addTable := func(name string) {
-		if _, ok := r.env.table[name]; ok {
+	addTable := func(name Token) {
+		if _, ok := r.env.table[name.Lexeme]; ok && !r.Overriable(name) {
 			r.error(fmt.Errorf("%v is already defined", name))
 			return
 		}
-		r.env.table[name] = r.unique()
+		r.env.table[name.Lexeme] = r.unique()
 	}
 	Transform(node, func(n Node) Node {
 		switch n := n.(type) {
 		case *Var:
-			addTable(n.Name.Lexeme)
+			addTable(n.Name)
 		case Token:
-			addTable(n.Lexeme)
+			addTable(n)
 		}
 		return n
 	})
@@ -71,8 +95,8 @@ func (r *Renamer) unique() int {
 	return u
 }
 
-func (r *Renamer) lookup(name string) int {
-	uniq, err := r.env.lookup(name)
+func (r *Renamer) lookup(name Token) int {
+	uniq, err := r.env.lookup(name.Lexeme)
 	if err != nil {
 		r.error(err)
 	}
@@ -101,7 +125,7 @@ func (e *Env) lookup(name string) (int, error) {
 func (r *Renamer) Solve(node Node) Node {
 	switch n := node.(type) {
 	case *Var:
-		n.Name.Literal = r.lookup(n.Name.Lexeme)
+		n.Name.Literal = r.lookup(n.Name)
 		return n
 	case *Literal:
 		return n
@@ -184,7 +208,7 @@ func (r *Renamer) Solve(node Node) Node {
 		return n
 	case *TypeDecl:
 		r.assign(n.Name)
-		n.Name.Literal = r.lookup(n.Name.Lexeme)
+		n.Name.Literal = r.lookup(n.Name)
 		n.Type = r.Solve(n.Type)
 		if r.err != nil {
 			r.delete(n.Name)
@@ -192,7 +216,7 @@ func (r *Renamer) Solve(node Node) Node {
 		return n
 	case *VarDecl:
 		r.assign(n.Name)
-		n.Name.Literal = r.lookup(n.Name.Lexeme)
+		n.Name.Literal = r.lookup(n.Name)
 		if n.Type != nil {
 			n.Type = r.Solve(n.Type)
 		}

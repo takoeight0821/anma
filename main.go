@@ -65,7 +65,7 @@ func RunPrompt() error {
 			return err
 		}
 		line.AppendHistory(input)
-		err = r.Run(input)
+		err = r.Run(input, false)
 		if err != nil {
 			if errs, ok := err.(interface{ Unwrap() []error }); ok {
 				for _, err := range errs.Unwrap() {
@@ -85,5 +85,5 @@ func RunFile(path string) error {
 		return err
 	}
 
-	return r.Run(string(bytes))
+	return r.Run(string(bytes), true)
 }
