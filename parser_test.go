@@ -6,10 +6,11 @@ import (
 	"unicode/utf8"
 
 	. "github.com/takoeight0821/anma"
+	"github.com/takoeight0821/anma/internal/lexer"
 )
 
 func completeParseExpr(t *testing.T, input string, expected string) {
-	tokens, err := Lex(input)
+	tokens, err := lexer.Lex(input)
 	if err != nil {
 		t.Errorf("Lex(%q) returned error: %v", input, err)
 	}
@@ -66,7 +67,7 @@ func TestParse(t *testing.T) {
 }
 
 func completeParseDecl(t *testing.T, input string, expected string) {
-	tokens, err := Lex(input)
+	tokens, err := lexer.Lex(input)
 	if err != nil {
 		t.Errorf("Lex(%q) returned error: %v", input, err)
 	}
@@ -104,7 +105,7 @@ func TestParseDecl(t *testing.T) {
 }
 
 func tryParse(t *testing.T, input string) {
-	tokens, err := Lex(input)
+	tokens, err := lexer.Lex(input)
 	if err != nil {
 		t.Logf("Lex(%q) returned error: %v", input, err)
 		return

@@ -1,6 +1,9 @@
 package main
 
-import "github.com/takoeight0821/anma/internal/ast"
+import (
+	"github.com/takoeight0821/anma/internal/ast"
+	"github.com/takoeight0821/anma/internal/lexer"
+)
 
 type Pass interface {
 	Init([]ast.Node) error
@@ -39,7 +42,7 @@ func (r *PassRunner) Run(program []ast.Node) ([]ast.Node, error) {
 
 // RunSource parses the source code and executes passes in order.
 func (r *PassRunner) RunSource(source string) ([]ast.Node, error) {
-	tokens, err := Lex(source)
+	tokens, err := lexer.Lex(source)
 	if err != nil {
 		return nil, err
 	}
