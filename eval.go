@@ -22,10 +22,11 @@ func (e *Evaluator) Init(program []Node) error {
 
 func (e *Evaluator) Run(program []Node) ([]Node, error) {
 	for _, node := range program {
-		_, err := eval(e, node)
+		v, err := eval(e, node)
 		if err != nil {
 			return program, err
 		}
+		fmt.Println(v)
 	}
 	return program, nil
 }
