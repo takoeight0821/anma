@@ -15,6 +15,20 @@ func NewInfixResolver() *InfixResolver {
 	return &InfixResolver{}
 }
 
+func (r *InfixResolver) Init(program []Node) error {
+	for _, n := range program {
+		r.Load(n)
+	}
+	return nil
+}
+
+func (r *InfixResolver) Run(program []Node) ([]Node, error) {
+	for i, n := range program {
+		program[i] = r.Resolve(n)
+	}
+	return program, nil
+}
+
 func (r *InfixResolver) Load(node Node) {
 	Transform(node, func(n Node) Node {
 		switch n := n.(type) {

@@ -7,38 +7,21 @@ import (
 )
 
 func completeInfix(t *testing.T, input1, input2, expected string) {
-	tokens, err := Lex(input1)
+	runner := NewPassRunner()
+	runner.AddPass(Flat{})
+	runner.AddPass(NewInfixResolver())
+
+	_, err := runner.RunSource(input1)
 	if err != nil {
-		t.Errorf("Lex returned error: %v", err)
+		t.Errorf("RunSource returned error: %v", err)
 	}
 
-	nodes, err := NewParser(tokens).ParseDecl()
+	node, err := runner.RunSource(input2)
 	if err != nil {
-		t.Errorf("Parse returned error: %v", err)
+		t.Errorf("RunSource returned error: %v", err)
 	}
 
-	for i, node := range nodes {
-		nodes[i] = Flat(node)
-	}
-
-	r := NewInfixResolver()
-	for _, node := range nodes {
-		r.Load(node)
-	}
-
-	tokens, err = Lex(input2)
-	if err != nil {
-		t.Errorf("Lex returned error: %v", err)
-	}
-
-	node, err := NewParser(tokens).ParseExpr()
-	if err != nil {
-		t.Errorf("Parse returned error: %v", err)
-	}
-
-	node = r.Resolve(Flat(node))
-
-	actual := node.String()
+	actual := node[0].String()
 
 	if actual != expected {
 		t.Errorf("InfixResolver returned\n%q, expected\n%q", actual, expected)

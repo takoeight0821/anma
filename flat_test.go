@@ -8,20 +8,14 @@ import (
 )
 
 func completeFlat(t *testing.T, input string, expected string) {
-	tokens, err := Lex(input)
+	runner := NewPassRunner()
+	runner.AddPass(Flat{})
+	node, err := runner.RunSource(input)
 	if err != nil {
-		t.Errorf("Lex returned error: %v", err)
+		t.Errorf("RunSource returned error: %v", err)
 	}
 
-	p := NewParser(tokens)
-	node, err := p.ParseExpr()
-	if err != nil {
-		t.Errorf("Parse returned error: %v", err)
-	}
-
-	flatNode := Flat(node)
-
-	actual := flatNode.String()
+	actual := node[0].String()
 	if actual != expected {
 		t.Errorf("Flat returned\n%q, expected\n%q", actual, expected)
 	}
@@ -45,24 +39,16 @@ func TestFlat(t *testing.T) {
 }
 
 func completeFlatDecl(t *testing.T, input string, expected string) {
-	tokens, err := Lex(input)
-	if err != nil {
-		t.Errorf("Lex returned error: %v", err)
-	}
+	runner := NewPassRunner()
+	runner.AddPass(Flat{})
 
-	p := NewParser(tokens)
-	node, err := p.ParseDecl()
+	node, err := runner.RunSource(input)
 	if err != nil {
-		t.Errorf("Parse returned error: %v", err)
-	}
-
-	flatNode := make([]Node, len(node))
-	for i, decl := range node {
-		flatNode[i] = Flat(decl)
+		t.Errorf("RunSource returned error: %v", err)
 	}
 
 	var b strings.Builder
-	for _, decl := range flatNode {
+	for _, decl := range node {
 		b.WriteString(decl.String())
 		b.WriteString("\n")
 	}

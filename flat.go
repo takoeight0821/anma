@@ -2,16 +2,28 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"strings"
 )
 
 // Flat converts Copatterns ([Access] and [This] in [Pattern]) into [Object] and [Lambda].
-func Flat(n Node) Node {
-	return Transform(n, flat)
+type Flat struct{}
+
+func (Flat) Init([]Node) error {
+	return nil
+}
+
+func (Flat) Run(program []Node) ([]Node, error) {
+	for i, n := range program {
+		program[i] = flat(n)
+	}
+	return program, nil
 }
 
 func flat(n Node) Node {
+	return Transform(n, flatEach)
+}
+
+func flatEach(n Node) Node {
 	if n, ok := n.(*Codata); ok {
 		return flatCodata(n)
 	}
@@ -34,8 +46,6 @@ func flatCodata(c *Codata) Node {
 	if arity == -1 {
 		panic(errorAt(c.Base(), fmt.Sprintf("unreachable: arity is -1 %v", c)))
 	}
-
-	log.Printf("[debug]: pattern list %v", c)
 
 	return newBuilder().build(arity, c.Clauses)
 }

@@ -2,21 +2,21 @@ package main
 
 import "fmt"
 
-// EvalCtx stores variable-to-value table.
-// In naive assumption, rename.go resolves all scope problems. So EvalCtx can be a single big map.
+// Evaluator stores variable-to-value table.
+// In naive assumption, rename.go resolves all scope problems. So Evaluator can be a single big map.
 // But thinking about memory usage, we have to delete unused entries of the table.
-// This is why EvalCtx is a chain of maps.
-// Scope rule for EvalCtx may different from rename.go.
-type EvalCtx struct {
+// This is why Evaluator is a chain of maps.
+// Scope rule for Evaluator may different from rename.go.
+type Evaluator struct {
 	env    map[id]value
-	parent *EvalCtx
+	parent *Evaluator
 }
 
-func NewEvalCtx() *EvalCtx {
-	return &EvalCtx{env: make(map[id]value), parent: nil}
+func NewEvaluator() *Evaluator {
+	return &Evaluator{env: make(map[id]value), parent: nil}
 }
 
-func (e *EvalCtx) bind(t Token, v value) {
+func (e *Evaluator) bind(t Token, v value) {
 	x := newId(t)
 	if _, ok := e.env[x]; ok {
 		panic(errorAt(t, fmt.Sprintf("%v is already defined in this scope", t)))
@@ -24,7 +24,7 @@ func (e *EvalCtx) bind(t Token, v value) {
 	e.env[x] = v
 }
 
-func (e *EvalCtx) lookup(t Token) value {
+func (e *Evaluator) lookup(t Token) value {
 	if e == nil {
 		panic(errorAt(t, fmt.Sprintf("%v is not defined", t)))
 	}
@@ -69,7 +69,7 @@ func (closure) String() string {
 	return "<function>"
 }
 
-func Eval(ctx *EvalCtx, node Node) value {
+func Eval(ctx *Evaluator, node Node) value {
 	switch n := node.(type) {
 	case *Var:
 		return ctx.lookup(n.Name)

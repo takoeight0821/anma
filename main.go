@@ -58,14 +58,15 @@ func RunPrompt() error {
 		}
 	}
 
-	r := NewRunner()
+	r := NewPassRunner()
+	r.Predefined()
 	for {
 		input, err := line.Prompt("> ")
 		if err != nil {
 			return err
 		}
 		line.AppendHistory(input)
-		err = r.Run(input)
+		_, err = r.RunSource(input)
 		if err != nil {
 			if errs, ok := err.(interface{ Unwrap() []error }); ok {
 				for _, err := range errs.Unwrap() {
@@ -79,11 +80,13 @@ func RunPrompt() error {
 }
 
 func RunFile(path string) error {
-	r := NewRunner()
+	r := NewPassRunner()
+	r.Predefined()
 	bytes, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
 
-	return r.Run(string(bytes))
+	_, err = r.RunSource(string(bytes))
+	return err
 }

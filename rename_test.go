@@ -8,29 +8,14 @@ import (
 )
 
 func completeRename(t *testing.T, input, expected string) {
-	tokens, err := Lex(input)
+	runner := NewPassRunner()
+	runner.AddPass(Flat{})
+	runner.AddPass(NewInfixResolver())
+	runner.AddPass(NewRenamer())
+
+	nodes, err := runner.RunSource(input)
 	if err != nil {
-		t.Errorf("Lex returned error: %v", err)
-	}
-
-	nodes, err := NewParser(tokens).ParseDecl()
-	if err != nil {
-		t.Errorf("Parse returned error: %v", err)
-	}
-
-	for i, node := range nodes {
-		nodes[i] = Flat(node)
-	}
-
-	infix := NewInfixResolver()
-	for _, node := range nodes {
-		infix.Load(node)
-	}
-
-	rename := NewRenamer()
-
-	for i, node := range nodes {
-		nodes[i] = rename.Solve(infix.Resolve(Flat(node)))
+		t.Errorf("RunSource returned error: %v", err)
 	}
 
 	var b strings.Builder

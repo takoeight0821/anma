@@ -15,6 +15,18 @@ func NewRenamer() *Renamer {
 	return &Renamer{supply: 0, env: NewEnv(nil), err: nil}
 }
 
+func (r *Renamer) Init(program []Node) error {
+	return nil
+}
+
+func (r *Renamer) Run(program []Node) ([]Node, error) {
+	for i, n := range program {
+		program[i] = r.Solve(n)
+	}
+
+	return program, r.PopError()
+}
+
 func (r *Renamer) PopError() error {
 	err := r.err
 	r.err = nil
