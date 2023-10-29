@@ -1,3 +1,4 @@
+// Package rename provides a renamer that assigns unique integer to each variable.
 package rename
 
 import (
@@ -9,9 +10,10 @@ import (
 	"github.com/takoeight0821/anma/internal/utils"
 )
 
+// Renamer assigns unique integer to each variable.
 type Renamer struct {
 	supply int
-	env    *RnEnv
+	env    *rnEnv
 	err    error
 }
 
@@ -28,10 +30,13 @@ func (r *Renamer) Run(program []ast.Node) ([]ast.Node, error) {
 		program[i] = r.Solve(n)
 	}
 
-	return program, r.popError()
+	return program, r.PopError()
 }
 
-func (r *Renamer) popError() error {
+// PopError returns the error that occurred during the last Run.
+// If several errors occurred, PopError returns concatenated error.
+// And then, PopError resets the error.
+func (r *Renamer) PopError() error {
 	err := r.err
 	r.err = nil
 	return err
@@ -87,7 +92,7 @@ func (r *Renamer) unique() int {
 	return u
 }
 
-func (r *Renamer) lookup(name token.Token) int {
+func (r *Renamer) Lookup(name token.Token) int {
 	uniq, err := r.env.lookup(name.Lexeme)
 	if err != nil {
 		r.error(err)
@@ -95,16 +100,16 @@ func (r *Renamer) lookup(name token.Token) int {
 	return uniq
 }
 
-type RnEnv struct {
+type rnEnv struct {
 	table  map[string]int
-	parent *RnEnv
+	parent *rnEnv
 }
 
-func NewRnEnv(parent *RnEnv) *RnEnv {
-	return &RnEnv{table: make(map[string]int), parent: parent}
+func NewRnEnv(parent *rnEnv) *rnEnv {
+	return &rnEnv{table: make(map[string]int), parent: parent}
 }
 
-func (e *RnEnv) lookup(name string) (int, error) {
+func (e *rnEnv) lookup(name string) (int, error) {
 	if uniq, ok := e.table[name]; ok {
 		return uniq, nil
 	}
@@ -117,7 +122,7 @@ func (e *RnEnv) lookup(name string) (int, error) {
 func (r *Renamer) Solve(node ast.Node) ast.Node {
 	switch n := node.(type) {
 	case *ast.Var:
-		n.Name.Literal = r.lookup(n.Name)
+		n.Name.Literal = r.Lookup(n.Name)
 		return n
 	case *ast.Literal:
 		return n
@@ -206,7 +211,7 @@ func (r *Renamer) Solve(node ast.Node) ast.Node {
 	case *ast.TypeDecl:
 		// Type definition can override existential definition
 		r.assign(n.Name, true)
-		n.Name.Literal = r.lookup(n.Name)
+		n.Name.Literal = r.Lookup(n.Name)
 		n.Type = r.Solve(n.Type)
 		if r.err != nil {
 			r.delete(n.Name)
@@ -215,7 +220,7 @@ func (r *Renamer) Solve(node ast.Node) ast.Node {
 	case *ast.VarDecl:
 		// Toplevel variable definition can override existential definition
 		r.assign(n.Name, true)
-		n.Name.Literal = r.lookup(n.Name)
+		n.Name.Literal = r.Lookup(n.Name)
 		if n.Type != nil {
 			n.Type = r.Solve(n.Type)
 		}
