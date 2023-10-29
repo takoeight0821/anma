@@ -31,6 +31,7 @@ func (r *Runner) Load(source string) error {
 
 	for i, node := range program {
 		program[i] = Flat(node)
+		fmt.Println(program[i])
 	}
 
 	for _, node := range program {
