@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/takoeight0821/anma/internal/token"
+	"github.com/takoeight0821/anma/internal/utils"
 )
 
 // Evaluator stores variable-to-value table.
@@ -38,7 +39,7 @@ func (e *Evaluator) Run(program []Node) ([]Node, error) {
 func (e *Evaluator) bind(t token.Token, v value) error {
 	x := newId(t)
 	if _, ok := e.env[x]; ok {
-		return errorAt(t, fmt.Sprintf("%v is already defined in this scope", t))
+		return utils.ErrorAt(t, fmt.Sprintf("%v is already defined in this scope", t))
 	}
 	e.env[x] = v
 	return nil
@@ -46,7 +47,7 @@ func (e *Evaluator) bind(t token.Token, v value) error {
 
 func (e *Evaluator) lookup(t token.Token) (value, error) {
 	if e == nil {
-		return nil, errorAt(t, fmt.Sprintf("%v is not defined", t))
+		return nil, utils.ErrorAt(t, fmt.Sprintf("%v is not defined", t))
 	}
 
 	x := newId(t)
@@ -66,7 +67,7 @@ func newId(t token.Token) id {
 	if v, ok := t.Literal.(int); ok {
 		return id{name: t.Lexeme, uniq: v}
 	}
-	panic(errorAt(t, fmt.Sprintf("%#v is invalid", t)))
+	panic(utils.ErrorAt(t, fmt.Sprintf("%#v is invalid", t)))
 }
 
 type value any
@@ -125,7 +126,7 @@ func eval(ctx *Evaluator, node Node) (value, error) {
 		}
 		return evalCall(fun, args)
 	default:
-		return nil, errorAt(n.Base(), fmt.Sprintf("not implemented %v", n))
+		return nil, utils.ErrorAt(n.Base(), fmt.Sprintf("not implemented %v", n))
 	}
 }
 

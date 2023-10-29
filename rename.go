@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/takoeight0821/anma/internal/token"
+	"github.com/takoeight0821/anma/internal/utils"
 )
 
 type Renamer struct {
@@ -48,7 +49,7 @@ func (r *Renamer) scoped(f func()) {
 func (r *Renamer) assign(node Node, overridable bool) {
 	addTable := func(name token.Token) {
 		if _, ok := r.env.table[name.Lexeme]; ok && !overridable {
-			r.error(errorAt(name.Base(), fmt.Sprintf("%v is already defined", name)))
+			r.error(utils.ErrorAt(name.Base(), fmt.Sprintf("%v is already defined", name)))
 			return
 		}
 		r.env.table[name.Lexeme] = r.unique()
@@ -229,7 +230,7 @@ func (r *Renamer) Solve(node Node) Node {
 	case *This:
 		return n
 	default:
-		r.error(errorAt(n.Base(), fmt.Sprintf("Renamer.Solve not implemented: %v", n)))
+		r.error(utils.ErrorAt(n.Base(), fmt.Sprintf("Renamer.Solve not implemented: %v", n)))
 		return n
 	}
 }

@@ -1,4 +1,4 @@
-package main
+package utils
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func all[T any](slice []T, pred func(T) bool) bool {
+func All[T any](slice []T, pred func(T) bool) bool {
 	for _, v := range slice {
 		if !pred(v) {
 			return false
@@ -17,7 +17,7 @@ func all[T any](slice []T, pred func(T) bool) bool {
 	return true
 }
 
-func orderedFor[I constraints.Ordered, V any](m map[I]V, f func(I, V)) {
+func OrderedFor[I constraints.Ordered, V any](m map[I]V, f func(I, V)) {
 	keys := make([]I, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)
@@ -28,7 +28,7 @@ func orderedFor[I constraints.Ordered, V any](m map[I]V, f func(I, V)) {
 	}
 }
 
-func errorAt(t token.Token, msg string) error {
+func ErrorAt(t token.Token, msg string) error {
 	if t.Kind == token.EOF {
 		return fmt.Errorf("at end: %s", msg)
 	}

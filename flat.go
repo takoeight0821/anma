@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/takoeight0821/anma/internal/token"
+	"github.com/takoeight0821/anma/internal/utils"
 )
 
 // Flat converts Copatterns ([Access] and [This] in [Pattern]) into [Object] and [Lambda].
@@ -41,12 +42,12 @@ func flatCodata(c *Codata) Node {
 		if arity == -1 {
 			arity = len(plist.params)
 		} else if arity != len(plist.params) {
-			panic(errorAt(c.Base(), fmt.Sprintf("arity mismatch %v", c)))
+			panic(utils.ErrorAt(c.Base(), fmt.Sprintf("arity mismatch %v", c)))
 		}
 	}
 
 	if arity == -1 {
-		panic(errorAt(c.Base(), fmt.Sprintf("unreachable: arity is -1 %v", c)))
+		panic(utils.ErrorAt(c.Base(), fmt.Sprintf("unreachable: arity is -1 %v", c)))
 	}
 
 	return newBuilder().build(arity, c.Clauses)
@@ -78,7 +79,7 @@ func (b builder) object(clauses []*Clause) Node {
 				next[field.String()],
 				&Clause{Pattern: plist, Exprs: c.Exprs})
 		} else {
-			panic(errorAt(c.Base(), fmt.Sprintf("not implemented: %v\nmix of pure pattern and copattern is not supported yet", c)))
+			panic(utils.ErrorAt(c.Base(), fmt.Sprintf("not implemented: %v\nmix of pure pattern and copattern is not supported yet", c)))
 		}
 	}
 
@@ -86,12 +87,12 @@ func (b builder) object(clauses []*Clause) Node {
 
 	// Generate each field's body expression
 	// Object fields are generated in the dictionary order of field names.
-	orderedFor(next, func(field string, cs []*Clause) {
+	utils.OrderedFor(next, func(field string, cs []*Clause) {
 		hasAccessors := func(c *Clause) bool {
 			return len(c.Pattern.(patternList).accessors) != 0
 		}
 
-		if all(cs, hasAccessors) {
+		if utils.All(cs, hasAccessors) {
 			// if all pattern lists have accessors, call Object recursively
 			fields = append(fields, &Field{Name: field, Exprs: []Node{b.object(cs)}})
 		} else if len(b.scrutinees) != 0 {
@@ -124,7 +125,7 @@ func (b builder) object(clauses []*Clause) Node {
 			}
 
 			restClausesList := make([]*Clause, 0)
-			orderedFor(restClauses, func(_ int, v *Clause) {
+			utils.OrderedFor(restClauses, func(_ int, v *Clause) {
 				restClausesList = append(restClausesList, v)
 			})
 
@@ -192,7 +193,7 @@ func (b *builder) lambda(arity int, clauses []*Clause) Node {
 }
 
 func invalidPattern(n Node) error {
-	return errorAt(n.Base(), fmt.Sprintf("invalid pattern %v", n))
+	return utils.ErrorAt(n.Base(), fmt.Sprintf("invalid pattern %v", n))
 }
 
 // Collect all Access patterns recursively.

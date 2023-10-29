@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/takoeight0821/anma/internal/token"
+	"github.com/takoeight0821/anma/internal/utils"
 )
 
 // After parsing, every infix operator treated as left-associative and has the same precedence.
@@ -92,12 +93,12 @@ func (r InfixResolver) assocRight(op1, op2 token.Token) bool {
 	}
 	// same precedence
 	if r.assoc(op1) != r.assoc(op2) {
-		panic(errorAt(op2, fmt.Sprintf("cannot mix %v and %v. need parentheses", op1, op2)))
+		panic(utils.ErrorAt(op2, fmt.Sprintf("cannot mix %v and %v. need parentheses", op1, op2)))
 	}
 	if r.assoc(op1) == token.INFIXL {
 		return false
 	} else if r.assoc(op1) == token.INFIXR {
 		return true
 	}
-	panic(errorAt(op1, fmt.Sprintf("cannot mix %v and %v. need parentheses", op1, op2)))
+	panic(utils.ErrorAt(op1, fmt.Sprintf("cannot mix %v and %v. need parentheses", op1, op2)))
 }

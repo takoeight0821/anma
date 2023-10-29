@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/takoeight0821/anma/internal/token"
+	"github.com/takoeight0821/anma/internal/utils"
 )
 
 //go:generate go run ./tools/main.go -comment -in parser.go -out docs/syntax.ebnf
@@ -74,7 +75,7 @@ func (p *Parser) varDecl() *VarDecl {
 func (p *Parser) infixDecl() *InfixDecl {
 	kind := p.advance()
 	if kind.Kind != token.INFIX && kind.Kind != token.INFIXL && kind.Kind != token.INFIXR {
-		p.recover(errorAt(kind, "expected `infix`, `infixl`, or `infixr`"))
+		p.recover(utils.ErrorAt(kind, "expected `infix`, `infixl`, or `infixr`"))
 		return &InfixDecl{}
 	}
 	precedence := p.consume(token.INTEGER, "expected integer")
@@ -85,7 +86,7 @@ func (p *Parser) infixDecl() *InfixDecl {
 // expr = let | fn | assert ;
 func (p *Parser) expr() Node {
 	if p.IsAtEnd() {
-		p.recover(errorAt(p.peek(), "expected expression"))
+		p.recover(utils.ErrorAt(p.peek(), "expected expression"))
 		return nil
 	}
 	if p.match(token.LET) {
@@ -148,7 +149,7 @@ func (p *Parser) atom() Node {
 	case token.LEFTBRACE:
 		return p.codata()
 	default:
-		p.recover(errorAt(t, "expected variable, literal, or parenthesized expression"))
+		p.recover(utils.ErrorAt(t, "expected variable, literal, or parenthesized expression"))
 		return nil
 	}
 }
@@ -244,7 +245,7 @@ func (p *Parser) clause() *Clause {
 // pattern = accessPat ;
 func (p *Parser) pattern() Node {
 	if p.IsAtEnd() {
-		p.recover(errorAt(p.peek(), "expected pattern"))
+		p.recover(utils.ErrorAt(p.peek(), "expected pattern"))
 		return nil
 	}
 	return p.accessPat()
@@ -312,7 +313,7 @@ func (p *Parser) atomPat() Node {
 		p.consume(token.RIGHTPAREN, "expected `)`")
 		return &Paren{Elems: patterns}
 	default:
-		p.recover(errorAt(t, "expected variable, literal, or parenthesized pattern"))
+		p.recover(utils.ErrorAt(t, "expected variable, literal, or parenthesized pattern"))
 		return nil
 	}
 }
@@ -320,7 +321,7 @@ func (p *Parser) atomPat() Node {
 // type = binopType ;
 func (p *Parser) typ() Node {
 	if p.IsAtEnd() {
-		p.recover(errorAt(p.peek(), "expected type"))
+		p.recover(utils.ErrorAt(p.peek(), "expected type"))
 		return nil
 	}
 	return p.binopType()
@@ -395,7 +396,7 @@ func (p *Parser) atomType() Node {
 		p.consume(token.RIGHTPAREN, "expected `)`")
 		return &Paren{Elems: types}
 	default:
-		p.recover(errorAt(t, "expected variable or parenthesized type"))
+		p.recover(utils.ErrorAt(t, "expected variable or parenthesized type"))
 		return nil
 	}
 }
@@ -443,6 +444,6 @@ func (p *Parser) consume(kind token.TokenKind, message string) token.Token {
 		return p.advance()
 	}
 
-	p.err = errors.Join(p.err, errorAt(p.peek(), message))
+	p.err = errors.Join(p.err, utils.ErrorAt(p.peek(), message))
 	return p.peek()
 }
