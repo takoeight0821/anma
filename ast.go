@@ -3,17 +3,19 @@ package main
 import (
 	"fmt"
 	"strings"
+
+	"github.com/takoeight0821/anma/internal/token"
 )
 
 // AST
 
 type Node interface {
 	fmt.Stringer
-	Base() Token
+	Base() token.Token
 }
 
 type Var struct {
-	Name Token
+	Name token.Token
 }
 
 func (v Var) String() string {
@@ -23,21 +25,21 @@ func (v Var) String() string {
 	return parenthesize("var", v.Name)
 }
 
-func (v *Var) Base() Token {
+func (v *Var) Base() token.Token {
 	return v.Name
 }
 
 var _ Node = &Var{}
 
 type Literal struct {
-	Token
+	token.Token
 }
 
 func (l Literal) String() string {
 	return parenthesize("literal", l.Token)
 }
 
-func (l *Literal) Base() Token {
+func (l *Literal) Base() token.Token {
 	return l.Token
 }
 
@@ -54,9 +56,9 @@ func (p Paren) String() string {
 	return parenthesize("paren", p.Elems...)
 }
 
-func (p *Paren) Base() Token {
+func (p *Paren) Base() token.Token {
 	if len(p.Elems) == 0 {
-		return Token{}
+		return token.Token{}
 	}
 	return p.Elems[0].Base()
 }
@@ -65,14 +67,14 @@ var _ Node = &Paren{}
 
 type Access struct {
 	Receiver Node
-	Name     Token
+	Name     token.Token
 }
 
 func (a Access) String() string {
 	return parenthesize("access", a.Receiver, a.Name)
 }
 
-func (a *Access) Base() Token {
+func (a *Access) Base() token.Token {
 	return a.Name
 }
 
@@ -87,7 +89,7 @@ func (c Call) String() string {
 	return parenthesize("call", prepend(c.Func, c.Args)...)
 }
 
-func (c *Call) Base() Token {
+func (c *Call) Base() token.Token {
 	return c.Func.Base()
 }
 
@@ -95,7 +97,7 @@ var _ Node = &Call{}
 
 type Binary struct {
 	Left  Node
-	Op    Token
+	Op    token.Token
 	Right Node
 }
 
@@ -103,7 +105,7 @@ func (b Binary) String() string {
 	return parenthesize("binary", b.Left, b.Op, b.Right)
 }
 
-func (b *Binary) Base() Token {
+func (b *Binary) Base() token.Token {
 	return b.Op
 }
 
@@ -118,7 +120,7 @@ func (a Assert) String() string {
 	return parenthesize("assert", a.Expr, a.Type)
 }
 
-func (a *Assert) Base() Token {
+func (a *Assert) Base() token.Token {
 	return a.Expr.Base()
 }
 
@@ -133,7 +135,7 @@ func (l Let) String() string {
 	return parenthesize("let", l.Bind, l.Body)
 }
 
-func (l *Let) Base() Token {
+func (l *Let) Base() token.Token {
 	return l.Bind.Base()
 }
 
@@ -147,9 +149,9 @@ func (c Codata) String() string {
 	return parenthesize("codata", squash(c.Clauses)...)
 }
 
-func (c *Codata) Base() Token {
+func (c *Codata) Base() token.Token {
 	if len(c.Clauses) == 0 {
-		return Token{}
+		return token.Token{}
 	}
 	return c.Clauses[0].Base()
 }
@@ -165,9 +167,9 @@ func (c Clause) String() string {
 	return parenthesize("clause", prepend(c.Pattern, c.Exprs)...)
 }
 
-func (c *Clause) Base() Token {
+func (c *Clause) Base() token.Token {
 	if c.Pattern == nil {
-		return Token{}
+		return token.Token{}
 	}
 	return c.Pattern.Base()
 }
@@ -183,7 +185,7 @@ func (l Lambda) String() string {
 	return parenthesize("lambda", prepend(l.Pattern, l.Exprs)...)
 }
 
-func (l *Lambda) Base() Token {
+func (l *Lambda) Base() token.Token {
 	return l.Pattern.Base()
 }
 
@@ -198,7 +200,7 @@ func (c Case) String() string {
 	return parenthesize("case", prepend(c.Scrutinee, squash(c.Clauses))...)
 }
 
-func (c *Case) Base() Token {
+func (c *Case) Base() token.Token {
 	return c.Scrutinee.Base()
 }
 
@@ -212,7 +214,7 @@ func (o Object) String() string {
 	return parenthesize("object", squash(o.Fields)...)
 }
 
-func (o *Object) Base() Token {
+func (o *Object) Base() token.Token {
 	return o.Fields[0].Base()
 }
 
@@ -227,14 +229,14 @@ func (f Field) String() string {
 	return parenthesize("field "+f.Name, f.Exprs...)
 }
 
-func (f *Field) Base() Token {
+func (f *Field) Base() token.Token {
 	return f.Exprs[0].Base()
 }
 
 var _ Node = &Field{}
 
 type TypeDecl struct {
-	Name Token
+	Name token.Token
 	Type Node
 }
 
@@ -242,14 +244,14 @@ func (t TypeDecl) String() string {
 	return parenthesize("type", t.Name, t.Type)
 }
 
-func (t *TypeDecl) Base() Token {
+func (t *TypeDecl) Base() token.Token {
 	return t.Name
 }
 
 var _ Node = &TypeDecl{}
 
 type VarDecl struct {
-	Name Token
+	Name token.Token
 	Type Node
 	Expr Node
 }
@@ -264,37 +266,37 @@ func (v VarDecl) String() string {
 	return parenthesize("def", v.Name, v.Type, v.Expr)
 }
 
-func (v *VarDecl) Base() Token {
+func (v *VarDecl) Base() token.Token {
 	return v.Name
 }
 
 var _ Node = &VarDecl{}
 
 type InfixDecl struct {
-	Assoc Token
-	Prec  Token
-	Name  Token
+	Assoc token.Token
+	Prec  token.Token
+	Name  token.Token
 }
 
 func (i InfixDecl) String() string {
 	return parenthesize("infix", i.Assoc, i.Prec, i.Name)
 }
 
-func (i *InfixDecl) Base() Token {
+func (i *InfixDecl) Base() token.Token {
 	return i.Assoc
 }
 
 var _ Node = &InfixDecl{}
 
 type This struct {
-	Token
+	token.Token
 }
 
 func (t This) String() string {
 	return parenthesize("this", t.Token)
 }
 
-func (t *This) Base() Token {
+func (t *This) Base() token.Token {
 	return t.Token
 }
 

@@ -1,6 +1,10 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/takoeight0821/anma/internal/token"
+)
 
 // Evaluator stores variable-to-value table.
 // In naive assumption, rename.go resolves all scope problems. So Evaluator can be a single big map.
@@ -31,7 +35,7 @@ func (e *Evaluator) Run(program []Node) ([]Node, error) {
 	return program, nil
 }
 
-func (e *Evaluator) bind(t Token, v value) error {
+func (e *Evaluator) bind(t token.Token, v value) error {
 	x := newId(t)
 	if _, ok := e.env[x]; ok {
 		return errorAt(t, fmt.Sprintf("%v is already defined in this scope", t))
@@ -40,7 +44,7 @@ func (e *Evaluator) bind(t Token, v value) error {
 	return nil
 }
 
-func (e *Evaluator) lookup(t Token) (value, error) {
+func (e *Evaluator) lookup(t token.Token) (value, error) {
 	if e == nil {
 		return nil, errorAt(t, fmt.Sprintf("%v is not defined", t))
 	}
@@ -58,7 +62,7 @@ type id struct {
 	uniq int
 }
 
-func newId(t Token) id {
+func newId(t token.Token) id {
 	if v, ok := t.Literal.(int); ok {
 		return id{name: t.Lexeme, uniq: v}
 	}
@@ -125,7 +129,7 @@ func eval(ctx *Evaluator, node Node) (value, error) {
 	}
 }
 
-func evalAccess(v value, n Token) (value, error) {
+func evalAccess(v value, n token.Token) (value, error) {
 	panic("TODO")
 }
 

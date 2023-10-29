@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/takoeight0821/anma/internal/token"
 	"golang.org/x/exp/constraints"
 	"golang.org/x/exp/slices"
 )
@@ -27,8 +28,8 @@ func orderedFor[I constraints.Ordered, V any](m map[I]V, f func(I, V)) {
 	}
 }
 
-func errorAt(t Token, msg string) error {
-	if t.Kind == EOF {
+func errorAt(t token.Token, msg string) error {
+	if t.Kind == token.EOF {
 		return fmt.Errorf("at end: %s", msg)
 	}
 	return fmt.Errorf("at %d: `%s`, %s", t.Line, t.Lexeme, msg)

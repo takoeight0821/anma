@@ -1,4 +1,4 @@
-package main
+package token
 
 import "fmt"
 
@@ -57,5 +57,3 @@ func (t Token) String() string {
 func (t Token) Base() Token {
 	return t
 }
-
-var _ Node = Token{}

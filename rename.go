@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
+
+	"github.com/takoeight0821/anma/internal/token"
 )
 
 type Renamer struct {
@@ -44,7 +46,7 @@ func (r *Renamer) scoped(f func()) {
 }
 
 func (r *Renamer) assign(node Node, overridable bool) {
-	addTable := func(name Token) {
+	addTable := func(name token.Token) {
 		if _, ok := r.env.table[name.Lexeme]; ok && !overridable {
 			r.error(errorAt(name.Base(), fmt.Sprintf("%v is already defined", name)))
 			return
@@ -55,7 +57,7 @@ func (r *Renamer) assign(node Node, overridable bool) {
 		switch n := n.(type) {
 		case *Var:
 			addTable(n.Name)
-		case Token:
+		case token.Token:
 			addTable(n)
 		}
 		return n
@@ -70,7 +72,7 @@ func (r *Renamer) delete(node Node) {
 		switch n := n.(type) {
 		case *Var:
 			deleteTable(n.Name.Lexeme)
-		case Token:
+		case token.Token:
 			deleteTable(n.Lexeme)
 		}
 		return n
@@ -83,7 +85,7 @@ func (r *Renamer) unique() int {
 	return u
 }
 
-func (r *Renamer) lookup(name Token) int {
+func (r *Renamer) lookup(name token.Token) int {
 	uniq, err := r.env.lookup(name.Lexeme)
 	if err != nil {
 		r.error(err)

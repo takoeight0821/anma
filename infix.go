@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+
+	"github.com/takoeight0821/anma/internal/token"
 )
 
 // After parsing, every infix operator treated as left-associative and has the same precedence.
@@ -49,7 +51,7 @@ func (r *InfixResolver) add(infix *InfixDecl) {
 	r.decls = append(r.decls, infix)
 }
 
-func (r InfixResolver) prec(op Token) int {
+func (r InfixResolver) prec(op token.Token) int {
 	for _, decl := range r.decls {
 		if decl.Name.Lexeme == op.Lexeme {
 			return decl.Prec.Literal.(int)
@@ -58,16 +60,16 @@ func (r InfixResolver) prec(op Token) int {
 	return 0
 }
 
-func (r InfixResolver) assoc(op Token) TokenKind {
+func (r InfixResolver) assoc(op token.Token) token.TokenKind {
 	for _, decl := range r.decls {
 		if decl.Name.Lexeme == op.Lexeme {
 			return decl.Assoc.Kind
 		}
 	}
-	return INFIXL
+	return token.INFIXL
 }
 
-func (r InfixResolver) mkBinary(op Token, left, right Node) Node {
+func (r InfixResolver) mkBinary(op token.Token, left, right Node) Node {
 	switch left := left.(type) {
 	case *Binary:
 		// (left.Left left.Op left.Right) op right
@@ -80,7 +82,7 @@ func (r InfixResolver) mkBinary(op Token, left, right Node) Node {
 	return &Binary{Left: left, Op: op, Right: right}
 }
 
-func (r InfixResolver) assocRight(op1, op2 Token) bool {
+func (r InfixResolver) assocRight(op1, op2 token.Token) bool {
 	prec1 := r.prec(op1)
 	prec2 := r.prec(op2)
 	if prec1 > prec2 {
@@ -92,9 +94,9 @@ func (r InfixResolver) assocRight(op1, op2 Token) bool {
 	if r.assoc(op1) != r.assoc(op2) {
 		panic(errorAt(op2, fmt.Sprintf("cannot mix %v and %v. need parentheses", op1, op2)))
 	}
-	if r.assoc(op1) == INFIXL {
+	if r.assoc(op1) == token.INFIXL {
 		return false
-	} else if r.assoc(op1) == INFIXR {
+	} else if r.assoc(op1) == token.INFIXR {
 		return true
 	}
 	panic(errorAt(op1, fmt.Sprintf("cannot mix %v and %v. need parentheses", op1, op2)))

@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"strings"
+
+	"github.com/takoeight0821/anma/internal/token"
 )
 
 // Flat converts Copatterns ([Access] and [This] in [Pattern]) into [Object] and [Lambda].
@@ -162,7 +164,7 @@ func (b *builder) lambda(arity int, clauses []*Clause) Node {
 	// Generate Scrutinees
 	b.scrutinees = make([]Node, arity)
 	for i := 0; i < arity; i++ {
-		b.scrutinees[i] = &Var{Name: Token{Kind: IDENT, Lexeme: fmt.Sprintf("x%d", i), Line: baseToken.Line, Literal: nil}}
+		b.scrutinees[i] = &Var{Name: token.Token{Kind: token.IDENT, Lexeme: fmt.Sprintf("x%d", i), Line: baseToken.Line, Literal: nil}}
 	}
 
 	// If any of clauses has accessors, body expression is Object.
@@ -194,12 +196,12 @@ func invalidPattern(n Node) error {
 }
 
 // Collect all Access patterns recursively.
-func accessors(p Node) []Token {
+func accessors(p Node) []token.Token {
 	switch p := p.(type) {
 	case *Access:
 		return append(accessors(p.Receiver), p.Name)
 	default:
-		return []Token{}
+		return []token.Token{}
 	}
 }
 
@@ -219,14 +221,14 @@ func params(p Node) []Node {
 }
 
 type patternList struct {
-	accessors []Token
+	accessors []token.Token
 	params    []Node
 }
 
-func (p patternList) Base() Token {
+func (p patternList) Base() token.Token {
 	if len(p.accessors) == 0 {
 		if len(p.params) == 0 {
-			return Token{}
+			return token.Token{}
 		}
 		return p.params[0].Base()
 	}
@@ -256,9 +258,9 @@ func (p patternList) String() string {
 var _ Node = patternList{}
 
 // Split PatternList into the first accessor and the rest.
-func pop(p patternList) (Token, patternList, bool) {
+func pop(p patternList) (token.Token, patternList, bool) {
 	if len(p.accessors) == 0 {
-		return Token{}, p, false
+		return token.Token{}, p, false
 	}
 	a := p.accessors[0]
 	p.accessors = p.accessors[1:]
