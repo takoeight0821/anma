@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/takoeight0821/anma/internal/ast"
 	"github.com/takoeight0821/anma/internal/token"
 	"github.com/takoeight0821/anma/internal/utils"
 )
@@ -18,11 +19,11 @@ func NewRenamer() *Renamer {
 	return &Renamer{supply: 0, env: newRnEnv(nil), err: nil}
 }
 
-func (r *Renamer) Init(program []Node) error {
+func (r *Renamer) Init(program []ast.Node) error {
 	return nil
 }
 
-func (r *Renamer) Run(program []Node) ([]Node, error) {
+func (r *Renamer) Run(program []ast.Node) ([]ast.Node, error) {
 	for i, n := range program {
 		program[i] = r.Solve(n)
 	}
@@ -46,7 +47,7 @@ func (r *Renamer) scoped(f func()) {
 	r.env = r.env.parent
 }
 
-func (r *Renamer) assign(node Node, overridable bool) {
+func (r *Renamer) assign(node ast.Node, overridable bool) {
 	addTable := func(name token.Token) {
 		if _, ok := r.env.table[name.Lexeme]; ok && !overridable {
 			r.error(utils.ErrorAt(name.Base(), fmt.Sprintf("%v is already defined", name)))
@@ -54,9 +55,9 @@ func (r *Renamer) assign(node Node, overridable bool) {
 		}
 		r.env.table[name.Lexeme] = r.unique()
 	}
-	Transform(node, func(n Node) Node {
+	ast.Transform(node, func(n ast.Node) ast.Node {
 		switch n := n.(type) {
-		case *Var:
+		case *ast.Var:
 			addTable(n.Name)
 		case token.Token:
 			addTable(n)
@@ -65,13 +66,13 @@ func (r *Renamer) assign(node Node, overridable bool) {
 	})
 }
 
-func (r *Renamer) delete(node Node) {
+func (r *Renamer) delete(node ast.Node) {
 	deleteTable := func(name string) {
 		delete(r.env.table, name)
 	}
-	Transform(node, func(n Node) Node {
+	ast.Transform(node, func(n ast.Node) ast.Node {
 		switch n := n.(type) {
-		case *Var:
+		case *ast.Var:
 			deleteTable(n.Name.Lexeme)
 		case token.Token:
 			deleteTable(n.Lexeme)
@@ -113,26 +114,26 @@ func (e *rnEnv) lookup(name string) (int, error) {
 	return -1, fmt.Errorf("%v is not defined", name)
 }
 
-func (r *Renamer) Solve(node Node) Node {
+func (r *Renamer) Solve(node ast.Node) ast.Node {
 	switch n := node.(type) {
-	case *Var:
+	case *ast.Var:
 		n.Name.Literal = r.lookup(n.Name)
 		return n
-	case *Literal:
+	case *ast.Literal:
 		return n
-	case *Paren:
+	case *ast.Paren:
 		r.scoped(func() {
 			for i, elem := range n.Elems {
 				n.Elems[i] = r.Solve(elem)
 			}
 		})
 		return n
-	case *Access:
+	case *ast.Access:
 		r.scoped(func() {
 			n.Receiver = r.Solve(n.Receiver)
 		})
 		return n
-	case *Call:
+	case *ast.Call:
 		r.scoped(func() {
 			n.Func = r.Solve(n.Func)
 			for _, arg := range n.Args {
@@ -140,31 +141,31 @@ func (r *Renamer) Solve(node Node) Node {
 			}
 		})
 		return n
-	case *Binary:
+	case *ast.Binary:
 		r.scoped(func() {
 			n.Left = r.Solve(n.Left)
 			n.Right = r.Solve(n.Right)
 		})
 		return n
-	case *Assert:
+	case *ast.Assert:
 		r.scoped(func() {
 			n.Expr = r.Solve(n.Expr)
 			n.Type = r.Solve(n.Type)
 		})
 		return n
-	case *Let:
+	case *ast.Let:
 		r.scoped(func() {
 			r.assign(n.Bind, false)
 			n.Bind = r.Solve(n.Bind)
 			n.Body = r.Solve(n.Body)
 		})
 		return n
-	case *Codata:
+	case *ast.Codata:
 		for i, clause := range n.Clauses {
-			n.Clauses[i] = r.Solve(clause).(*Clause)
+			n.Clauses[i] = r.Solve(clause).(*ast.Clause)
 		}
 		return n
-	case *Clause:
+	case *ast.Clause:
 		r.scoped(func() {
 			r.assign(n.Pattern, false)
 			n.Pattern = r.Solve(n.Pattern)
@@ -173,7 +174,7 @@ func (r *Renamer) Solve(node Node) Node {
 			}
 		})
 		return n
-	case *Lambda:
+	case *ast.Lambda:
 		r.scoped(func() {
 			r.assign(n.Pattern, false)
 			n.Pattern = r.Solve(n.Pattern)
@@ -182,27 +183,27 @@ func (r *Renamer) Solve(node Node) Node {
 			}
 		})
 		return n
-	case *Case:
+	case *ast.Case:
 		r.scoped(func() {
 			n.Scrutinee = r.Solve(n.Scrutinee)
 			for i, clause := range n.Clauses {
-				n.Clauses[i] = r.Solve(clause).(*Clause)
+				n.Clauses[i] = r.Solve(clause).(*ast.Clause)
 			}
 		})
 		return n
-	case *Object:
+	case *ast.Object:
 		for i, field := range n.Fields {
-			n.Fields[i] = r.Solve(field).(*Field)
+			n.Fields[i] = r.Solve(field).(*ast.Field)
 		}
 		return n
-	case *Field:
+	case *ast.Field:
 		r.scoped(func() {
 			for i, expr := range n.Exprs {
 				n.Exprs[i] = r.Solve(expr)
 			}
 		})
 		return n
-	case *TypeDecl:
+	case *ast.TypeDecl:
 		// Type definition can override existential definition
 		r.assign(n.Name, true)
 		n.Name.Literal = r.lookup(n.Name)
@@ -211,7 +212,7 @@ func (r *Renamer) Solve(node Node) Node {
 			r.delete(n.Name)
 		}
 		return n
-	case *VarDecl:
+	case *ast.VarDecl:
 		// Toplevel variable definition can override existential definition
 		r.assign(n.Name, true)
 		n.Name.Literal = r.lookup(n.Name)
@@ -225,9 +226,9 @@ func (r *Renamer) Solve(node Node) Node {
 			r.delete(n.Name)
 		}
 		return n
-	case *InfixDecl:
+	case *ast.InfixDecl:
 		return n
-	case *This:
+	case *ast.This:
 		return n
 	default:
 		r.error(utils.ErrorAt(n.Base(), fmt.Sprintf("Renamer.Solve not implemented: %v", n)))

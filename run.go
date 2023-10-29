@@ -1,8 +1,10 @@
 package main
 
+import "github.com/takoeight0821/anma/internal/ast"
+
 type Pass interface {
-	Init([]Node) error
-	Run([]Node) ([]Node, error)
+	Init([]ast.Node) error
+	Run([]ast.Node) ([]ast.Node, error)
 }
 
 type PassRunner struct {
@@ -20,7 +22,7 @@ func (r *PassRunner) AddPass(pass Pass) {
 
 // Run executes passes in order.
 // If an error occurs, it stops the execution and returns the current program.
-func (r *PassRunner) Run(program []Node) ([]Node, error) {
+func (r *PassRunner) Run(program []ast.Node) ([]ast.Node, error) {
 	for _, pass := range r.passes {
 		err := pass.Init(program)
 		if err != nil {
@@ -36,17 +38,17 @@ func (r *PassRunner) Run(program []Node) ([]Node, error) {
 }
 
 // RunSource parses the source code and executes passes in order.
-func (r *PassRunner) RunSource(source string) ([]Node, error) {
+func (r *PassRunner) RunSource(source string) ([]ast.Node, error) {
 	tokens, err := Lex(source)
 	if err != nil {
 		return nil, err
 	}
 
-	var program []Node
+	var program []ast.Node
 	if decls, err := NewParser(tokens).ParseDecl(); err == nil {
 		program = decls
 	} else if expr, err := NewParser(tokens).ParseExpr(); err == nil {
-		program = []Node{expr}
+		program = []ast.Node{expr}
 	} else {
 		return nil, err
 	}

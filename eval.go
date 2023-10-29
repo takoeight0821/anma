@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/takoeight0821/anma/internal/ast"
 	"github.com/takoeight0821/anma/internal/token"
 	"github.com/takoeight0821/anma/internal/utils"
 )
@@ -21,11 +22,11 @@ func NewEvaluator() *Evaluator {
 	return &Evaluator{env: make(map[id]value), parent: nil}
 }
 
-func (e *Evaluator) Init(program []Node) error {
+func (e *Evaluator) Init(program []ast.Node) error {
 	return nil
 }
 
-func (e *Evaluator) Run(program []Node) ([]Node, error) {
+func (e *Evaluator) Run(program []ast.Node) ([]ast.Node, error) {
 	for _, node := range program {
 		v, err := eval(e, node)
 		if err != nil {
@@ -83,20 +84,20 @@ var (
 type closure struct {
 	env    *rnEnv
 	params []id
-	body   []Node
+	body   []ast.Node
 }
 
 func (closure) String() string {
 	return "<function>"
 }
 
-func eval(ctx *Evaluator, node Node) (value, error) {
+func eval(ctx *Evaluator, node ast.Node) (value, error) {
 	switch n := node.(type) {
-	case *Var:
+	case *ast.Var:
 		return ctx.lookup(n.Name)
-	case *Literal:
+	case *ast.Literal:
 		return n.Literal, nil
-	case *Paren:
+	case *ast.Paren:
 		tuple := make([]value, len(n.Elems))
 		for i, elem := range n.Elems {
 			var err error
@@ -106,13 +107,13 @@ func eval(ctx *Evaluator, node Node) (value, error) {
 			}
 		}
 		return tuple, nil
-	case *Access:
+	case *ast.Access:
 		v, err := eval(ctx, n.Receiver)
 		if err != nil {
 			return nil, err
 		}
 		return evalAccess(v, n.Name)
-	case *Call:
+	case *ast.Call:
 		fun, err := eval(ctx, n.Func)
 		if err != nil {
 			return nil, err

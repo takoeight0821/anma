@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/takoeight0821/anma/internal/ast"
 	"github.com/takoeight0821/anma/internal/token"
 	"github.com/takoeight0821/anma/internal/utils"
 )
@@ -11,18 +12,18 @@ import (
 // In infix.go, we will fix this.
 
 type InfixResolver struct {
-	decls []*InfixDecl
+	decls []*ast.InfixDecl
 }
 
 func NewInfixResolver() *InfixResolver {
 	return &InfixResolver{}
 }
 
-func (r *InfixResolver) Init(program []Node) error {
+func (r *InfixResolver) Init(program []ast.Node) error {
 	for _, node := range program {
-		Transform(node, func(n Node) Node {
+		ast.Transform(node, func(n ast.Node) ast.Node {
 			switch n := n.(type) {
-			case *InfixDecl:
+			case *ast.InfixDecl:
 				r.add(n)
 			}
 			return n
@@ -31,13 +32,13 @@ func (r *InfixResolver) Init(program []Node) error {
 	return nil
 }
 
-func (r *InfixResolver) Run(program []Node) ([]Node, error) {
+func (r *InfixResolver) Run(program []ast.Node) ([]ast.Node, error) {
 	for i, node := range program {
-		program[i] = Transform(node, func(n Node) Node {
+		program[i] = ast.Transform(node, func(n ast.Node) ast.Node {
 			switch n := n.(type) {
-			case *Binary:
+			case *ast.Binary:
 				return r.mkBinary(n.Op, n.Left, n.Right)
-			case *Paren:
+			case *ast.Paren:
 				if len(n.Elems) == 1 {
 					return n.Elems[0]
 				}
@@ -48,7 +49,7 @@ func (r *InfixResolver) Run(program []Node) ([]Node, error) {
 	return program, nil
 }
 
-func (r *InfixResolver) add(infix *InfixDecl) {
+func (r *InfixResolver) add(infix *ast.InfixDecl) {
 	r.decls = append(r.decls, infix)
 }
 
@@ -70,17 +71,17 @@ func (r InfixResolver) assoc(op token.Token) token.TokenKind {
 	return token.INFIXL
 }
 
-func (r InfixResolver) mkBinary(op token.Token, left, right Node) Node {
+func (r InfixResolver) mkBinary(op token.Token, left, right ast.Node) ast.Node {
 	switch left := left.(type) {
-	case *Binary:
+	case *ast.Binary:
 		// (left.Left left.Op left.Right) op right
 		if r.assocRight(left.Op, op) {
 			// left.Left left.Op (left.Right op right)
 			newRight := r.mkBinary(op, left.Right, right)
-			return &Binary{Left: left.Left, Op: left.Op, Right: newRight}
+			return &ast.Binary{Left: left.Left, Op: left.Op, Right: newRight}
 		}
 	}
-	return &Binary{Left: left, Op: op, Right: right}
+	return &ast.Binary{Left: left, Op: op, Right: right}
 }
 
 func (r InfixResolver) assocRight(op1, op2 token.Token) bool {
