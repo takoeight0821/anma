@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/takoeight0821/anma/internal/ast"
 	"github.com/takoeight0821/anma/internal/lexer"
+	"github.com/takoeight0821/anma/internal/parser"
 )
 
 type Pass interface {
@@ -48,9 +49,9 @@ func (r *PassRunner) RunSource(source string) ([]ast.Node, error) {
 	}
 
 	var program []ast.Node
-	if decls, err := NewParser(tokens).ParseDecl(); err == nil {
+	if decls, err := parser.NewParser(tokens).ParseDecl(); err == nil {
 		program = decls
-	} else if expr, err := NewParser(tokens).ParseExpr(); err == nil {
+	} else if expr, err := parser.NewParser(tokens).ParseExpr(); err == nil {
 		program = []ast.Node{expr}
 	} else {
 		return nil, err

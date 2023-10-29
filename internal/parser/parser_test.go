@@ -1,12 +1,12 @@
-package main_test
+package parser_test
 
 import (
 	"strings"
 	"testing"
 	"unicode/utf8"
 
-	. "github.com/takoeight0821/anma"
 	"github.com/takoeight0821/anma/internal/lexer"
+	"github.com/takoeight0821/anma/internal/parser"
 )
 
 func completeParseExpr(t *testing.T, input string, expected string) {
@@ -15,7 +15,7 @@ func completeParseExpr(t *testing.T, input string, expected string) {
 		t.Errorf("Lex(%q) returned error: %v", input, err)
 	}
 
-	p := NewParser(tokens)
+	p := parser.NewParser(tokens)
 	node, err := p.ParseExpr()
 	if err != nil {
 		t.Errorf("Parse(%q) returned error: %v", input, err)
@@ -72,7 +72,7 @@ func completeParseDecl(t *testing.T, input string, expected string) {
 		t.Errorf("Lex(%q) returned error: %v", input, err)
 	}
 
-	p := NewParser(tokens)
+	p := parser.NewParser(tokens)
 	node, err := p.ParseDecl()
 	if err != nil {
 		t.Errorf("Parse(%q) returned error: %v", input, err)
@@ -112,14 +112,14 @@ func tryParse(t *testing.T, input string) {
 	}
 	t.Logf("tokens: %v", tokens)
 
-	p := NewParser(tokens)
+	p := parser.NewParser(tokens)
 	_, err = p.ParseExpr()
 	if err != nil {
 		t.Logf("Parse(%q) returned error: %v", input, err)
 		return
 	}
 
-	p = NewParser(tokens)
+	p = parser.NewParser(tokens)
 	_, err = p.ParseDecl()
 	if err != nil {
 		t.Logf("Parse(%q) returned error: %v", input, err)

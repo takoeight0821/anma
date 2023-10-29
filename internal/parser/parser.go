@@ -1,4 +1,5 @@
-package main
+// Package parser is a parser for Anma language
+package parser
 
 import (
 	"errors"
@@ -8,7 +9,7 @@ import (
 	"github.com/takoeight0821/anma/internal/utils"
 )
 
-//go:generate go run ./tools/main.go -comment -in parser.go -out docs/syntax.ebnf
+//go:generate go run ../../tools/main.go -comment -in parser.go -out ../../docs/syntax.ebnf
 
 type Parser struct {
 	tokens  []token.Token
@@ -20,12 +21,14 @@ func NewParser(tokens []token.Token) *Parser {
 	return &Parser{tokens, 0, nil}
 }
 
+// ParseExpr parses an expression.
 func (p *Parser) ParseExpr() (ast.Node, error) {
 	p.err = nil
 	node := p.expr()
 	return node, p.err
 }
 
+// ParseDecl parses declarations.
 func (p *Parser) ParseDecl() ([]ast.Node, error) {
 	p.err = nil
 	nodes := []ast.Node{}
