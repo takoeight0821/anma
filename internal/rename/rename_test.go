@@ -1,19 +1,20 @@
-package main_test
+package rename_test
 
 import (
 	"strings"
 	"testing"
 
-	. "github.com/takoeight0821/anma"
 	"github.com/takoeight0821/anma/internal/codata"
 	"github.com/takoeight0821/anma/internal/driver"
+	"github.com/takoeight0821/anma/internal/infix"
+	"github.com/takoeight0821/anma/internal/rename"
 )
 
 func completeRename(t *testing.T, input, expected string) {
 	runner := driver.NewPassRunner()
 	runner.AddPass(codata.Flat{})
-	runner.AddPass(NewInfixResolver())
-	runner.AddPass(NewRenamer())
+	runner.AddPass(infix.NewInfixResolver())
+	runner.AddPass(rename.NewRenamer())
 
 	nodes, err := runner.RunSource(input)
 	if err != nil {

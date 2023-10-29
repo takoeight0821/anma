@@ -1,17 +1,17 @@
-package main_test
+package infix_test
 
 import (
 	"testing"
 
-	. "github.com/takoeight0821/anma"
 	"github.com/takoeight0821/anma/internal/codata"
 	"github.com/takoeight0821/anma/internal/driver"
+	"github.com/takoeight0821/anma/internal/infix"
 )
 
 func completeInfix(t *testing.T, input1, input2, expected string) {
 	runner := driver.NewPassRunner()
 	runner.AddPass(codata.Flat{})
-	runner.AddPass(NewInfixResolver())
+	runner.AddPass(infix.NewInfixResolver())
 
 	_, err := runner.RunSource(input1)
 	if err != nil {

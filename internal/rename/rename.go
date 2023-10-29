@@ -1,4 +1,4 @@
-package main
+package rename
 
 import (
 	"errors"
@@ -11,12 +11,12 @@ import (
 
 type Renamer struct {
 	supply int
-	env    *rnEnv
+	env    *RnEnv
 	err    error
 }
 
 func NewRenamer() *Renamer {
-	return &Renamer{supply: 0, env: newRnEnv(nil), err: nil}
+	return &Renamer{supply: 0, env: NewRnEnv(nil), err: nil}
 }
 
 func (r *Renamer) Init(program []ast.Node) error {
@@ -42,7 +42,7 @@ func (r *Renamer) error(err error) {
 }
 
 func (r *Renamer) scoped(f func()) {
-	r.env = newRnEnv(r.env)
+	r.env = NewRnEnv(r.env)
 	f()
 	r.env = r.env.parent
 }
@@ -95,16 +95,16 @@ func (r *Renamer) lookup(name token.Token) int {
 	return uniq
 }
 
-type rnEnv struct {
+type RnEnv struct {
 	table  map[string]int
-	parent *rnEnv
+	parent *RnEnv
 }
 
-func newRnEnv(parent *rnEnv) *rnEnv {
-	return &rnEnv{table: make(map[string]int), parent: parent}
+func NewRnEnv(parent *RnEnv) *RnEnv {
+	return &RnEnv{table: make(map[string]int), parent: parent}
 }
 
-func (e *rnEnv) lookup(name string) (int, error) {
+func (e *RnEnv) lookup(name string) (int, error) {
 	if uniq, ok := e.table[name]; ok {
 		return uniq, nil
 	}
