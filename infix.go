@@ -16,41 +16,33 @@ func NewInfixResolver() *InfixResolver {
 }
 
 func (r *InfixResolver) Init(program []Node) error {
-	for _, n := range program {
-		r.Load(n)
+	for _, node := range program {
+		Transform(node, func(n Node) Node {
+			switch n := n.(type) {
+			case *InfixDecl:
+				r.add(n)
+			}
+			return n
+		})
 	}
 	return nil
 }
 
 func (r *InfixResolver) Run(program []Node) ([]Node, error) {
-	for i, n := range program {
-		program[i] = r.Resolve(n)
+	for i, node := range program {
+		program[i] = Transform(node, func(n Node) Node {
+			switch n := n.(type) {
+			case *Binary:
+				return r.mkBinary(n.Op, n.Left, n.Right)
+			case *Paren:
+				if len(n.Elems) == 1 {
+					return n.Elems[0]
+				}
+			}
+			return n
+		})
 	}
 	return program, nil
-}
-
-func (r *InfixResolver) Load(node Node) {
-	Transform(node, func(n Node) Node {
-		switch n := n.(type) {
-		case *InfixDecl:
-			r.add(n)
-		}
-		return n
-	})
-}
-
-func (r *InfixResolver) Resolve(node Node) Node {
-	return Transform(node, func(n Node) Node {
-		switch n := n.(type) {
-		case *Binary:
-			return r.mkBinary(n.Op, n.Left, n.Right)
-		case *Paren:
-			if len(n.Elems) == 1 {
-				return n.Elems[0]
-			}
-		}
-		return n
-	})
 }
 
 func (r *InfixResolver) add(infix *InfixDecl) {

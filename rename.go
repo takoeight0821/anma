@@ -7,12 +7,12 @@ import (
 
 type Renamer struct {
 	supply int
-	env    *Env
+	env    *rnEnv
 	err    error
 }
 
 func NewRenamer() *Renamer {
-	return &Renamer{supply: 0, env: NewEnv(nil), err: nil}
+	return &Renamer{supply: 0, env: newRnEnv(nil), err: nil}
 }
 
 func (r *Renamer) Init(program []Node) error {
@@ -24,10 +24,10 @@ func (r *Renamer) Run(program []Node) ([]Node, error) {
 		program[i] = r.Solve(n)
 	}
 
-	return program, r.PopError()
+	return program, r.popError()
 }
 
-func (r *Renamer) PopError() error {
+func (r *Renamer) popError() error {
 	err := r.err
 	r.err = nil
 	return err
@@ -38,7 +38,7 @@ func (r *Renamer) error(err error) {
 }
 
 func (r *Renamer) scoped(f func()) {
-	r.env = NewEnv(r.env)
+	r.env = newRnEnv(r.env)
 	f()
 	r.env = r.env.parent
 }
@@ -91,16 +91,16 @@ func (r *Renamer) lookup(name Token) int {
 	return uniq
 }
 
-type Env struct {
+type rnEnv struct {
 	table  map[string]int
-	parent *Env
+	parent *rnEnv
 }
 
-func NewEnv(parent *Env) *Env {
-	return &Env{table: make(map[string]int), parent: parent}
+func newRnEnv(parent *rnEnv) *rnEnv {
+	return &rnEnv{table: make(map[string]int), parent: parent}
 }
 
-func (e *Env) lookup(name string) (int, error) {
+func (e *rnEnv) lookup(name string) (int, error) {
 	if uniq, ok := e.table[name]; ok {
 		return uniq, nil
 	}

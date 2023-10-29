@@ -16,22 +16,37 @@ func NewEvaluator() *Evaluator {
 	return &Evaluator{env: make(map[id]value), parent: nil}
 }
 
-func (e *Evaluator) bind(t Token, v value) {
-	x := newId(t)
-	if _, ok := e.env[x]; ok {
-		panic(errorAt(t, fmt.Sprintf("%v is already defined in this scope", t)))
-	}
-	e.env[x] = v
+func (e *Evaluator) Init(program []Node) error {
+	return nil
 }
 
-func (e *Evaluator) lookup(t Token) value {
+func (e *Evaluator) Run(program []Node) ([]Node, error) {
+	for _, node := range program {
+		_, err := eval(e, node)
+		if err != nil {
+			return program, err
+		}
+	}
+	return program, nil
+}
+
+func (e *Evaluator) bind(t Token, v value) error {
+	x := newId(t)
+	if _, ok := e.env[x]; ok {
+		return errorAt(t, fmt.Sprintf("%v is already defined in this scope", t))
+	}
+	e.env[x] = v
+	return nil
+}
+
+func (e *Evaluator) lookup(t Token) (value, error) {
 	if e == nil {
-		panic(errorAt(t, fmt.Sprintf("%v is not defined", t)))
+		return nil, errorAt(t, fmt.Sprintf("%v is not defined", t))
 	}
 
 	x := newId(t)
 	if v, ok := e.env[x]; ok {
-		return v
+		return v, nil
 	}
 
 	return e.parent.lookup(t)
@@ -60,7 +75,7 @@ var (
 )
 
 type closure struct {
-	env    *Env
+	env    *rnEnv
 	params []id
 	body   []Node
 }
@@ -69,37 +84,50 @@ func (closure) String() string {
 	return "<function>"
 }
 
-func Eval(ctx *Evaluator, node Node) value {
+func eval(ctx *Evaluator, node Node) (value, error) {
 	switch n := node.(type) {
 	case *Var:
 		return ctx.lookup(n.Name)
 	case *Literal:
-		return n.Literal
+		return n.Literal, nil
 	case *Paren:
 		tuple := make([]value, len(n.Elems))
 		for i, elem := range n.Elems {
-			tuple[i] = Eval(ctx, elem)
+			var err error
+			tuple[i], err = eval(ctx, elem)
+			if err != nil {
+				return nil, err
+			}
 		}
-		return tuple
+		return tuple, nil
 	case *Access:
-		v := Eval(ctx, n.Receiver)
+		v, err := eval(ctx, n.Receiver)
+		if err != nil {
+			return nil, err
+		}
 		return evalAccess(v, n.Name)
 	case *Call:
-		fun := Eval(ctx, n.Func)
+		fun, err := eval(ctx, n.Func)
+		if err != nil {
+			return nil, err
+		}
 		args := make([]value, len(n.Args))
 		for i, arg := range n.Args {
-			args[i] = Eval(ctx, arg)
+			args[i], err = eval(ctx, arg)
+			if err != nil {
+				return nil, err
+			}
 		}
 		return evalCall(fun, args)
 	default:
-		panic(errorAt(n.Base(), fmt.Sprintf("not implemented %v", n)))
+		return nil, errorAt(n.Base(), fmt.Sprintf("not implemented %v", n))
 	}
 }
 
-func evalAccess(v value, n Token) value {
+func evalAccess(v value, n Token) (value, error) {
 	panic("TODO")
 }
 
-func evalCall(fun value, args []value) value {
+func evalCall(fun value, args []value) (value, error) {
 	panic("TODO")
 }
