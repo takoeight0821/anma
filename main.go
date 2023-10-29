@@ -8,6 +8,8 @@ import (
 
 	"github.com/adrg/xdg"
 	"github.com/peterh/liner"
+	"github.com/takoeight0821/anma/internal/codata"
+	"github.com/takoeight0821/anma/internal/driver"
 )
 
 func main() {
@@ -58,8 +60,10 @@ func RunPrompt() error {
 		}
 	}
 
-	r := NewPassRunner()
-	r.Predefined()
+	r := driver.NewPassRunner()
+	r.AddPass(codata.Flat{})
+	r.AddPass(NewInfixResolver())
+	r.AddPass(NewRenamer())
 	for {
 		input, err := line.Prompt("> ")
 		if err != nil {
@@ -80,8 +84,10 @@ func RunPrompt() error {
 }
 
 func RunFile(path string) error {
-	r := NewPassRunner()
-	r.Predefined()
+	r := driver.NewPassRunner()
+	r.AddPass(codata.Flat{})
+	r.AddPass(NewInfixResolver())
+	r.AddPass(NewRenamer())
 	bytes, err := os.ReadFile(path)
 	if err != nil {
 		return err

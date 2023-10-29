@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	. "github.com/takoeight0821/anma"
+	"github.com/takoeight0821/anma/internal/codata"
+	"github.com/takoeight0821/anma/internal/driver"
 )
 
 func TestEvaluator(t *testing.T) {
@@ -14,8 +16,8 @@ func TestEvaluator(t *testing.T) {
 }
 
 func completeEval(t *testing.T, input, expected string) {
-	runner := NewPassRunner()
-	runner.AddPass(Flat{})
+	runner := driver.NewPassRunner()
+	runner.AddPass(codata.Flat{})
 	runner.AddPass(NewInfixResolver())
 	runner.AddPass(NewRenamer())
 	runner.AddPass(NewEvaluator())

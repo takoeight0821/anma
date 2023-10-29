@@ -1,4 +1,4 @@
-package main
+package driver
 
 import (
 	"github.com/takoeight0821/anma/internal/ast"
@@ -59,68 +59,3 @@ func (r *PassRunner) RunSource(source string) ([]ast.Node, error) {
 
 	return r.Run(program)
 }
-
-func (r *PassRunner) Predefined() {
-	r.AddPass(Flat{})
-	r.AddPass(NewInfixResolver())
-	r.AddPass(NewRenamer())
-}
-
-/*
-
-// Runner manages informations of the current running program and executes it.
-// Runner doen't hold the program itself. Each sub-module holds the program and specific informations.
-type Runner struct {
-	infix  *InfixResolver
-	rename *Renamer
-}
-
-func NewRunner() *Runner {
-	return &Runner{infix: NewInfixResolver(), rename: NewRenamer()}
-}
-
-// Load parses the source code and adds it to the program.
-func (r *Runner) Load(source string) error {
-	tokens, err := Lex(source)
-	if err != nil {
-		return err
-	}
-
-	var program []Node
-	if decls, err := NewParser(tokens).ParseDecl(); err == nil {
-		program = decls
-	} else if expr, err := NewParser(tokens).ParseExpr(); err == nil {
-		program = []Node{expr}
-	} else {
-		return err
-	}
-
-	for i, node := range program {
-		program[i] = Flat(node)
-		fmt.Println(program[i])
-	}
-
-	for _, node := range program {
-		r.infix.Load(node)
-	}
-
-	for i, node := range program {
-		program[i] = r.rename.Solve(r.infix.Resolve(node))
-	}
-
-	if err = r.rename.PopError(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (r *Runner) Run(source string) error {
-	if err := r.Load(source); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-*/

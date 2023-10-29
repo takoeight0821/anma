@@ -1,15 +1,16 @@
-package main_test
+package codata_test
 
 import (
 	"strings"
 	"testing"
 
-	. "github.com/takoeight0821/anma"
+	"github.com/takoeight0821/anma/internal/codata"
+	"github.com/takoeight0821/anma/internal/driver"
 )
 
 func completeFlat(t *testing.T, input string, expected string) {
-	runner := NewPassRunner()
-	runner.AddPass(Flat{})
+	runner := driver.NewPassRunner()
+	runner.AddPass(codata.Flat{})
 	node, err := runner.RunSource(input)
 	if err != nil {
 		t.Errorf("RunSource returned error: %v", err)
@@ -39,8 +40,8 @@ func TestFlat(t *testing.T) {
 }
 
 func completeFlatDecl(t *testing.T, input string, expected string) {
-	runner := NewPassRunner()
-	runner.AddPass(Flat{})
+	runner := driver.NewPassRunner()
+	runner.AddPass(codata.Flat{})
 
 	node, err := runner.RunSource(input)
 	if err != nil {

@@ -4,11 +4,13 @@ import (
 	"testing"
 
 	. "github.com/takoeight0821/anma"
+	"github.com/takoeight0821/anma/internal/codata"
+	"github.com/takoeight0821/anma/internal/driver"
 )
 
 func completeInfix(t *testing.T, input1, input2, expected string) {
-	runner := NewPassRunner()
-	runner.AddPass(Flat{})
+	runner := driver.NewPassRunner()
+	runner.AddPass(codata.Flat{})
 	runner.AddPass(NewInfixResolver())
 
 	_, err := runner.RunSource(input1)

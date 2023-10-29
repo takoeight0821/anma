@@ -5,11 +5,13 @@ import (
 	"testing"
 
 	. "github.com/takoeight0821/anma"
+	"github.com/takoeight0821/anma/internal/codata"
+	"github.com/takoeight0821/anma/internal/driver"
 )
 
 func completeRename(t *testing.T, input, expected string) {
-	runner := NewPassRunner()
-	runner.AddPass(Flat{})
+	runner := driver.NewPassRunner()
+	runner.AddPass(codata.Flat{})
 	runner.AddPass(NewInfixResolver())
 	runner.AddPass(NewRenamer())
 
