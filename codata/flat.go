@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/takoeight0821/anma/internal/ast"
-	"github.com/takoeight0821/anma/internal/token"
-	"github.com/takoeight0821/anma/internal/utils"
+	"github.com/takoeight0821/anma/ast"
+	"github.com/takoeight0821/anma/token"
+	"github.com/takoeight0821/anma/utils"
 )
 
 // Flat converts Copatterns ([Access] and [This] in [Pattern]) into [Object] and [Lambda].

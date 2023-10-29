@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/takoeight0821/anma/internal/ast"
-	"github.com/takoeight0821/anma/internal/token"
-	"github.com/takoeight0821/anma/internal/utils"
+	"github.com/takoeight0821/anma/ast"
+	"github.com/takoeight0821/anma/token"
+	"github.com/takoeight0821/anma/utils"
 )
 
 // Renamer assigns unique integer to each variable.

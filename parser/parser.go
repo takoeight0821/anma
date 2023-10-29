@@ -4,12 +4,12 @@ package parser
 import (
 	"errors"
 
-	"github.com/takoeight0821/anma/internal/ast"
-	"github.com/takoeight0821/anma/internal/token"
-	"github.com/takoeight0821/anma/internal/utils"
+	"github.com/takoeight0821/anma/ast"
+	"github.com/takoeight0821/anma/token"
+	"github.com/takoeight0821/anma/utils"
 )
 
-//go:generate go run ../../tools/main.go -comment -in parser.go -out ../../docs/syntax.ebnf
+//go:generate go run ../tools/main.go -comment -in parser.go -out ../docs/syntax.ebnf
 
 type Parser struct {
 	tokens  []token.Token

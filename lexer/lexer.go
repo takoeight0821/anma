@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"unicode"
 
-	"github.com/takoeight0821/anma/internal/token"
+	"github.com/takoeight0821/anma/token"
 )
 
 func Lex(source string) ([]token.Token, error) {

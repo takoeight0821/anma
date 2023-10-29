@@ -3,9 +3,9 @@ package infix
 import (
 	"fmt"
 
-	"github.com/takoeight0821/anma/internal/ast"
-	"github.com/takoeight0821/anma/internal/token"
-	"github.com/takoeight0821/anma/internal/utils"
+	"github.com/takoeight0821/anma/ast"
+	"github.com/takoeight0821/anma/token"
+	"github.com/takoeight0821/anma/utils"
 )
 
 // After parsing, every infix operator treated as left-associative and has the same precedence.

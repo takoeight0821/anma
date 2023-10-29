@@ -8,10 +8,10 @@ import (
 
 	"github.com/adrg/xdg"
 	"github.com/peterh/liner"
-	"github.com/takoeight0821/anma/internal/codata"
-	"github.com/takoeight0821/anma/internal/driver"
-	"github.com/takoeight0821/anma/internal/infix"
-	"github.com/takoeight0821/anma/internal/rename"
+	"github.com/takoeight0821/anma/codata"
+	"github.com/takoeight0821/anma/driver"
+	"github.com/takoeight0821/anma/infix"
+	"github.com/takoeight0821/anma/rename"
 )
 
 func main() {

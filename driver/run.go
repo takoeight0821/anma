@@ -1,9 +1,9 @@
 package driver
 
 import (
-	"github.com/takoeight0821/anma/internal/ast"
-	"github.com/takoeight0821/anma/internal/lexer"
-	"github.com/takoeight0821/anma/internal/parser"
+	"github.com/takoeight0821/anma/ast"
+	"github.com/takoeight0821/anma/lexer"
+	"github.com/takoeight0821/anma/parser"
 )
 
 type Pass interface {

@@ -3,7 +3,7 @@ package utils
 import (
 	"fmt"
 
-	"github.com/takoeight0821/anma/internal/token"
+	"github.com/takoeight0821/anma/token"
 	"golang.org/x/exp/constraints"
 	"golang.org/x/exp/slices"
 )

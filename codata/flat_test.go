@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/takoeight0821/anma/internal/codata"
-	"github.com/takoeight0821/anma/internal/driver"
+	"github.com/takoeight0821/anma/codata"
+	"github.com/takoeight0821/anma/driver"
 )
 
 func completeFlat(t *testing.T, input string, expected string) {

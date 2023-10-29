@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/takoeight0821/anma/internal/token"
+	"github.com/takoeight0821/anma/token"
 )
 
 // AST

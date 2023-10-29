@@ -3,9 +3,9 @@ package infix_test
 import (
 	"testing"
 
-	"github.com/takoeight0821/anma/internal/codata"
-	"github.com/takoeight0821/anma/internal/driver"
-	"github.com/takoeight0821/anma/internal/infix"
+	"github.com/takoeight0821/anma/codata"
+	"github.com/takoeight0821/anma/driver"
+	"github.com/takoeight0821/anma/infix"
 )
 
 func completeInfix(t *testing.T, input1, input2, expected string) {

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/takoeight0821/anma/internal/lexer"
-	"github.com/takoeight0821/anma/internal/parser"
+	"github.com/takoeight0821/anma/lexer"
+	"github.com/takoeight0821/anma/parser"
 )
 
 func completeParseExpr(t *testing.T, input string, expected string) {
