@@ -161,6 +161,7 @@ var keywords = map[string]token.TokenKind{
 	"infixr": token.INFIXR,
 	"let":    token.LET,
 	"type":   token.TYPE,
+	"prim":   token.PRIM,
 }
 
 func isSymbol(c rune) bool {

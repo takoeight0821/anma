@@ -191,9 +191,29 @@ func (p *Parser) access() ast.Node {
 	return expr
 }
 
-// call = atom ("(" ")" | "(" expr ("," expr)* ","? ")")* ;
+// call = (PRIM "(" IDENTIFIER ("," expr)* ","? ")" | atom) ("(" ")" | "(" expr ("," expr)* ","? ")")* ;
 func (p *Parser) call() ast.Node {
-	expr := p.atom()
+	var expr ast.Node
+	if p.match(token.PRIM) {
+		p.advance()
+		p.consume(token.LEFTPAREN, "expected `(`")
+		name := p.consume(token.IDENT, "expected identifier")
+		args := []ast.Node{}
+		if !p.match(token.RIGHTPAREN) {
+			for p.match(token.COMMA) {
+				p.advance()
+				if p.match(token.RIGHTPAREN) {
+					break
+				}
+				args = append(args, p.expr())
+			}
+		}
+		p.consume(token.RIGHTPAREN, "expected `)`")
+		expr = &ast.Prim{Name: name, Args: args}
+	} else {
+		expr = p.atom()
+	}
+
 	for p.match(token.LEFTPAREN) {
 		expr = p.finishCall(expr)
 	}

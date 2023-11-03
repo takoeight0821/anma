@@ -95,6 +95,21 @@ func (c *Call) Base() token.Token {
 
 var _ Node = &Call{}
 
+type Prim struct {
+	Name token.Token
+	Args []Node
+}
+
+func (p Prim) String() string {
+	return parenthesize("prim", prepend(p.Name, p.Args)...)
+}
+
+func (p *Prim) Base() token.Token {
+	return p.Name
+}
+
+var _ Node = &Prim{}
+
 type Binary struct {
 	Left  Node
 	Op    token.Token

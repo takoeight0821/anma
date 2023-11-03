@@ -58,6 +58,7 @@ var testcases = []struct {
 	{"fn x { let y = 1; x + y }", "(lambda (var x) (let (var y) (literal 1)) (binary (var x) + (var y)))"},
 	{"fn x { let y = 1; x + y; }", "(lambda (var x) (let (var y) (literal 1)) (binary (var x) + (var y)))"},
 	{"{ #.head -> 1 }", "(codata (clause (access (this #) head) (literal 1)))"},
+	{"prim(add, 1, 2)", "(prim add (literal 1) (literal 2))"},
 }
 
 func TestParse(t *testing.T) {

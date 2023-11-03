@@ -38,6 +38,7 @@ const (
 	INFIXR
 	LET
 	TYPE
+	PRIM
 )
 
 type Token struct {
