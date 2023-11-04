@@ -10,6 +10,7 @@ import (
 	"github.com/peterh/liner"
 	"github.com/takoeight0821/anma/codata"
 	"github.com/takoeight0821/anma/driver"
+	"github.com/takoeight0821/anma/eval"
 	"github.com/takoeight0821/anma/infix"
 	"github.com/takoeight0821/anma/rename"
 )
@@ -72,7 +73,7 @@ func RunPrompt() error {
 			return err
 		}
 		line.AppendHistory(input)
-		_, err = r.RunSource(input)
+		nodes, err := r.RunSource(input)
 		if err != nil {
 			if errs, ok := err.(interface{ Unwrap() []error }); ok {
 				for _, err := range errs.Unwrap() {
@@ -81,6 +82,15 @@ func RunPrompt() error {
 			} else {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			}
+		}
+
+		ev := eval.NewEvaluator()
+		for _, node := range nodes {
+			value, err := ev.Eval(node)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			}
+			fmt.Println(value)
 		}
 	}
 }
