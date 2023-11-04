@@ -146,6 +146,13 @@ func (r *Renamer) Solve(node ast.Node) ast.Node {
 			}
 		})
 		return n
+	case *ast.Prim:
+		r.scoped(func() {
+			for _, arg := range n.Args {
+				r.Solve(arg)
+			}
+		})
+		return n
 	case *ast.Binary:
 		r.scoped(func() {
 			n.Left = r.Solve(n.Left)

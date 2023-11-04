@@ -22,7 +22,7 @@ binary = access (operator access)* ; (* func binary *)
 
 access = call ("." IDENTIFIER)* ; (* func access *)
 
-call = atom ("(" ")" | "(" expr ("," expr)* ","? ")")* ; (* func call *)
+call = (PRIM "(" IDENTIFIER ("," expr)* ","? ")" | atom) ("(" ")" | "(" expr ("," expr)* ","? ")")* ; (* func call *)
 
 codata = "{" clause ("," clause)* ","? "}" ; (* func codata *)
 

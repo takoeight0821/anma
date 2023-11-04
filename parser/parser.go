@@ -1,4 +1,3 @@
-// Package parser is a parser for Anma language
 package parser
 
 import (
@@ -21,14 +20,12 @@ func NewParser(tokens []token.Token) *Parser {
 	return &Parser{tokens, 0, nil}
 }
 
-// ParseExpr parses an expression.
 func (p *Parser) ParseExpr() (ast.Node, error) {
 	p.err = nil
 	node := p.expr()
 	return node, p.err
 }
 
-// ParseDecl parses declarations.
 func (p *Parser) ParseDecl() ([]ast.Node, error) {
 	p.err = nil
 	nodes := []ast.Node{}
@@ -49,7 +46,7 @@ func (p *Parser) decl() ast.Node {
 	return p.infixDecl()
 }
 
-// typeDecl = "type" token.IDENTIFIER "=" type ;
+// typeDecl = "type" IDENTIFIER "=" type ;
 func (p *Parser) typeDecl() *ast.TypeDecl {
 	p.consume(token.TYPE, "expected `type`")
 	name := p.consume(token.IDENT, "expected identifier")
@@ -61,7 +58,15 @@ func (p *Parser) typeDecl() *ast.TypeDecl {
 // varDecl = "def" identifier "=" expr | "def" identifier ":" type | "def" identifier ":" type "=" expr ;
 func (p *Parser) varDecl() *ast.VarDecl {
 	p.consume(token.DEF, "expected `def`")
-	name := p.consume(token.IDENT, "expected identifier")
+	var name token.Token
+	if p.match(token.IDENT) {
+		name = p.advance()
+	} else if p.match(token.OPERATOR) {
+		name = p.advance()
+	} else {
+		p.recover(utils.ErrorAt(p.peek(), "expected identifier or operator"))
+		return &ast.VarDecl{}
+	}
 	var typ ast.Node
 	var expr ast.Node
 	if p.match(token.COLON) {
@@ -75,7 +80,7 @@ func (p *Parser) varDecl() *ast.VarDecl {
 	return &ast.VarDecl{Name: name, Type: typ, Expr: expr}
 }
 
-// infixDecl = ("infix" | "infixl" | "infixr") INTEGER token.OPERATOR ;
+// infixDecl = ("infix" | "infixl" | "infixr") INTEGER OPERATOR ;
 func (p *Parser) infixDecl() *ast.InfixDecl {
 	kind := p.advance()
 	if kind.Kind != token.INFIX && kind.Kind != token.INFIXL && kind.Kind != token.INFIXR {
@@ -180,7 +185,7 @@ func (p *Parser) binary() ast.Node {
 	return expr
 }
 
-// access = call ("." token.IDENTIFIER)* ;
+// access = call ("." IDENTIFIER)* ;
 func (p *Parser) access() ast.Node {
 	expr := p.call()
 	for p.match(token.DOT) {
@@ -275,7 +280,7 @@ func (p *Parser) pattern() ast.Node {
 	return p.accessPat()
 }
 
-// accessPat = callPat ("." token.IDENTIFIER)* ;
+// accessPat = callPat ("." IDENTIFIER)* ;
 func (p *Parser) accessPat() ast.Node {
 	pat := p.callPat()
 	for p.match(token.DOT) {
@@ -312,7 +317,7 @@ func (p *Parser) finishCallPat(fun ast.Node) *ast.Call {
 	return &ast.Call{Func: fun, Args: args}
 }
 
-// atomPat = token.IDENT | INTEGER | STRING | "(" pattern ("," pattern)* ","? ")" ;
+// atomPat = IDENT | INTEGER | STRING | "(" pattern ("," pattern)* ","? ")" ;
 func (p *Parser) atomPat() ast.Node {
 	switch t := p.advance(); t.Kind {
 	case token.SHARP:
@@ -388,7 +393,7 @@ func (p *Parser) finishCallType(fun ast.Node) *ast.Call {
 	return &ast.Call{Func: fun, Args: args}
 }
 
-// atomType = token.IDENT | "{" fieldType ("," fieldType)* ","? "}" | "(" type ("," type)* ","? ")" ;
+// atomType = IDENT | "{" fieldType ("," fieldType)* ","? "}" | "(" type ("," type)* ","? ")" ;
 func (p *Parser) atomType() ast.Node {
 	switch t := p.advance(); t.Kind {
 	case token.IDENT:
@@ -425,7 +430,7 @@ func (p *Parser) atomType() ast.Node {
 	}
 }
 
-// fieldType = token.IDENTIFIER ":" type ;
+// fieldType = IDENTIFIER ":" type ;
 func (p *Parser) fieldType() *ast.Field {
 	name := p.consume(token.IDENT, "expected identifier")
 	p.consume(token.COLON, "expected `:`")
