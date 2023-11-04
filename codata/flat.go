@@ -34,21 +34,38 @@ func flatEach(n ast.Node) ast.Node {
 	return n
 }
 
+const (
+	notChecked = -2
+	noArgs     = -1
+	zeroArgs   = 0
+)
+
 func flatCodata(c *ast.Codata) ast.Node {
 	// Generate PatternList
-	arity := -1
+	arity := notChecked
 	for i, cl := range c.Clauses {
 		plist := patternList{accessors: accessors(cl.Pattern), params: params(cl.Pattern)}
 		c.Clauses[i] = &ast.Clause{Pattern: plist, Exprs: cl.Exprs}
-		if arity == -1 {
+		if arity == notChecked {
+			if plist.params == nil {
+				arity = noArgs
+				continue
+			}
 			arity = len(plist.params)
-		} else if arity != len(plist.params) {
+		}
+		if arity == noArgs {
+			if plist.params != nil {
+				panic(utils.ErrorAt(c.Base(), fmt.Sprintf("arity mismatch %v", c)))
+			}
+			continue
+		}
+		if arity != len(plist.params) {
 			panic(utils.ErrorAt(c.Base(), fmt.Sprintf("arity mismatch %v", c)))
 		}
 	}
 
-	if arity == -1 {
-		panic(utils.ErrorAt(c.Base(), fmt.Sprintf("unreachable: arity is -1 %v", c)))
+	if arity == notChecked {
+		panic(utils.ErrorAt(c.Base(), fmt.Sprintf("unreachable: arity is not checked %v", c)))
 	}
 
 	return newBuilder().build(arity, c.Clauses)
@@ -64,7 +81,7 @@ func newBuilder() *builder {
 
 // dispatch to Object or Lambda based on arity
 func (b *builder) build(arity int, clauses []*ast.Clause) ast.Node {
-	if arity == 0 {
+	if arity == noArgs {
 		return b.object(clauses)
 	}
 	return b.lambda(arity, clauses)
@@ -218,7 +235,7 @@ func params(p ast.Node) []ast.Node {
 		}
 		return p.Args
 	default:
-		return []ast.Node{}
+		return nil
 	}
 }
 

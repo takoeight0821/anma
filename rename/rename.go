@@ -155,6 +155,7 @@ func (r *Renamer) Solve(node ast.Node) ast.Node {
 		return n
 	case *ast.Binary:
 		r.scoped(func() {
+			n.Op.Literal = r.Lookup(n.Op)
 			n.Left = r.Solve(n.Left)
 			n.Right = r.Solve(n.Right)
 		})

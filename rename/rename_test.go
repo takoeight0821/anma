@@ -40,6 +40,7 @@ func TestRename(t *testing.T) {
 	}{
 		{"def f = { #(x) -> x }", "(def f.0 (lambda (var x0.1) (case (var x0.1) (clause (var x.2) (var x.2)))))\n"},
 		{"def f = { #(f) -> f }", "(def f.0 (lambda (var x0.1) (case (var x0.1) (clause (var f.2) (var f.2)))))\n"},
+		{"def + = { #(x, y) -> prim(add, x, y) }\ndef main = { #() -> 1 + 2 }\n", ""},
 	}
 	for _, testcase := range testcases {
 		completeRename(t, testcase.input, testcase.expected)
