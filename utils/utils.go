@@ -28,9 +28,9 @@ func OrderedFor[I constraints.Ordered, V any](m map[I]V, f func(I, V)) {
 	}
 }
 
-func ErrorAt(t token.Token, msg string) error {
+func MsgAt(t token.Token, msg string) string {
 	if t.Kind == token.EOF {
-		return fmt.Errorf("at end: %s", msg)
+		return fmt.Sprintf("at end: %s", msg)
 	}
-	return fmt.Errorf("at %d: `%s`, %s", t.Line, t.Lexeme, msg)
+	return fmt.Sprintf("at %d: `%s`, %s", t.Line, t.Lexeme, msg)
 }

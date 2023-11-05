@@ -29,13 +29,20 @@ func (ev *Evaluator) define(name token.Token, value Value) {
 	ev.env[id] = value
 }
 
+type NotDefinedError struct {
+	Name token.Token
+}
+
+func (e NotDefinedError) Error() string {
+	return utils.MsgAt(e.Name, fmt.Sprintf("%v is not defined", e.Name))
+}
+
 func (ev *Evaluator) lookup(name token.Token) (Value, error) {
 	id := id{name.Lexeme, name.Literal.(int)}
-	value, ok := ev.env[id]
-	if !ok {
-		return nil, evalError(name, fmt.Sprintf("undefined variable: %v", name))
+	if value, ok := ev.env[id]; ok {
+		return value, nil
 	}
-	return value, nil
+	return nil, NotDefinedError{Name: name}
 }
 
 type Value interface {
@@ -107,8 +114,16 @@ func (ev *Evaluator) Eval(node ast.Node) (Value, error) {
 		ev.define(n.Name, value)
 		return nil, nil
 	default:
-		return nil, evalError(node.Base(), fmt.Sprintf("unexpected node: %v", n))
+		panic(fmt.Sprintf("not implemented %v", n))
 	}
+}
+
+type UnexpectedLiteralError struct {
+	Literal token.Token
+}
+
+func (e UnexpectedLiteralError) Error() string {
+	return utils.MsgAt(e.Literal, fmt.Sprintf("unexpected literal: %v", e.Literal))
 }
 
 func evalLiteral(token token.Token) (Value, error) {
@@ -118,25 +133,53 @@ func evalLiteral(token token.Token) (Value, error) {
 	case float64:
 		return Float(t), nil
 	default:
-		return nil, evalError(token, fmt.Sprintf("unexpected literal: %v", t))
+		return nil, UnexpectedLiteralError{Literal: token}
 	}
+}
+
+type ArityError struct {
+	Base     token.Token
+	Expected int
+	Args     []Value
+}
+
+func (e ArityError) Error() string {
+	return utils.MsgAt(e.Base, fmt.Sprintf("expected %d arguments, got %d", e.Expected, len(e.Args)))
+}
+
+type TypeError struct {
+	Base     token.Token
+	expected string
+	Value    Value
+}
+
+func (e TypeError) Error() string {
+	return utils.MsgAt(e.Base, fmt.Sprintf("expected %s, got %T", e.expected, e.Value))
+}
+
+type UnexpectedPrimError struct {
+	Name token.Token
+}
+
+func (e UnexpectedPrimError) Error() string {
+	return utils.MsgAt(e.Name, fmt.Sprintf("unexpected primitive: %v", e.Name))
 }
 
 func evalPrim(name token.Token, args []Value) (Value, error) {
 	switch name.Lexeme {
 	case "add":
 		if len(args) != 2 {
-			return nil, evalError(name, fmt.Sprintf("expected 2 arguments, got %d", len(args)))
+			return nil, ArityError{Base: name, Expected: 2, Args: args}
 		}
 		if lhs, ok := args[0].(Int); ok {
 			if rhs, ok := args[1].(Int); ok {
 				return Int(lhs + rhs), nil
 			}
-			return nil, evalError(name, fmt.Sprintf("expected Int, got %T", args[1]))
+			return nil, TypeError{Base: name, expected: "Int", Value: args[1]}
 		}
-		return nil, evalError(name, fmt.Sprintf("expected Int, got %T", args[0]))
+		return nil, TypeError{Base: name, expected: "Int", Value: args[0]}
 	default:
-		return nil, evalError(name, fmt.Sprintf("unexpected primitive: %v", name))
+		return nil, UnexpectedPrimError{Name: name}
 	}
 }
 
@@ -150,19 +193,24 @@ func newFunction(ev *Evaluator, pattern ast.Node, exprs []ast.Node) (Value, erro
 	return &Function{ev: newEv, pattern: pattern, exprs: exprs}, nil
 }
 
+type NotFunctionError struct {
+	Base  token.Token
+	Value Value
+}
+
+func (e NotFunctionError) Error() string {
+	return utils.MsgAt(e.Base, fmt.Sprintf("%v is not a function", e.Value))
+}
+
 func apply(base token.Token, fun Value, args ...Value) (Value, error) {
 	switch f := fun.(type) {
 	case *Function:
 		return f.ev.match(f.pattern, args, f.exprs)
 	default:
-		return nil, evalError(base, fmt.Sprintf("%v is not a function", fun))
+		return nil, NotFunctionError{Base: base, Value: fun}
 	}
 }
 
 func (ev *Evaluator) match(pattern ast.Node, args []Value, body []ast.Node) (Value, error) {
 	panic("TODO")
-}
-
-func evalError(node ast.Node, msg string) error {
-	return utils.ErrorAt(node.Base(), "[eval] "+msg)
 }

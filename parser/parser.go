@@ -48,23 +48,23 @@ func (p *Parser) decl() ast.Node {
 
 // typeDecl = "type" IDENTIFIER "=" type ;
 func (p *Parser) typeDecl() *ast.TypeDecl {
-	p.consume(token.TYPE, "expected `type`")
-	name := p.consume(token.IDENT, "expected identifier")
-	p.consume(token.EQUAL, "expected `=`")
+	p.consume(token.TYPE)
+	name := p.consume(token.IDENT)
+	p.consume(token.EQUAL)
 	typ := p.typ()
 	return &ast.TypeDecl{Name: name, Type: typ}
 }
 
 // varDecl = "def" identifier "=" expr | "def" identifier ":" type | "def" identifier ":" type "=" expr ;
 func (p *Parser) varDecl() *ast.VarDecl {
-	p.consume(token.DEF, "expected `def`")
+	p.consume(token.DEF)
 	var name token.Token
 	if p.match(token.IDENT) {
 		name = p.advance()
 	} else if p.match(token.OPERATOR) {
 		name = p.advance()
 	} else {
-		p.recover(utils.ErrorAt(p.peek(), "expected identifier or operator"))
+		p.recover(unexpectedTokenError(p.peek(), "identifier", "operator"))
 		return &ast.VarDecl{}
 	}
 	var typ ast.Node
@@ -84,18 +84,18 @@ func (p *Parser) varDecl() *ast.VarDecl {
 func (p *Parser) infixDecl() *ast.InfixDecl {
 	kind := p.advance()
 	if kind.Kind != token.INFIX && kind.Kind != token.INFIXL && kind.Kind != token.INFIXR {
-		p.recover(utils.ErrorAt(kind, "expected `infix`, `infixl`, or `infixr`"))
+		p.recover(unexpectedTokenError(p.peek(), "`infix`", "`infixl`", "`infixr`"))
 		return &ast.InfixDecl{}
 	}
-	precedence := p.consume(token.INTEGER, "expected integer")
-	name := p.consume(token.OPERATOR, "expected operator")
+	precedence := p.consume(token.INTEGER)
+	name := p.consume(token.OPERATOR)
 	return &ast.InfixDecl{Assoc: kind, Prec: precedence, Name: name}
 }
 
 // expr = let | fn | assert ;
 func (p *Parser) expr() ast.Node {
 	if p.IsAtEnd() {
-		p.recover(utils.ErrorAt(p.peek(), "expected expression"))
+		p.recover(unexpectedTokenError(p.peek(), "expression"))
 		return nil
 	}
 	if p.match(token.LET) {
@@ -111,7 +111,7 @@ func (p *Parser) expr() ast.Node {
 func (p *Parser) let() *ast.Let {
 	p.advance()
 	pattern := p.pattern()
-	p.consume(token.EQUAL, "expected `=`")
+	p.consume(token.EQUAL)
 	expr := p.assert()
 	return &ast.Let{Bind: pattern, Body: expr}
 }
@@ -120,7 +120,7 @@ func (p *Parser) let() *ast.Let {
 func (p *Parser) fn() *ast.Lambda {
 	p.advance()
 	pattern := p.pattern()
-	p.consume(token.LEFTBRACE, "expected `{`")
+	p.consume(token.LEFTBRACE)
 	exprs := []ast.Node{p.expr()}
 	for p.match(token.SEMICOLON) {
 		p.advance()
@@ -129,7 +129,7 @@ func (p *Parser) fn() *ast.Lambda {
 		}
 		exprs = append(exprs, p.expr())
 	}
-	p.consume(token.RIGHTBRACE, "expected `}`")
+	p.consume(token.RIGHTBRACE)
 	return &ast.Lambda{Pattern: pattern, Exprs: exprs}
 }
 
@@ -154,12 +154,12 @@ func (p *Parser) atom() ast.Node {
 			}
 			elems = append(elems, p.expr())
 		}
-		p.consume(token.RIGHTPAREN, "expected `)`")
+		p.consume(token.RIGHTPAREN)
 		return &ast.Paren{Elems: elems}
 	case token.LEFTBRACE:
 		return p.codata()
 	default:
-		p.recover(utils.ErrorAt(t, "expected variable, literal, or parenthesized expression"))
+		p.recover(unexpectedTokenError(t, "identifier", "integer", "string", "`(`", "`{`"))
 		return nil
 	}
 }
@@ -191,7 +191,7 @@ func (p *Parser) access() ast.Node {
 	expr := p.call()
 	for p.match(token.DOT) {
 		p.advance()
-		name := p.consume(token.IDENT, "expected identifier")
+		name := p.consume(token.IDENT)
 		expr = &ast.Access{Receiver: expr, Name: name}
 	}
 	return expr
@@ -202,8 +202,8 @@ func (p *Parser) call() ast.Node {
 	var expr ast.Node
 	if p.match(token.PRIM) {
 		p.advance()
-		p.consume(token.LEFTPAREN, "expected `(`")
-		name := p.consume(token.IDENT, "expected identifier")
+		p.consume(token.LEFTPAREN)
+		name := p.consume(token.IDENT)
 		args := []ast.Node{}
 		if !p.match(token.RIGHTPAREN) {
 			for p.match(token.COMMA) {
@@ -214,7 +214,7 @@ func (p *Parser) call() ast.Node {
 				args = append(args, p.expr())
 			}
 		}
-		p.consume(token.RIGHTPAREN, "expected `)`")
+		p.consume(token.RIGHTPAREN)
 		expr = &ast.Prim{Name: name, Args: args}
 	} else {
 		expr = p.atom()
@@ -227,7 +227,7 @@ func (p *Parser) call() ast.Node {
 }
 
 func (p *Parser) finishCall(fun ast.Node) *ast.Call {
-	p.consume(token.LEFTPAREN, "expected `(`")
+	p.consume(token.LEFTPAREN)
 	args := []ast.Node{}
 	if !p.match(token.RIGHTPAREN) {
 		args = append(args, p.expr())
@@ -239,7 +239,7 @@ func (p *Parser) finishCall(fun ast.Node) *ast.Call {
 			args = append(args, p.expr())
 		}
 	}
-	p.consume(token.RIGHTPAREN, "expected `)`")
+	p.consume(token.RIGHTPAREN)
 	return &ast.Call{Func: fun, Args: args}
 }
 
@@ -253,14 +253,14 @@ func (p *Parser) codata() *ast.Codata {
 		}
 		clauses = append(clauses, p.clause())
 	}
-	p.consume(token.RIGHTBRACE, "expected `}`")
+	p.consume(token.RIGHTBRACE)
 	return &ast.Codata{Clauses: clauses}
 }
 
 // clause = pattern "->" expr (";" expr)* ";"? ;
 func (p *Parser) clause() *ast.Clause {
 	pattern := p.pattern()
-	p.consume(token.ARROW, "expected `->`")
+	p.consume(token.ARROW)
 	exprs := []ast.Node{p.expr()}
 	for p.match(token.SEMICOLON) {
 		p.advance()
@@ -275,7 +275,7 @@ func (p *Parser) clause() *ast.Clause {
 // pattern = accessPat ;
 func (p *Parser) pattern() ast.Node {
 	if p.IsAtEnd() {
-		p.recover(utils.ErrorAt(p.peek(), "expected pattern"))
+		p.recover(unexpectedTokenError(p.peek(), "pattern"))
 		return nil
 	}
 	return p.accessPat()
@@ -286,7 +286,7 @@ func (p *Parser) accessPat() ast.Node {
 	pat := p.callPat()
 	for p.match(token.DOT) {
 		p.advance()
-		name := p.consume(token.IDENT, "expected identifier")
+		name := p.consume(token.IDENT)
 		pat = &ast.Access{Receiver: pat, Name: name}
 	}
 	return pat
@@ -302,7 +302,7 @@ func (p *Parser) callPat() ast.Node {
 }
 
 func (p *Parser) finishCallPat(fun ast.Node) *ast.Call {
-	p.consume(token.LEFTPAREN, "expected `(`")
+	p.consume(token.LEFTPAREN)
 	args := []ast.Node{}
 	if !p.match(token.RIGHTPAREN) {
 		args = append(args, p.pattern())
@@ -314,7 +314,7 @@ func (p *Parser) finishCallPat(fun ast.Node) *ast.Call {
 			args = append(args, p.pattern())
 		}
 	}
-	p.consume(token.RIGHTPAREN, "expected `)`")
+	p.consume(token.RIGHTPAREN)
 	return &ast.Call{Func: fun, Args: args}
 }
 
@@ -341,10 +341,10 @@ func (p *Parser) atomPat() ast.Node {
 			}
 			patterns = append(patterns, p.pattern())
 		}
-		p.consume(token.RIGHTPAREN, "expected `)`")
+		p.consume(token.RIGHTPAREN)
 		return &ast.Paren{Elems: patterns}
 	default:
-		p.recover(utils.ErrorAt(t, "expected variable, literal, or parenthesized pattern"))
+		p.recover(unexpectedTokenError(t, "identifier", "integer", "string", "`(`"))
 		return nil
 	}
 }
@@ -352,7 +352,7 @@ func (p *Parser) atomPat() ast.Node {
 // type = binopType ;
 func (p *Parser) typ() ast.Node {
 	if p.IsAtEnd() {
-		p.recover(utils.ErrorAt(p.peek(), "expected type"))
+		p.recover(unexpectedTokenError(p.peek(), "type"))
 		return nil
 	}
 	return p.binopType()
@@ -379,7 +379,7 @@ func (p *Parser) callType() ast.Node {
 }
 
 func (p *Parser) finishCallType(fun ast.Node) *ast.Call {
-	p.consume(token.LEFTPAREN, "expected `(`")
+	p.consume(token.LEFTPAREN)
 	args := []ast.Node{}
 	if !p.match(token.RIGHTPAREN) {
 		args = append(args, p.typ())
@@ -391,7 +391,7 @@ func (p *Parser) finishCallType(fun ast.Node) *ast.Call {
 			args = append(args, p.typ())
 		}
 	}
-	p.consume(token.RIGHTPAREN, "expected `)`")
+	p.consume(token.RIGHTPAREN)
 	return &ast.Call{Func: fun, Args: args}
 }
 
@@ -410,7 +410,7 @@ func (p *Parser) atomType() ast.Node {
 			}
 			fields = append(fields, p.fieldType())
 		}
-		p.consume(token.RIGHTBRACE, "expected `}`")
+		p.consume(token.RIGHTBRACE)
 		return &ast.Object{Fields: fields}
 	case token.LEFTPAREN:
 		if p.match(token.RIGHTPAREN) {
@@ -425,18 +425,18 @@ func (p *Parser) atomType() ast.Node {
 			}
 			types = append(types, p.typ())
 		}
-		p.consume(token.RIGHTPAREN, "expected `)`")
+		p.consume(token.RIGHTPAREN)
 		return &ast.Paren{Elems: types}
 	default:
-		p.recover(utils.ErrorAt(t, "expected variable or parenthesized type"))
+		p.recover(unexpectedTokenError(t, "identifier", "`{`", "`(`"))
 		return nil
 	}
 }
 
 // fieldType = IDENTIFIER ":" type ;
 func (p *Parser) fieldType() *ast.Field {
-	name := p.consume(token.IDENT, "expected identifier")
-	p.consume(token.COLON, "expected `:`")
+	name := p.consume(token.IDENT)
+	p.consume(token.COLON)
 	typ := p.typ()
 	return &ast.Field{Name: name.Lexeme, Exprs: []ast.Node{typ}}
 }
@@ -471,11 +471,33 @@ func (p Parser) match(kind token.TokenKind) bool {
 	return p.peek().Kind == kind
 }
 
-func (p *Parser) consume(kind token.TokenKind, message string) token.Token {
+func (p *Parser) consume(kind token.TokenKind) token.Token {
 	if p.match(kind) {
 		return p.advance()
 	}
 
-	p.err = errors.Join(p.err, utils.ErrorAt(p.peek(), message))
+	p.err = errors.Join(p.err, unexpectedTokenError(p.peek(), kind.String()))
 	return p.peek()
+}
+
+type UnexpectedTokenError struct {
+	Token    token.Token
+	Expected []string
+}
+
+func (e UnexpectedTokenError) Error() string {
+	var msg string
+	if len(e.Expected) >= 1 {
+		msg = e.Expected[0]
+	}
+
+	for _, ex := range e.Expected[1:] {
+		msg = msg + ", " + ex
+	}
+
+	return utils.MsgAt(e.Token, "unexpected token: "+e.Token.Kind.String()+", expected "+msg)
+}
+
+func unexpectedTokenError(t token.Token, expected ...string) error {
+	return UnexpectedTokenError{Token: t, Expected: expected}
 }

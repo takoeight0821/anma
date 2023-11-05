@@ -40,6 +40,18 @@ const (
 	zeroArgs   = 0
 )
 
+type ArityError struct {
+	Expected int
+	Where    token.Token
+}
+
+func (e ArityError) Error() string {
+	if e.Expected >= noArgs {
+		return utils.MsgAt(e.Where, fmt.Sprintf("arity mismatch: expected %d arguments", e.Expected))
+	}
+	return utils.MsgAt(e.Where, fmt.Sprintf("unreachable: arity is not checked"))
+}
+
 func flatCodata(c *ast.Codata) ast.Node {
 	// Generate PatternList
 	arity := notChecked
@@ -55,17 +67,17 @@ func flatCodata(c *ast.Codata) ast.Node {
 		}
 		if arity == noArgs {
 			if plist.params != nil {
-				panic(utils.ErrorAt(c.Base(), fmt.Sprintf("arity mismatch %v", c)))
+				panic(ArityError{Expected: noArgs, Where: c.Base()})
 			}
 			continue
 		}
 		if arity != len(plist.params) {
-			panic(utils.ErrorAt(c.Base(), fmt.Sprintf("arity mismatch %v", c)))
+			panic(ArityError{Expected: arity, Where: c.Base()})
 		}
 	}
 
 	if arity == notChecked {
-		panic(utils.ErrorAt(c.Base(), fmt.Sprintf("unreachable: arity is not checked %v", c)))
+		panic(ArityError{Expected: notChecked, Where: c.Base()})
 	}
 
 	return newBuilder().build(arity, c.Clauses)
@@ -87,6 +99,14 @@ func (b *builder) build(arity int, clauses []*ast.Clause) ast.Node {
 	return b.lambda(arity, clauses)
 }
 
+type UnsupportedPatternError struct {
+	Clause *ast.Clause
+}
+
+func (e UnsupportedPatternError) Error() string {
+	return utils.MsgAt(e.Clause.Base(), fmt.Sprintf("unsupported pattern %v", e.Clause))
+}
+
 func (b builder) object(clauses []*ast.Clause) ast.Node {
 	// Pop the first accessor of each clause and group remaining clauses by the popped accessor.
 	next := make(map[string][]*ast.Clause)
@@ -97,7 +117,7 @@ func (b builder) object(clauses []*ast.Clause) ast.Node {
 				next[field.String()],
 				&ast.Clause{Pattern: plist, Exprs: c.Exprs})
 		} else {
-			panic(utils.ErrorAt(c.Base(), fmt.Sprintf("not implemented: %v\nmix of pure pattern and copattern is not supported yet", c)))
+			panic(UnsupportedPatternError{Clause: c})
 		}
 	}
 
@@ -210,8 +230,12 @@ func (b *builder) lambda(arity int, clauses []*ast.Clause) ast.Node {
 	}
 }
 
-func invalidPattern(n ast.Node) error {
-	return utils.ErrorAt(n.Base(), fmt.Sprintf("invalid pattern %v", n))
+type InvalidCallPatternError struct {
+	Pattern ast.Node
+}
+
+func (e InvalidCallPatternError) Error() string {
+	return utils.MsgAt(e.Pattern.Base(), fmt.Sprintf("invalid call pattern %v", e.Pattern))
 }
 
 // Collect all Access patterns recursively.
@@ -231,7 +255,7 @@ func params(p ast.Node) []ast.Node {
 		return params(p.Receiver)
 	case *ast.Call:
 		if _, ok := p.Func.(*ast.This); !ok {
-			panic(invalidPattern(p))
+			panic(InvalidCallPatternError{Pattern: p})
 		}
 		return p.Args
 	default:

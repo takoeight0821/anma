@@ -52,10 +52,18 @@ func (r *Renamer) scoped(f func()) {
 	r.env = r.env.parent
 }
 
+type AlreadyDefinedError struct {
+	Name token.Token
+}
+
+func (e AlreadyDefinedError) Error() string {
+	return utils.MsgAt(e.Name, fmt.Sprintf("%v is already defined", e.Name))
+}
+
 func (r *Renamer) assign(node ast.Node, overridable bool) {
 	addTable := func(name token.Token) {
 		if _, ok := r.env.table[name.Lexeme]; ok && !overridable {
-			r.error(utils.ErrorAt(name.Base(), fmt.Sprintf("%v is already defined", name)))
+			r.error(AlreadyDefinedError{Name: name})
 			return
 		}
 		r.env.table[name.Lexeme] = r.unique()
@@ -93,7 +101,7 @@ func (r *Renamer) unique() int {
 }
 
 func (r *Renamer) Lookup(name token.Token) int {
-	uniq, err := r.env.lookup(name.Lexeme)
+	uniq, err := r.env.lookup(name)
 	if err != nil {
 		r.error(err)
 	}
@@ -109,14 +117,22 @@ func NewRnEnv(parent *rnEnv) *rnEnv {
 	return &rnEnv{table: make(map[string]int), parent: parent}
 }
 
-func (e *rnEnv) lookup(name string) (int, error) {
-	if uniq, ok := e.table[name]; ok {
+type NotDefinedError struct {
+	Name token.Token
+}
+
+func (e NotDefinedError) Error() string {
+	return utils.MsgAt(e.Name, fmt.Sprintf("%v is not defined", e.Name))
+}
+
+func (e *rnEnv) lookup(name token.Token) (int, error) {
+	if uniq, ok := e.table[name.Lexeme]; ok {
 		return uniq, nil
 	}
 	if e.parent != nil {
 		return e.parent.lookup(name)
 	}
-	return -1, fmt.Errorf("%v is not defined", name)
+	return -1, NotDefinedError{Name: name}
 }
 
 func (r *Renamer) Solve(node ast.Node) ast.Node {
@@ -244,7 +260,6 @@ func (r *Renamer) Solve(node ast.Node) ast.Node {
 	case *ast.This:
 		return n
 	default:
-		r.error(utils.ErrorAt(n.Base(), fmt.Sprintf("Renamer.Solve not implemented: %v", n)))
-		return n
+		panic("unreachable")
 	}
 }
