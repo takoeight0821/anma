@@ -1,4 +1,4 @@
-// Simple evaluator for testing.
+// Package eval is the simple evaluator for testing.
 package eval
 
 import (
@@ -80,6 +80,23 @@ func (ev *Evaluator) Eval(node ast.Node) (Value, error) {
 			}
 		}
 		return evalPrim(n.Name, values)
+	case *ast.Binary:
+		op, err := ev.lookup(n.Op)
+		if err != nil {
+			return nil, err
+		}
+
+		lhs, err := ev.Eval(n.Left)
+		if err != nil {
+			return nil, err
+		}
+
+		rhs, err := ev.Eval(n.Right)
+		if err != nil {
+			return nil, err
+		}
+
+		return apply(n.Base(), op, lhs, rhs)
 	case *ast.Lambda:
 		return newFunction(ev, n.Pattern, n.Exprs)
 	case *ast.VarDecl:
@@ -131,6 +148,19 @@ func newFunction(ev *Evaluator, pattern ast.Node, exprs []ast.Node) (Value, erro
 	}
 
 	return &Function{ev: newEv, pattern: pattern, exprs: exprs}, nil
+}
+
+func apply(base token.Token, fun Value, args ...Value) (Value, error) {
+	switch f := fun.(type) {
+	case *Function:
+		return f.ev.match(f.pattern, args, f.exprs)
+	default:
+		return nil, evalError(base, fmt.Sprintf("%v is not a function", fun))
+	}
+}
+
+func (ev *Evaluator) match(pattern ast.Node, args []Value, body []ast.Node) (Value, error) {
+	panic("TODO")
 }
 
 func evalError(node ast.Node, msg string) error {
