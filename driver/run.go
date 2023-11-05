@@ -1,6 +1,8 @@
 package driver
 
 import (
+	"fmt"
+
 	"github.com/takoeight0821/anma/ast"
 	"github.com/takoeight0821/anma/lexer"
 	"github.com/takoeight0821/anma/parser"
@@ -30,11 +32,11 @@ func (r *PassRunner) Run(program []ast.Node) ([]ast.Node, error) {
 	for _, pass := range r.passes {
 		err := pass.Init(program)
 		if err != nil {
-			return program, err
+			return program, fmt.Errorf("init: %w", err)
 		}
 		program, err = pass.Run(program)
 		if err != nil {
-			return program, err
+			return program, fmt.Errorf("run: %w", err)
 		}
 	}
 
@@ -45,7 +47,7 @@ func (r *PassRunner) Run(program []ast.Node) ([]ast.Node, error) {
 func (r *PassRunner) RunSource(source string) ([]ast.Node, error) {
 	tokens, err := lexer.Lex(source)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("lex: %w", err)
 	}
 
 	var program []ast.Node
@@ -54,7 +56,7 @@ func (r *PassRunner) RunSource(source string) ([]ast.Node, error) {
 	} else if expr, err := parser.NewParser(tokens).ParseExpr(); err == nil {
 		program = []ast.Node{expr}
 	} else {
-		return nil, err
+		return nil, fmt.Errorf("parse: %w", err)
 	}
 
 	return r.Run(program)

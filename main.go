@@ -71,7 +71,7 @@ func RunPrompt() error {
 	for {
 		input, err := line.Prompt("> ")
 		if err != nil {
-			return err
+			return fmt.Errorf("prompt: %w", err)
 		}
 		line.AppendHistory(input)
 		nodes, err := r.RunSource(input)
@@ -104,9 +104,9 @@ func RunFile(path string) error {
 	r.AddPass(rename.NewRenamer())
 	bytes, err := os.ReadFile(path)
 	if err != nil {
-		return err
+		return fmt.Errorf("read file: %w", err)
 	}
 
 	_, err = r.RunSource(string(bytes))
-	return err
+	return fmt.Errorf("run source: %w", err)
 }

@@ -58,6 +58,15 @@ func (l *lexer) addToken(kind token.TokenKind, literal any) {
 	l.tokens = append(l.tokens, token.Token{Kind: kind, Lexeme: text, Line: l.line, Literal: literal})
 }
 
+type UnexpectedCharacterError struct {
+	Line int
+	Char rune
+}
+
+func (e UnexpectedCharacterError) Error() string {
+	return fmt.Sprintf("unexpected character: %c at line %d", e.Char, e.Line)
+}
+
 func (l *lexer) scanToken() error {
 	l.start = l.current
 	c := l.advance()
@@ -85,7 +94,15 @@ func (l *lexer) scanToken() error {
 			return l.operator()
 		}
 	}
-	return fmt.Errorf("unexpected character: %c", c)
+	return UnexpectedCharacterError{Line: l.line, Char: c}
+}
+
+type UnterminatedStringError struct {
+	Line int
+}
+
+func (e UnterminatedStringError) Error() string {
+	return fmt.Sprintf("unterminated string at line %d", e.Line)
 }
 
 func (l *lexer) string() error {
@@ -96,20 +113,20 @@ func (l *lexer) string() error {
 		if l.peek() == '\\' {
 			l.advance()
 			if l.isAtEnd() {
-				return fmt.Errorf("unterminated string")
+				return UnterminatedStringError{Line: l.line}
 			}
 		}
 		l.advance()
 	}
 
 	if l.isAtEnd() {
-		return fmt.Errorf("unterminated string")
+		return UnterminatedStringError{Line: l.line}
 	}
 
 	r := l.advance()
 
 	if r != '"' {
-		return fmt.Errorf("unterminated string")
+		return UnterminatedStringError{Line: l.line}
 	}
 
 	value := string(l.source[l.start+1 : l.current-1])
@@ -127,8 +144,11 @@ func (l *lexer) integer() error {
 	}
 
 	value, err := strconv.Atoi(string(l.source[l.start:l.current]))
+	if err != nil {
+		return fmt.Errorf("invalid integer: %w", err)
+	}
 	l.addToken(token.INTEGER, value)
-	return err
+	return nil
 }
 
 func isAlpha(c rune) bool {
