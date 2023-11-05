@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -75,8 +76,9 @@ func RunPrompt() error {
 		line.AppendHistory(input)
 		nodes, err := r.RunSource(input)
 		if err != nil {
-			if errs, ok := err.(interface{ Unwrap() []error }); ok {
-				for _, err := range errs.Unwrap() {
+			var wrappedErr interface{ Unwrap() []error }
+			if errors.As(err, &wrappedErr) {
+				for _, err := range wrappedErr.Unwrap() {
 					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 				}
 			} else {

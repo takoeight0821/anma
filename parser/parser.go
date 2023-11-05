@@ -135,6 +135,7 @@ func (p *Parser) fn() *ast.Lambda {
 
 // atom = var | literal | paren | codata ;
 func (p *Parser) atom() ast.Node {
+	//exhaustive:ignore
 	switch t := p.advance(); t.Kind {
 	case token.IDENT:
 		return &ast.Var{Name: t}
@@ -319,6 +320,7 @@ func (p *Parser) finishCallPat(fun ast.Node) *ast.Call {
 
 // atomPat = IDENT | INTEGER | STRING | "(" pattern ("," pattern)* ","? ")" ;
 func (p *Parser) atomPat() ast.Node {
+	//exhaustive:ignore
 	switch t := p.advance(); t.Kind {
 	case token.SHARP:
 		return &ast.This{Token: t}
@@ -395,6 +397,7 @@ func (p *Parser) finishCallType(fun ast.Node) *ast.Call {
 
 // atomType = IDENT | "{" fieldType ("," fieldType)* ","? "}" | "(" type ("," type)* ","? ")" ;
 func (p *Parser) atomType() ast.Node {
+	//exhaustive:ignore
 	switch t := p.advance(); t.Kind {
 	case token.IDENT:
 		return &ast.Var{Name: t}

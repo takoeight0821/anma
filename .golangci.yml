@@ -1,0 +1,16 @@
+linters:
+  presets:
+    - bugs
+    # - comment
+    # - error
+    # - format
+    # - import
+    # - metalinter
+    # - module
+    # - performance
+    # - style
+    # - test
+    # - unused
+    # Disable
+    # - sql
+    # - complexity
