@@ -1,45 +1,45 @@
 package infix_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/takoeight0821/anma/codata"
 	"github.com/takoeight0821/anma/driver"
 	"github.com/takoeight0821/anma/infix"
+	"github.com/takoeight0821/anma/utils"
 )
 
-func completeInfix(t *testing.T, input1, input2, expected string) {
+func completeInfix(t *testing.T, input, expected string) {
 	runner := driver.NewPassRunner()
 	runner.AddPass(codata.Flat{})
 	runner.AddPass(infix.NewInfixResolver())
 
-	_, err := runner.RunSource(input1)
+	nodes, err := runner.RunSource(input)
 	if err != nil {
 		t.Errorf("RunSource returned error: %v", err)
 	}
 
-	node, err := runner.RunSource(input2)
-	if err != nil {
-		t.Errorf("RunSource returned error: %v", err)
+	var b strings.Builder
+	for _, node := range nodes {
+		b.WriteString(node.String())
+		b.WriteString("\n")
 	}
-
-	actual := node[0].String()
+	actual := b.String()
 
 	if actual != expected {
-		t.Errorf("InfixResolver returned\n%q, expected\n%q", actual, expected)
+		t.Errorf("RunSource returned:\n%s\n\nexpected:\n%s", actual, expected)
 	}
 }
 
 func TestInfix(t *testing.T) {
-	testcases := []struct {
-		input1   string
-		input2   string
-		expected string
-	}{
-		{"infixl 6 +\ninfixl 8 *", "1 + 2 * 3", "(binary (literal 1) + (binary (literal 2) * (literal 3)))"},
-		{"infixl 6 +\ninfixl 8 *", "1 * 2 + 3", "(binary (binary (literal 1) * (literal 2)) + (literal 3))"},
-	}
+	testcases := utils.ReadTestData()
+
 	for _, testcase := range testcases {
-		completeInfix(t, testcase.input1, testcase.input2, testcase.expected)
+		if expected, ok := testcase.Expected["infix"]; ok {
+			completeInfix(t, testcase.Input, expected)
+		} else {
+			completeInfix(t, testcase.Input, "no expected value")
+		}
 	}
 }

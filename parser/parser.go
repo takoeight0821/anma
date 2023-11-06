@@ -369,9 +369,29 @@ func (p *Parser) binopType() ast.Node {
 	return typ
 }
 
-// callType = atomType ("(" ")" | "(" type ("," type)* ","? ")")* ;
+// callType = (PRIM "(" IDENTIFIER ("," type)* ","? ")" | atomType) ("(" ")" | "(" type ("," type)* ","? ")")* ;
 func (p *Parser) callType() ast.Node {
-	typ := p.atomType()
+	var typ ast.Node
+	if p.match(token.PRIM) {
+		p.advance()
+		p.consume(token.LEFTPAREN)
+		name := p.consume(token.IDENT)
+		args := []ast.Node{}
+		if !p.match(token.RIGHTPAREN) {
+			for p.match(token.COMMA) {
+				p.advance()
+				if p.match(token.RIGHTPAREN) {
+					break
+				}
+				args = append(args, p.typ())
+			}
+		}
+		p.consume(token.RIGHTPAREN)
+		typ = &ast.Prim{Name: name, Args: args}
+	} else {
+		typ = p.atomType()
+	}
+
 	for p.match(token.LEFTPAREN) {
 		typ = p.finishCallType(typ)
 	}

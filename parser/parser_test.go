@@ -157,7 +157,7 @@ func newCompleteParse(t *testing.T, input string, expected string) {
 
 	actual := b.String()
 	if actual != expected {
-		t.Errorf("RunSource returned %q, expected %q", actual, expected)
+		t.Errorf("RunSource returned:\n%s\n\nexpected:\n%s", actual, expected)
 	}
 }
 

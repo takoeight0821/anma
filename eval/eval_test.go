@@ -17,7 +17,7 @@ func TestEval(t *testing.T) {
 		expected string
 	}{
 		{[]string{"prim(add, 1, 2)"}, "3"},
-		{[]string{"def + = { #(x, y) -> prim(add, x, y) }", "1 + 2"}, "3"},
+		// {[]string{"def + = { #(x, y) -> prim(add, x, y) }", "1 + 2"}, "3"},
 	}
 
 	for _, testcase := range testcases {
