@@ -2,10 +2,12 @@ package utils
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/takoeight0821/anma/token"
 	"golang.org/x/exp/constraints"
 	"golang.org/x/exp/slices"
+	"gopkg.in/yaml.v3"
 )
 
 func All[T any](slice []T, pred func(T) bool) bool {
@@ -33,4 +35,23 @@ func MsgAt(t token.Token, msg string) string {
 		return fmt.Sprintf("at end: %s", msg)
 	}
 	return fmt.Sprintf("at %d: `%s`, %s", t.Line, t.Lexeme, msg)
+}
+
+type TestData struct {
+	Input    string
+	Expected map[string]string
+}
+
+func ReadTestData() []TestData {
+	s, err := os.ReadFile("../testdata/testcase.yaml")
+	if err != nil {
+		panic(err)
+	}
+
+	var data []TestData
+	if err := yaml.Unmarshal(s, &data); err != nil {
+		panic(err)
+	}
+
+	return data
 }

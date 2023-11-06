@@ -5,8 +5,10 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"github.com/takoeight0821/anma/driver"
 	"github.com/takoeight0821/anma/lexer"
 	"github.com/takoeight0821/anma/parser"
+	"github.com/takoeight0821/anma/utils"
 )
 
 func completeParseExpr(t *testing.T, input string, expected string) {
@@ -125,6 +127,37 @@ func tryParse(t *testing.T, input string) {
 	if err != nil {
 		t.Logf("Parse(%q) returned error: %v", input, err)
 		return
+	}
+}
+
+func TestParseFromTestData(t *testing.T) {
+	testcases := utils.ReadTestData()
+	for _, testcase := range testcases {
+		if expected, ok := testcase.Expected["parser"]; ok {
+			newCompleteParse(t, testcase.Input, expected)
+		} else {
+			t.Logf("no expected result for %q", testcase.Input)
+		}
+	}
+}
+
+func newCompleteParse(t *testing.T, input string, expected string) {
+	r := driver.NewPassRunner()
+
+	nodes, err := r.RunSource(input)
+	if err != nil {
+		t.Errorf("RunSource returned error: %v", err)
+	}
+
+	var b strings.Builder
+	for _, node := range nodes {
+		b.WriteString(node.String())
+		b.WriteString("\n")
+	}
+
+	actual := b.String()
+	if actual != expected {
+		t.Errorf("RunSource returned %q, expected %q", actual, expected)
 	}
 }
 

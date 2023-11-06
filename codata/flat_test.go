@@ -6,6 +6,7 @@ import (
 
 	"github.com/takoeight0821/anma/codata"
 	"github.com/takoeight0821/anma/driver"
+	"github.com/takoeight0821/anma/utils"
 )
 
 func completeFlat(t *testing.T, input string, expected string) {
@@ -35,6 +36,7 @@ func TestFlat(t *testing.T) {
 		{"{ #(x,y)->x+y}", "(lambda (paren (var x0) (var x1)) (case (paren (var x0) (var x1)) (clause (paren (var x) (var y)) (binary (var x) + (var y)))))"},
 		{"{ #() -> 1 + 2 }", "(lambda (paren) (case (paren) (clause (paren) (binary (literal 1) + (literal 2)))))"},
 	}
+
 	for _, testcase := range testcases {
 		completeFlat(t, testcase.input, testcase.expected)
 	}
@@ -70,5 +72,34 @@ func TestFlatDecl(t *testing.T) {
 	}
 	for _, testcase := range testcases {
 		completeFlatDecl(t, testcase.input, testcase.expected)
+	}
+}
+
+func TestFlatFromTestData(t *testing.T) {
+	testcases := utils.ReadTestData()
+
+	for _, testcase := range testcases {
+		if expected, ok := testcase.Expected["flat"]; ok {
+			newCompleteFlat(t, testcase.Input, expected)
+		} else {
+			t.Logf("no expected result for %q", testcase.Input)
+		}
+	}
+}
+
+func newCompleteFlat(t *testing.T, input string, expected []string) {
+	r := driver.NewPassRunner()
+	r.AddPass(codata.Flat{})
+
+	nodes, err := r.RunSource(input)
+	if err != nil {
+		t.Errorf("RunSource returned error: %v", err)
+	}
+
+	for i, node := range nodes {
+		actual := node.String()
+		if actual != expected[i] {
+			t.Errorf("Flat returned\n%q, expected\n%q", actual, expected[i])
+		}
 	}
 }
