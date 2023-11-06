@@ -79,15 +79,15 @@ func TestFlatFromTestData(t *testing.T) {
 	testcases := utils.ReadTestData()
 
 	for _, testcase := range testcases {
-		if expected, ok := testcase.Expected["flat"]; ok {
+		if expected, ok := testcase.Expected["codata"]; ok {
 			newCompleteFlat(t, testcase.Input, expected)
 		} else {
-			t.Logf("no expected result for %q", testcase.Input)
+			newCompleteFlat(t, testcase.Input, "no expected value")
 		}
 	}
 }
 
-func newCompleteFlat(t *testing.T, input string, expected []string) {
+func newCompleteFlat(t *testing.T, input string, expected string) {
 	r := driver.NewPassRunner()
 	r.AddPass(codata.Flat{})
 
@@ -96,10 +96,15 @@ func newCompleteFlat(t *testing.T, input string, expected []string) {
 		t.Errorf("RunSource returned error: %v", err)
 	}
 
-	for i, node := range nodes {
-		actual := node.String()
-		if actual != expected[i] {
-			t.Errorf("Flat returned\n%q, expected\n%q", actual, expected[i])
-		}
+	var b strings.Builder
+	for _, node := range nodes {
+		b.WriteString(node.String())
+		b.WriteString("\n")
+	}
+
+	actual := b.String()
+
+	if actual != expected {
+		t.Errorf("RunSource returned %q, expected %q", actual, expected)
 	}
 }

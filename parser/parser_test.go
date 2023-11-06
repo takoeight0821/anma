@@ -136,7 +136,7 @@ func TestParseFromTestData(t *testing.T) {
 		if expected, ok := testcase.Expected["parser"]; ok {
 			newCompleteParse(t, testcase.Input, expected)
 		} else {
-			t.Logf("no expected result for %q", testcase.Input)
+			newCompleteParse(t, testcase.Input, "no expected value")
 		}
 	}
 }

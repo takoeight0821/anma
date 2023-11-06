@@ -16,6 +16,11 @@
       (def zipWith (codata (clause (access (call (this #) (var f) (var xs) (var ys)) head) (call (var f) (access (var xs) head) (access (var ys) head))) (clause (access (call (this #) (var f) (var xs) (var ys)) tail) (call (var zipWith) (var f) (access (var xs) tail) (access (var ys) tail)))))
       (def fib (codata (clause (access (this #) head) (literal 1)) (clause (access (access (this #) tail) head) (literal 1)) (clause (access (access (this #) tail) tail) (call (var zipWith) (codata (clause (call (this #) (var x) (var y)) (binary (var x) + (var y)))) (var fib) (access (var fib) tail)))))
       (def main (codata (clause (call (this #)) (call (var fib) (literal 10)))))
+    codata: |
+      (def + (lambda (paren (var x0) (var x1)) (case (paren (var x0) (var x1)) (clause (paren (var x) (var y)) (prim add (var x) (var y))))))
+      (def zipWith (lambda (paren (var x0) (var x1) (var x2)) (object (field head (case (paren (var x0) (var x1) (var x2)) (clause (paren (var f) (var xs) (var ys)) (call (var f) (access (var xs) head) (access (var ys) head))))) (field tail (case (paren (var x0) (var x1) (var x2)) (clause (paren (var f) (var xs) (var ys)) (call (var zipWith) (var f) (access (var xs) tail) (access (var ys) tail))))))))
+      (def fib (object (field head (literal 1)) (field tail (object (field head (literal 1)) (field tail (call (var zipWith) (lambda (paren (var x0) (var x1)) (case (paren (var x0) (var x1)) (clause (paren (var x) (var y)) (binary (var x) + (var y))))) (var fib) (access (var fib) tail)))))))
+      (def main (lambda (paren) (case (paren) (clause (paren) (call (var fib) (literal 10))))))
 - input: |
     type List = Nil | Cons(Int, List)
     def map = {
@@ -49,3 +54,11 @@
       (def tree1 (codata (clause (access (this #) node) (literal 2)) (clause (access (this #) children) (var Nil))))
       (def tree2 (codata (clause (access (this #) node) (literal 3)) (clause (access (this #) children) (call (var Cons) (var tree) (var Nil)))))
       (def main (codata (clause (call (this #)) (call (var prune) (literal 2) (var tree)))))
+    codata: |
+      (type List (binary (var Nil) | (call (var Cons) (var Int) (var List))))
+      (def map (lambda (paren (var x0) (var x1)) (case (paren (var x0) (var x1)) (clause (paren (var f) (var Nil)) (var Nil)) (clause (paren (var f) (call (var Cons) (var x) (var xs))) (call (var Cons) (call (var f) (var x)) (call (var map) (var f) (var xs)))))))
+      (def prune (lambda (paren (var x0) (var x1)) (object (field children (case (paren (var x0) (var x1)) (clause (paren (literal 0) (var t)) (var Nil)) (clause (paren (var x) (var t)) (call (var map) (call (var prune) (binary (var x) - (literal 1))) (access (var t) children))))) (field node (case (paren (var x0) (var x1)) (clause (paren (var x) (var t)) (access (var t) node)))))))
+      (def tree (object (field children (call (var Cons) (var tree1) (call (var Cons) (var tree2) (var Nil)))) (field node (literal 1))))
+      (def tree1 (object (field children (var Nil)) (field node (literal 2))))
+      (def tree2 (object (field children (call (var Cons) (var tree) (var Nil))) (field node (literal 3))))
+      (def main (lambda (paren) (case (paren) (clause (paren) (call (var prune) (literal 2) (var tree))))))
