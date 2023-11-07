@@ -48,11 +48,15 @@ type Token struct {
 	Literal any
 }
 
-func (t Token) String() string {
+func (t Token) Pretty() string {
 	if (t.Kind == IDENT || t.Kind == OPERATOR) && t.Literal != nil {
 		return fmt.Sprintf("%s.%#v", t.Lexeme, t.Literal)
 	}
 	return t.Lexeme
+}
+
+func (t Token) String() string {
+	return fmt.Sprintf("{%v, %q, %d, %v}", t.Kind, t.Lexeme, t.Line, t.Literal)
 }
 
 func (t Token) Base() Token {

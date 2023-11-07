@@ -19,10 +19,7 @@ type Var struct {
 }
 
 func (v Var) String() string {
-	if v.Name.Literal == nil {
-		return parenthesize("var", v.Name)
-	}
-	return parenthesize("var", v.Name)
+	return fmt.Sprintf("(var %s)", v.Name.Pretty())
 }
 
 func (v *Var) Base() token.Token {
@@ -36,7 +33,7 @@ type Literal struct {
 }
 
 func (l Literal) String() string {
-	return parenthesize("literal", l.Token)
+	return fmt.Sprintf("(literal %s)", l.Token.Pretty())
 }
 
 func (l *Literal) Base() token.Token {
@@ -71,7 +68,7 @@ type Access struct {
 }
 
 func (a Access) String() string {
-	return parenthesize("access", a.Receiver, a.Name)
+	return fmt.Sprintf("(access %v %s)", a.Receiver, a.Name.Pretty())
 }
 
 func (a *Access) Base() token.Token {
@@ -101,7 +98,11 @@ type Prim struct {
 }
 
 func (p Prim) String() string {
-	return parenthesize("prim", prepend(p.Name, p.Args)...)
+	args := make([]string, len(p.Args))
+	for i, arg := range p.Args {
+		args[i] = arg.String()
+	}
+	return fmt.Sprintf("(prim %s %s)", p.Name.Pretty(), strings.Join(args, " "))
 }
 
 func (p *Prim) Base() token.Token {
@@ -117,7 +118,7 @@ type Binary struct {
 }
 
 func (b Binary) String() string {
-	return parenthesize("binary", b.Left, b.Op, b.Right)
+	return fmt.Sprintf("(binary %v %s %v)", b.Left, b.Op.Pretty(), b.Right)
 }
 
 func (b *Binary) Base() token.Token {
@@ -256,7 +257,7 @@ type TypeDecl struct {
 }
 
 func (t TypeDecl) String() string {
-	return parenthesize("type", t.Name, t.Type)
+	return fmt.Sprintf("(type %s %s)", t.Name.Pretty(), t.Type.String())
 }
 
 func (t *TypeDecl) Base() token.Token {
@@ -273,12 +274,12 @@ type VarDecl struct {
 
 func (v VarDecl) String() string {
 	if v.Type == nil {
-		return parenthesize("def", v.Name, v.Expr)
+		return fmt.Sprintf("(def %s %s)", v.Name.Pretty(), v.Expr.String())
 	}
 	if v.Expr == nil {
-		return parenthesize("def", v.Name, v.Type)
+		return fmt.Sprintf("(def %s %s)", v.Name.Pretty(), v.Type.String())
 	}
-	return parenthesize("def", v.Name, v.Type, v.Expr)
+	return fmt.Sprintf("(def %s %s %s)", v.Name.Pretty(), v.Type.String(), v.Expr.String())
 }
 
 func (v *VarDecl) Base() token.Token {
@@ -294,7 +295,7 @@ type InfixDecl struct {
 }
 
 func (i InfixDecl) String() string {
-	return parenthesize("infix", i.Assoc, i.Prec, i.Name)
+	return fmt.Sprintf("(infix %s %s %s)", i.Assoc.Pretty(), i.Prec.Pretty(), i.Name.Pretty())
 }
 
 func (i *InfixDecl) Base() token.Token {
@@ -308,7 +309,7 @@ type This struct {
 }
 
 func (t This) String() string {
-	return parenthesize("this", t.Token)
+	return fmt.Sprintf("(this %s)", t.Token.Pretty())
 }
 
 func (t *This) Base() token.Token {

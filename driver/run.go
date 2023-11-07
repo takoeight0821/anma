@@ -1,6 +1,7 @@
 package driver
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/takoeight0821/anma/ast"
@@ -50,14 +51,15 @@ func (r *PassRunner) RunSource(source string) ([]ast.Node, error) {
 		return nil, fmt.Errorf("lex: %w", err)
 	}
 
-	var program []ast.Node
-	if decls, err := parser.NewParser(tokens).ParseDecl(); err == nil {
-		program = decls
-	} else if expr, err := parser.NewParser(tokens).ParseExpr(); err == nil {
-		program = []ast.Node{expr}
-	} else {
-		return nil, fmt.Errorf("parse: %w", err)
+	decls, errDecls := parser.NewParser(tokens).ParseDecl()
+	if errDecls == nil {
+		return r.Run(decls)
 	}
 
-	return r.Run(program)
+	expr, errExpr := parser.NewParser(tokens).ParseExpr()
+	if errExpr == nil {
+		return r.Run([]ast.Node{expr})
+	}
+
+	return nil, fmt.Errorf("parse:\n%w", errors.Join(errDecls, errExpr))
 }
