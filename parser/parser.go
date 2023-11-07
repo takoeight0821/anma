@@ -46,13 +46,13 @@ func (p *Parser) decl() ast.Node {
 	return p.infixDecl()
 }
 
-// typeDecl = "type" IDENTIFIER "=" type ;
+// typeDecl = "type" type "=" type ;
 func (p *Parser) typeDecl() *ast.TypeDecl {
 	p.consume(token.TYPE)
-	name := p.consume(token.IDENT)
+	def := p.typ()
 	p.consume(token.EQUAL)
 	typ := p.typ()
-	return &ast.TypeDecl{Name: name, Type: typ}
+	return &ast.TypeDecl{Def: def, Type: typ}
 }
 
 // varDecl = "def" identifier "=" expr | "def" identifier ":" type | "def" identifier ":" type "=" expr ;

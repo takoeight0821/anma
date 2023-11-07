@@ -12,6 +12,10 @@ import (
 // Flat converts Copatterns ([Access] and [This] in [Pattern]) into [Object] and [Lambda].
 type Flat struct{}
 
+func (Flat) Name() string {
+	return "codata.Flat"
+}
+
 func (Flat) Init([]ast.Node) error {
 	return nil
 }
@@ -113,8 +117,8 @@ func (b builder) object(clauses []*ast.Clause) ast.Node {
 	for _, c := range clauses {
 		plist := c.Pattern.(patternList)
 		if field, plist, ok := pop(plist); ok {
-			next[field.String()] = append(
-				next[field.String()],
+			next[field.Pretty()] = append(
+				next[field.Pretty()],
 				&ast.Clause{Pattern: plist, Exprs: c.Exprs})
 		} else {
 			panic(UnsupportedPatternError{Clause: c})

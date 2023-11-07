@@ -102,6 +102,9 @@ func (p Prim) String() string {
 	for i, arg := range p.Args {
 		args[i] = arg.String()
 	}
+	if len(args) == 0 {
+		return fmt.Sprintf("(prim %s)", p.Name.Pretty())
+	}
 	return fmt.Sprintf("(prim %s %s)", p.Name.Pretty(), strings.Join(args, " "))
 }
 
@@ -252,16 +255,16 @@ func (f *Field) Base() token.Token {
 var _ Node = &Field{}
 
 type TypeDecl struct {
-	Name token.Token
+	Def  Node
 	Type Node
 }
 
 func (t TypeDecl) String() string {
-	return fmt.Sprintf("(type %s %s)", t.Name.Pretty(), t.Type.String())
+	return fmt.Sprintf("(type %v %v)", t.Def, t.Type)
 }
 
 func (t *TypeDecl) Base() token.Token {
-	return t.Name
+	return t.Def.Base()
 }
 
 var _ Node = &TypeDecl{}

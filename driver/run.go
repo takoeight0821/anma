@@ -10,6 +10,7 @@ import (
 )
 
 type Pass interface {
+	Name() string
 	Init([]ast.Node) error
 	Run([]ast.Node) ([]ast.Node, error)
 }
@@ -33,11 +34,11 @@ func (r *PassRunner) Run(program []ast.Node) ([]ast.Node, error) {
 	for _, pass := range r.passes {
 		err := pass.Init(program)
 		if err != nil {
-			return program, fmt.Errorf("init: %w", err)
+			return program, fmt.Errorf("%s init: %w", pass.Name(), err)
 		}
 		program, err = pass.Run(program)
 		if err != nil {
-			return program, fmt.Errorf("run: %w", err)
+			return program, fmt.Errorf("%s run: %w", pass.Name(), err)
 		}
 	}
 

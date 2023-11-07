@@ -19,6 +19,10 @@ func NewInfixResolver() *InfixResolver {
 	return &InfixResolver{}
 }
 
+func (r *InfixResolver) Name() string {
+	return "infix.InfixResolver"
+}
+
 func (r *InfixResolver) Init(program []ast.Node) error {
 	for _, node := range program {
 		ast.Transform(node, func(n ast.Node) ast.Node {

@@ -21,6 +21,10 @@ func NewRenamer() *Renamer {
 	return &Renamer{supply: 0, env: NewRnEnv(nil), err: nil}
 }
 
+func (r *Renamer) Name() string {
+	return "rename.Renamer"
+}
+
 func (r *Renamer) Init(program []ast.Node) error {
 	return nil
 }
@@ -234,11 +238,11 @@ func (r *Renamer) Solve(node ast.Node) ast.Node {
 		return n
 	case *ast.TypeDecl:
 		// Type definition can override existential definition
-		r.assign(n.Name, true)
-		n.Name.Literal = r.Lookup(n.Name)
+		r.assign(n.Def, true)
+		n.Def = r.Solve(n.Def)
 		n.Type = r.Solve(n.Type)
 		if r.err != nil {
-			r.delete(n.Name)
+			r.delete(n.Def)
 		}
 		return n
 	case *ast.VarDecl:
