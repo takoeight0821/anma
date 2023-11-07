@@ -2,7 +2,7 @@
 
 decl = typeDecl | varDecl | infixDecl ; (* func decl *)
 
-typeDecl = "type" IDENTIFIER "=" type ; (* func typeDecl *)
+typeDecl = "type" type "=" type ; (* func typeDecl *)
 
 varDecl = "def" identifier "=" expr | "def" identifier ":" type | "def" identifier ":" type "=" expr ; (* func varDecl *)
 
@@ -40,7 +40,7 @@ type = binopType ; (* func typ *)
 
 binopType = callType (operator callType)* ; (* func binopType *)
 
-callType = atomType ("(" ")" | "(" type ("," type)* ","? ")")* ; (* func callType *)
+callType = (PRIM "(" IDENTIFIER ("," type)* ","? ")" | atomType) ("(" ")" | "(" type ("," type)* ","? ")")* ; (* func callType *)
 
 atomType = IDENT | "{" fieldType ("," fieldType)* ","? "}" | "(" type ("," type)* ","? ")" ; (* func atomType *)
 

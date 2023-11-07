@@ -26,11 +26,11 @@
       (def zipWith (lambda (paren (var x0) (var x1) (var x2)) (object (field head (case (paren (var x0) (var x1) (var x2)) (clause (paren (var f) (var xs) (var ys)) (call (var f) (access (var xs) head) (access (var ys) head))))) (field tail (case (paren (var x0) (var x1) (var x2)) (clause (paren (var f) (var xs) (var ys)) (call (var zipWith) (var f) (access (var xs) tail) (access (var ys) tail))))))))
       (def fib (object (field head (literal 1)) (field tail (object (field head (literal 1)) (field tail (call (var zipWith) (lambda (paren (var x0) (var x1)) (case (paren (var x0) (var x1)) (clause (paren (var x) (var y)) (binary (var x) + (var y))))) (var fib) (access (var fib) tail)))))))
       (def main (lambda (paren) (case (paren) (clause (paren) (call (var fib) (literal 10))))))
-    rename: |
-      (def +.0 (lambda (paren (var x0.1) (var x1.2)) (case (paren (var x0.1) (var x1.2)) (clause (paren (var x.3) (var y.4)) (prim add (var x.3) (var y.4))))))
-      (def zipWith.5 (lambda (paren (var x0.6) (var x1.7) (var x2.8)) (object (field head (case (paren (var x0.6) (var x1.7) (var x2.8)) (clause (paren (var f.9) (var xs.10) (var ys.11)) (call (var f.9) (access (var xs.10) head) (access (var ys.11) head))))) (field tail (case (paren (var x0.6) (var x1.7) (var x2.8)) (clause (paren (var f.12) (var xs.13) (var ys.14)) (call (var zipWith.5) (var f.12) (access (var xs.13) tail) (access (var ys.14) tail))))))))
-      (def fib.15 (object (field head (literal 1)) (field tail (object (field head (literal 1)) (field tail (call (var zipWith.5) (lambda (paren (var x0.16) (var x1.17)) (case (paren (var x0.16) (var x1.17)) (clause (paren (var x.18) (var y.19)) (binary (var x.18) +.0 (var y.19))))) (var fib.15) (access (var fib.15) tail)))))))
-      (def main.20 (lambda (paren) (case (paren) (clause (paren) (call (var fib.15) (literal 10))))))
+    nameresolve: |
+      (def +.0 (lambda (paren (var x0.4) (var x1.5)) (case (paren (var x0.4) (var x1.5)) (clause (paren (var x.6) (var y.7)) (prim add (var x.6) (var y.7))))))
+      (def zipWith.1 (lambda (paren (var x0.8) (var x1.9) (var x2.10)) (object (field head (case (paren (var x0.8) (var x1.9) (var x2.10)) (clause (paren (var f.11) (var xs.12) (var ys.13)) (call (var f.11) (access (var xs.12) head) (access (var ys.13) head))))) (field tail (case (paren (var x0.8) (var x1.9) (var x2.10)) (clause (paren (var f.14) (var xs.15) (var ys.16)) (call (var zipWith.1) (var f.14) (access (var xs.15) tail) (access (var ys.16) tail))))))))
+      (def fib.2 (object (field head (literal 1)) (field tail (object (field head (literal 1)) (field tail (call (var zipWith.1) (lambda (paren (var x0.17) (var x1.18)) (case (paren (var x0.17) (var x1.18)) (clause (paren (var x.19) (var y.20)) (binary (var x.19) +.0 (var y.20))))) (var fib.2) (access (var fib.2) tail)))))))
+      (def main.3 (lambda (paren) (case (paren) (clause (paren) (call (var fib.2) (literal 10))))))
 - input: |
     type Int     = prim(int)
     type List(a) = Nil | Cons(a, List)
@@ -84,7 +84,7 @@
       (def tree1 (object (field children (var Nil)) (field node (literal 2))))
       (def tree2 (object (field children (call (var Cons) (var tree) (var Nil))) (field node (literal 3))))
       (def main (lambda (paren) (case (paren) (clause (paren) (call (var prune) (literal 2) (var tree))))))
-    rename: |
+    nameresolve: |
       (type (var Int) (prim int))
       (type (call (var List) (var a)) (var Nil) (call (var Cons) (var a) (var List)))
       (def map (lambda (paren (var x0) (var x1)) (case (paren (var x0) (var x1)) (clause (paren (var f) (var Nil)) (var Nil)) (clause (paren (var f) (call (var Cons) (var x) (var xs))) (call (var Cons) (call (var f) (var x)) (call (var map) (var f) (var xs)))))))
@@ -118,12 +118,12 @@
       (def + (lambda (paren (var x0) (var x1)) (case (paren (var x0) (var x1)) (clause (paren (var x) (var y)) (prim add (var x) (var y))))))
       (def * (lambda (paren (var x0) (var x1)) (case (paren (var x0) (var x1)) (clause (paren (var x) (var y)) (prim mul (var x) (var y))))))
       (def main (lambda (paren) (case (paren) (clause (paren) (binary (literal 1) + (binary (literal 2) * (literal 3)))))))
-    rename: |
-      (infix infixl 6 +)
-      (infix infixl 8 *)
-      (def +.0 (lambda (paren (var x0.1) (var x1.2)) (case (paren (var x0.1) (var x1.2)) (clause (paren (var x.3) (var y.4)) (prim add (var x.3) (var y.4))))))
-      (def *.5 (lambda (paren (var x0.6) (var x1.7)) (case (paren (var x0.6) (var x1.7)) (clause (paren (var x.8) (var y.9)) (prim mul (var x.8) (var y.9))))))
-      (def main.10 (lambda (paren) (case (paren) (clause (paren) (binary (literal 1) +.0 (binary (literal 2) *.5 (literal 3)))))))
+    nameresolve: |
+      (infix infixl 6 +.0)
+      (infix infixl 8 *.1)
+      (def +.0 (lambda (paren (var x0.3) (var x1.4)) (case (paren (var x0.3) (var x1.4)) (clause (paren (var x.5) (var y.6)) (prim add (var x.5) (var y.6))))))
+      (def *.1 (lambda (paren (var x0.7) (var x1.8)) (case (paren (var x0.7) (var x1.8)) (clause (paren (var x.9) (var y.10)) (prim mul (var x.9) (var y.10))))))
+      (def main.2 (lambda (paren) (case (paren) (clause (paren) (binary (literal 1) +.0 (binary (literal 2) *.1 (literal 3)))))))
 - input: |
     infixl 6 +
     infixl 8 *
@@ -149,9 +149,9 @@
       (def + (lambda (paren (var x0) (var x1)) (case (paren (var x0) (var x1)) (clause (paren (var x) (var y)) (prim add (var x) (var y))))))
       (def * (lambda (paren (var x0) (var x1)) (case (paren (var x0) (var x1)) (clause (paren (var x) (var y)) (prim mul (var x) (var y))))))
       (def main (lambda (paren) (case (paren) (clause (paren) (binary (binary (literal 1) * (literal 2)) + (literal 3))))))
-    rename: |
-      (infix infixl 6 +)
-      (infix infixl 8 *)
-      (def +.0 (lambda (paren (var x0.1) (var x1.2)) (case (paren (var x0.1) (var x1.2)) (clause (paren (var x.3) (var y.4)) (prim add (var x.3) (var y.4))))))
-      (def *.5 (lambda (paren (var x0.6) (var x1.7)) (case (paren (var x0.6) (var x1.7)) (clause (paren (var x.8) (var y.9)) (prim mul (var x.8) (var y.9))))))
-      (def main.10 (lambda (paren) (case (paren) (clause (paren) (binary (binary (literal 1) *.5 (literal 2)) +.0 (literal 3))))))
+    nameresolve: |
+      (infix infixl 6 +.0)
+      (infix infixl 8 *.1)
+      (def +.0 (lambda (paren (var x0.3) (var x1.4)) (case (paren (var x0.3) (var x1.4)) (clause (paren (var x.5) (var y.6)) (prim add (var x.5) (var y.6))))))
+      (def *.1 (lambda (paren (var x0.7) (var x1.8)) (case (paren (var x0.7) (var x1.8)) (clause (paren (var x.9) (var y.10)) (prim mul (var x.9) (var y.10))))))
+      (def main.2 (lambda (paren) (case (paren) (clause (paren) (binary (binary (literal 1) *.1 (literal 2)) +.0 (literal 3))))))

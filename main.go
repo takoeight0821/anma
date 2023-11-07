@@ -13,7 +13,7 @@ import (
 	"github.com/takoeight0821/anma/driver"
 	"github.com/takoeight0821/anma/eval"
 	"github.com/takoeight0821/anma/infix"
-	"github.com/takoeight0821/anma/rename"
+	"github.com/takoeight0821/anma/nameresolve"
 )
 
 func main() {
@@ -67,7 +67,7 @@ func RunPrompt() error {
 	r := driver.NewPassRunner()
 	r.AddPass(codata.Flat{})
 	r.AddPass(infix.NewInfixResolver())
-	r.AddPass(rename.NewRenamer())
+	r.AddPass(nameresolve.NewResolver())
 	for {
 		input, err := line.Prompt("> ")
 		if err != nil {
@@ -101,7 +101,7 @@ func RunFile(path string) error {
 	r := driver.NewPassRunner()
 	r.AddPass(codata.Flat{})
 	r.AddPass(infix.NewInfixResolver())
-	r.AddPass(rename.NewRenamer())
+	r.AddPass(nameresolve.NewResolver())
 	bytes, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("read file: %w", err)

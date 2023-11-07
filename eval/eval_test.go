@@ -8,7 +8,7 @@ import (
 	"github.com/takoeight0821/anma/driver"
 	"github.com/takoeight0821/anma/eval"
 	"github.com/takoeight0821/anma/infix"
-	"github.com/takoeight0821/anma/rename"
+	"github.com/takoeight0821/anma/nameresolve"
 )
 
 func TestEval(t *testing.T) {
@@ -29,7 +29,7 @@ func completeEval(t *testing.T, input []string, expected string) {
 	runner := driver.NewPassRunner()
 	runner.AddPass(codata.Flat{})
 	runner.AddPass(infix.NewInfixResolver())
-	runner.AddPass(rename.NewRenamer())
+	runner.AddPass(nameresolve.NewResolver())
 
 	var nodes []ast.Node
 	for _, src := range input {

@@ -1,4 +1,4 @@
-package rename_test
+package nameresolve_test
 
 import (
 	"strings"
@@ -7,15 +7,15 @@ import (
 	"github.com/takoeight0821/anma/codata"
 	"github.com/takoeight0821/anma/driver"
 	"github.com/takoeight0821/anma/infix"
-	"github.com/takoeight0821/anma/rename"
+	"github.com/takoeight0821/anma/nameresolve"
 	"github.com/takoeight0821/anma/utils"
 )
 
-func completeRename(t *testing.T, input, expected string) {
+func completeResolve(t *testing.T, input, expected string) {
 	runner := driver.NewPassRunner()
 	runner.AddPass(codata.Flat{})
 	runner.AddPass(infix.NewInfixResolver())
-	runner.AddPass(rename.NewRenamer())
+	runner.AddPass(nameresolve.NewResolver())
 
 	nodes, err := runner.RunSource(input)
 	if err != nil {
@@ -34,13 +34,13 @@ func completeRename(t *testing.T, input, expected string) {
 	}
 }
 
-func TestRename(t *testing.T) {
+func TestResolve(t *testing.T) {
 	testcases := utils.ReadTestData()
 	for _, testcase := range testcases {
-		if expected, ok := testcase.Expected["rename"]; ok {
-			completeRename(t, testcase.Input, expected)
+		if expected, ok := testcase.Expected["nameresolve"]; ok {
+			completeResolve(t, testcase.Input, expected)
 		} else {
-			completeRename(t, testcase.Input, "no expected value")
+			completeResolve(t, testcase.Input, "no expected value")
 		}
 	}
 }
