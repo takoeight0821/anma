@@ -46,13 +46,17 @@ func (p *Parser) decl() ast.Node {
 	return p.infixDecl()
 }
 
-// typeDecl = "type" type "=" type ;
+// typeDecl = "type" type "=" type ("|" type)* ;
 func (p *Parser) typeDecl() *ast.TypeDecl {
 	p.consume(token.TYPE)
 	def := p.typ()
 	p.consume(token.EQUAL)
-	typ := p.typ()
-	return &ast.TypeDecl{Def: def, Type: typ}
+	types := []ast.Node{p.typ()}
+	for p.match(token.BAR) {
+		p.advance()
+		types = append(types, p.typ())
+	}
+	return &ast.TypeDecl{Def: def, Types: types}
 }
 
 // varDecl = "def" identifier "=" expr | "def" identifier ":" type | "def" identifier ":" type "=" expr ;
@@ -355,6 +359,7 @@ func (p *Parser) typ() ast.Node {
 		p.recover(unexpectedTokenError(p.peek(), "type"))
 		return nil
 	}
+
 	return p.binopType()
 }
 

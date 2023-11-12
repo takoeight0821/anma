@@ -97,7 +97,9 @@ func (r *Resolver) registerTopLevel(node ast.Node) {
 	switch n := node.(type) {
 	case *ast.TypeDecl:
 		r.assign(n.Def, allVariables)
-		r.assign(n.Type, ifNotDefined)
+		for _, typ := range n.Types {
+			r.assign(typ, ifNotDefined)
+		}
 	case *ast.VarDecl:
 		if _, ok := r.env.table[n.Name.Lexeme]; ok {
 			r.addError(AlreadyDefinedError{Name: n.Name})
@@ -194,7 +196,9 @@ func (r *Resolver) solve(node ast.Node) ast.Node {
 		return n
 	case *ast.TypeDecl:
 		n.Def = r.solve(n.Def)
-		n.Type = r.solve(n.Type)
+		for i, typ := range n.Types {
+			n.Types[i] = r.solve(typ)
+		}
 		return n
 	case *ast.VarDecl:
 		var err error

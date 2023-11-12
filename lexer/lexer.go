@@ -172,6 +172,7 @@ func (l *lexer) identifier() error {
 
 var keywords = map[string]token.TokenKind{
 	"->":     token.ARROW,
+	"|":      token.BAR,
 	"=":      token.EQUAL,
 	"case":   token.CASE,
 	"def":    token.DEF,

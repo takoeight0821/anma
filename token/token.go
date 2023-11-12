@@ -29,6 +29,7 @@ const (
 
 	// Keywords.
 	ARROW
+	BAR
 	CASE
 	DEF
 	EQUAL

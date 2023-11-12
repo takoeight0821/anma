@@ -36,7 +36,7 @@ callPat = atomPat ("(" ")" | "(" pattern ("," pattern)* ","? ")")* ; (* func cal
 
 atomPat = IDENT | INTEGER | STRING | "(" pattern ("," pattern)* ","? ")" ; (* func atomPat *)
 
-type = binopType ; (* func typ *)
+type = binopType ("|" binopType)* ; (* func typ *)
 
 binopType = callType (operator callType)* ; (* func binopType *)
 

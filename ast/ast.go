@@ -255,12 +255,21 @@ func (f *Field) Base() token.Token {
 var _ Node = &Field{}
 
 type TypeDecl struct {
-	Def  Node
-	Type Node
+	Def   Node
+	Types []Node
 }
 
 func (t TypeDecl) String() string {
-	return fmt.Sprintf("(type %v %v)", t.Def, t.Type)
+	var b strings.Builder
+	b.WriteString("(type")
+	b.WriteString(" ")
+	b.WriteString(t.Def.String())
+	for _, typ := range t.Types {
+		b.WriteString(" ")
+		b.WriteString(typ.String())
+	}
+	b.WriteString(")")
+	return b.String()
 }
 
 func (t *TypeDecl) Base() token.Token {
@@ -405,7 +414,9 @@ func Transform(n Node, f func(Node) Node) Node {
 			n.Exprs[i] = Transform(expr, f)
 		}
 	case *TypeDecl:
-		n.Type = Transform(n.Type, f)
+		for i, typ := range n.Types {
+			n.Types[i] = Transform(typ, f)
+		}
 	case *VarDecl:
 		n.Type = Transform(n.Type, f)
 		n.Expr = Transform(n.Expr, f)
