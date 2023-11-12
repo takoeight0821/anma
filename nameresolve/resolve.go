@@ -1,6 +1,10 @@
+// Package nameresolve resolves variable names and allocates unique numbers to them.
+// It also checks if a variable is already defined in the same scope.
+// All errors are accumulated and returned at the end of the process.
 package nameresolve
 
 import (
+	"errors"
 	"fmt"
 	"log"
 
@@ -9,21 +13,24 @@ import (
 	"github.com/takoeight0821/anma/utils"
 )
 
+// Resolver resolves variable names and allocates unique numbers to them.
 type Resolver struct {
-	supply int
-	env    *env
+	supply int   // Supply of unique numbers.
+	env    *env  // Current environment.
+	err    error // Error accumulator. nil if no error. Use addError() to add an error.
 }
 
 func NewResolver() *Resolver {
 	return &Resolver{
 		supply: 0,
 		env:    newEnv(nil),
+		err:    nil,
 	}
 }
 
 type env struct {
-	parent *env
-	table  map[string]int
+	parent *env           // Parent environment.
+	table  map[string]int // Variable name -> unique number.
 }
 
 func newEnv(parent *env) *env {
@@ -40,23 +47,24 @@ func (r *Resolver) Name() string {
 func (r *Resolver) Init(program []ast.Node) error {
 	// Register top-level declarations.
 	for _, node := range program {
-		err := r.registerTopLevel(node)
-		if err != nil {
-			return err
-		}
+		r.registerTopLevel(node)
 	}
-	return nil
+	return r.err
 }
 
 func (r *Resolver) Run(program []ast.Node) ([]ast.Node, error) {
 	for i, node := range program {
-		var err error
-		program[i], err = r.solve(node)
-		if err != nil {
-			return nil, err
-		}
+		program[i] = r.solve(node)
 	}
-	return program, nil
+	return program, r.err
+}
+
+func (r *Resolver) addError(err error) {
+	r.err = errors.Join(r.err, err)
+}
+
+func (r *Resolver) resetError() {
+	r.err = nil
 }
 
 func (r *Resolver) define(name token.Token) {
@@ -85,214 +93,134 @@ func (e *env) lookup(name token.Token) (token.Token, error) {
 }
 
 // Define all top-level variables in the node.
-func (r *Resolver) registerTopLevel(node ast.Node) error {
+func (r *Resolver) registerTopLevel(node ast.Node) {
 	switch n := node.(type) {
 	case *ast.TypeDecl:
-		_, err := r.assign(n.Def, allVariables)
-		if err != nil {
-			return err
-		}
-		_, err = r.assign(n.Type, ifNotDefined)
-		return err
+		r.assign(n.Def, allVariables)
+		r.assign(n.Type, ifNotDefined)
 	case *ast.VarDecl:
 		if _, ok := r.env.table[n.Name.Lexeme]; ok {
-			return AlreadyDefinedError{Name: n.Name}
+			r.addError(AlreadyDefinedError{Name: n.Name})
 		}
 		r.define(n.Name)
-		return nil
-	default:
-		return nil
 	}
 }
 
 // solve all variables in the node.
-func (r *Resolver) solve(node ast.Node) (ast.Node, error) {
+func (r *Resolver) solve(node ast.Node) ast.Node {
 	switch n := node.(type) {
 	case *ast.Var:
 		var err error
 		n.Name, err = r.env.lookup(n.Name)
-		return n, err
+		r.addError(err)
+		return n
 	case *ast.Literal:
-		return n, nil
+		return n
 	case *ast.Paren:
 		for i, elem := range n.Elems {
-			var err error
-			n.Elems[i], err = r.solve(elem)
-			if err != nil {
-				return n, err
-			}
+			n.Elems[i] = r.solve(elem)
 		}
-		return n, nil
+		return n
 	case *ast.Access:
-		var err error
-		n.Receiver, err = r.solve(n.Receiver)
-		return n, err
+		n.Receiver = r.solve(n.Receiver)
+		return n
 	case *ast.Call:
-		var err error
-		n.Func, err = r.solve(n.Func)
-		if err != nil {
-			return n, err
-		}
+		n.Func = r.solve(n.Func)
 		for i, arg := range n.Args {
-			n.Args[i], err = r.solve(arg)
-			if err != nil {
-				return n, err
-			}
+			n.Args[i] = r.solve(arg)
 		}
-		return n, nil
+		return n
 	case *ast.Prim:
 		for i, arg := range n.Args {
-			var err error
-			n.Args[i], err = r.solve(arg)
-			if err != nil {
-				return n, err
-			}
+			n.Args[i] = r.solve(arg)
 		}
-		return n, nil
+		return n
 	case *ast.Binary:
 		var err error
 		n.Op, err = r.env.lookup(n.Op)
 		if err != nil {
-			return n, err
+			r.addError(err)
 		}
-		n.Left, err = r.solve(n.Left)
-		if err != nil {
-			return n, err
-		}
-		n.Right, err = r.solve(n.Right)
-		return n, err
+		n.Left = r.solve(n.Left)
+		n.Right = r.solve(n.Right)
+		return n
 	case *ast.Assert:
-		var err error
-		n.Expr, err = r.solve(n.Expr)
-		if err != nil {
-			return n, err
-		}
-		n.Type, err = r.solve(n.Type)
-		return n, err
+		n.Expr = r.solve(n.Expr)
+		n.Type = r.solve(n.Type)
+		return n
 	case *ast.Let:
-		_, err := r.assign(n.Bind, allVariables)
-		if err != nil {
-			return n, err
-		}
-		n.Bind, err = r.solve(n.Bind)
-		if err != nil {
-			return n, err
-		}
-		n.Body, err = r.solve(n.Body)
-		return n, err
+		r.assign(n.Bind, overwrite)
+		n.Bind = r.solve(n.Bind)
+		n.Body = r.solve(n.Body)
+		return n
 	case *ast.Codata:
 		log.Panicf("codata must be desugared before name resolution:\n%v", n)
-		return n, nil
+		return n
 	case *ast.Clause:
 		r.env = newEnv(r.env)
 		defer func() { r.env = r.env.parent }()
-		_, err := r.assign(n.Pattern, asPattern)
-		if err != nil {
-			return n, err
-		}
-		n.Pattern, err = r.solve(n.Pattern)
-		if err != nil {
-			return n, err
-		}
+		r.assign(n.Pattern, asPattern)
+		n.Pattern = r.solve(n.Pattern)
 		for i, expr := range n.Exprs {
-			n.Exprs[i], err = r.solve(expr)
-			if err != nil {
-				return n, err
-			}
+			n.Exprs[i] = r.solve(expr)
 		}
-		return n, nil
+		return n
 	case *ast.Lambda:
 		r.env = newEnv(r.env)
 		defer func() { r.env = r.env.parent }()
-		_, err := r.assign(n.Pattern, asPattern)
-		if err != nil {
-			return n, err
-		}
-		n.Pattern, err = r.solve(n.Pattern)
-		if err != nil {
-			return n, err
-		}
+		r.assign(n.Pattern, asPattern)
+		n.Pattern = r.solve(n.Pattern)
 		for i, expr := range n.Exprs {
-			n.Exprs[i], err = r.solve(expr)
-			if err != nil {
-				return n, err
-			}
+			n.Exprs[i] = r.solve(expr)
 		}
-		return n, nil
+		return n
 	case *ast.Case:
-		var err error
-		n.Scrutinee, err = r.solve(n.Scrutinee)
-		if err != nil {
-			return n, err
-		}
+		n.Scrutinee = r.solve(n.Scrutinee)
 		for i, clause := range n.Clauses {
-			newClause, err := r.solve(clause)
-			n.Clauses[i] = newClause.(*ast.Clause)
-			if err != nil {
-				return n, err
-			}
+			n.Clauses[i] = r.solve(clause).(*ast.Clause)
 		}
-		return n, nil
+		return n
 	case *ast.Object:
 		for i, field := range n.Fields {
-			newField, err := r.solve(field)
-			n.Fields[i] = newField.(*ast.Field)
-			if err != nil {
-				return n, err
-			}
+			n.Fields[i] = r.solve(field).(*ast.Field)
 		}
-		return n, nil
+		return n
 	case *ast.Field:
 		r.env = newEnv(r.env)
 		defer func() { r.env = r.env.parent }()
 		for i, expr := range n.Exprs {
-			var err error
-			n.Exprs[i], err = r.solve(expr)
-			if err != nil {
-				return n, err
-			}
+			n.Exprs[i] = r.solve(expr)
 		}
-		return n, nil
+		return n
 	case *ast.TypeDecl:
-		var err error
-		n.Def, err = r.solve(n.Def)
-		if err != nil {
-			return n, err
-		}
-		n.Type, err = r.solve(n.Type)
-		return n, err
+		n.Def = r.solve(n.Def)
+		n.Type = r.solve(n.Type)
+		return n
 	case *ast.VarDecl:
 		var err error
 		n.Name, err = r.env.lookup(n.Name)
-		if err != nil {
-			return n, err
-		}
+		r.addError(err)
 		if n.Type != nil {
-			n.Type, err = r.solve(n.Type)
-			if err != nil {
-				return n, err
-			}
+			n.Type = r.solve(n.Type)
 		}
 		if n.Expr != nil {
-			n.Expr, err = r.solve(n.Expr)
-			if err != nil {
-				return n, err
-			}
+			n.Expr = r.solve(n.Expr)
 		}
-		return n, nil
+		return n
 	case *ast.InfixDecl:
 		var err error
 		n.Name, err = r.env.lookup(n.Name)
-		return n, err
+		r.addError(err)
+		return n
 	case *ast.This:
-		return n, nil
+		return n
 	default:
 		log.Panicf("unexpected node: %v", n)
-		return n, nil
+		return n
 	}
 }
 
-type mode func(*Resolver, ast.Node) ([]string, error)
+type mode func(*Resolver, ast.Node) []string
 
 type AlreadyDefinedError struct {
 	Name token.Token
@@ -302,30 +230,41 @@ func (e AlreadyDefinedError) Error() string {
 	return utils.MsgAt(e.Name, fmt.Sprintf("%s is already defined", e.Name.Pretty()))
 }
 
-// Define all variables in the node.
-// If a variable is already defined in current scope, it returns an error.
-func allVariables(r *Resolver, node ast.Node) ([]string, error) {
-	var err error
+// allVariables define all variables in the node.
+// If a variable is already defined in current scope, it is an error.
+func allVariables(r *Resolver, node ast.Node) []string {
 	var defined []string
 	ast.Transform(node, func(n ast.Node) ast.Node {
-		if err != nil {
-			return n
-		}
 		switch n := n.(type) {
 		case *ast.Var:
 			if _, ok := r.env.table[n.Name.Lexeme]; ok {
-				err = AlreadyDefinedError{Name: n.Name}
+				r.addError(AlreadyDefinedError{Name: n.Name})
 			}
 			r.define(n.Name)
 			defined = append(defined, n.Name.Lexeme)
 		}
 		return n
 	})
-	return defined, err
+	return defined
 }
 
-// Define variables in the node if they are not defined.
-func ifNotDefined(r *Resolver, node ast.Node) ([]string, error) {
+// overwrite defines all variables in the node.
+// If a variable is already defined in current scope, it is overwritten.
+func overwrite(r *Resolver, node ast.Node) []string {
+	var defined []string
+	ast.Transform(node, func(n ast.Node) ast.Node {
+		switch n := n.(type) {
+		case *ast.Var:
+			r.define(n.Name)
+			defined = append(defined, n.Name.Lexeme)
+		}
+		return n
+	})
+	return defined
+}
+
+// ifNotDefined define variables in the node if they are not defined.
+func ifNotDefined(r *Resolver, node ast.Node) []string {
 	var defined []string
 	ast.Transform(node, func(n ast.Node) ast.Node {
 		switch n := n.(type) {
@@ -337,7 +276,7 @@ func ifNotDefined(r *Resolver, node ast.Node) ([]string, error) {
 		}
 		return n
 	})
-	return defined, nil
+	return defined
 }
 
 type InvalidPatternError struct {
@@ -350,47 +289,41 @@ func (e InvalidPatternError) Error() string {
 
 // Define variables in the node as pattern.
 // If a variable appears as a function, it is ignored.
-// If the node is not a pattern, it returns an error.
-func asPattern(r *Resolver, node ast.Node) ([]string, error) {
+func asPattern(r *Resolver, node ast.Node) []string {
 	switch n := node.(type) {
 	case *ast.Var:
 		if _, ok := r.env.table[n.Name.Lexeme]; ok {
-			return nil, AlreadyDefinedError{Name: n.Name}
+			r.addError(AlreadyDefinedError{Name: n.Name})
 		}
 		r.define(n.Name)
-		return []string{n.Name.Lexeme}, nil
+		return []string{n.Name.Lexeme}
 	case *ast.Literal:
-		return nil, nil
+		return nil
 	case *ast.Paren:
 		var defined []string
 		for _, elem := range n.Elems {
-			new, err := r.assign(elem, asPattern)
-			if err != nil {
-				return defined, err
-			}
+			new := r.assign(elem, asPattern)
 			defined = append(defined, new...)
 		}
-		return defined, nil
+		return defined
 	case *ast.Access:
 		return r.assign(n.Receiver, asPattern)
 	case *ast.Call:
 		var defined []string
 		for _, arg := range n.Args {
-			new, err := r.assign(arg, asPattern)
-			if err != nil {
-				return defined, err
-			}
+			new := r.assign(arg, asPattern)
 			defined = append(defined, new...)
 		}
-		return defined, nil
+		return defined
 	default:
-		return nil, InvalidPatternError{Pattern: node}
+		r.addError(InvalidPatternError{Pattern: node})
+		return nil
 	}
 }
 
 // assign defines variables in the node.
 // The mode function determines which variables are defined.
 // Returns a list of defined variables.
-func (r *Resolver) assign(node ast.Node, mode mode) ([]string, error) {
+func (r *Resolver) assign(node ast.Node, mode mode) []string {
 	return mode(r, node)
 }
