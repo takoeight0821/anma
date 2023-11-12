@@ -11,7 +11,18 @@ import (
 	"github.com/takoeight0821/anma/utils"
 )
 
-func completeResolve(t *testing.T, input, expected string) {
+func TestResolve(t *testing.T) {
+	testcases := utils.ReadTestData()
+	for _, testcase := range testcases {
+		if expected, ok := testcase.Expected["nameresolve"]; ok {
+			completeResolve(t, testcase.Label, testcase.Input, expected)
+		} else {
+			completeResolve(t, testcase.Label, testcase.Input, "no expected value")
+		}
+	}
+}
+
+func completeResolve(t *testing.T, label, input, expected string) {
 	runner := driver.NewPassRunner()
 	runner.AddPass(codata.Flat{})
 	runner.AddPass(infix.NewInfixResolver())
@@ -19,7 +30,7 @@ func completeResolve(t *testing.T, input, expected string) {
 
 	nodes, err := runner.RunSource(input)
 	if err != nil {
-		t.Errorf("RunSource returned error: %v", err)
+		t.Errorf("RunSource %s returned error: %v", label, err)
 	}
 
 	var b strings.Builder
@@ -30,17 +41,6 @@ func completeResolve(t *testing.T, input, expected string) {
 	actual := b.String()
 
 	if actual != expected {
-		t.Errorf("RunSource returned:\n%s\n\nexpected:\n%s", actual, expected)
-	}
-}
-
-func TestResolve(t *testing.T) {
-	testcases := utils.ReadTestData()
-	for _, testcase := range testcases {
-		if expected, ok := testcase.Expected["nameresolve"]; ok {
-			completeResolve(t, testcase.Input, expected)
-		} else {
-			completeResolve(t, testcase.Input, "no expected value")
-		}
+		t.Errorf("RunSource %s returned:\n%s\n\nexpected:\n%s", label, actual, expected)
 	}
 }

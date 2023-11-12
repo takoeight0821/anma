@@ -10,14 +10,26 @@ import (
 	"github.com/takoeight0821/anma/utils"
 )
 
-func completeInfix(t *testing.T, input, expected string) {
+func TestInfix(t *testing.T) {
+	testcases := utils.ReadTestData()
+
+	for _, testcase := range testcases {
+		if expected, ok := testcase.Expected["infix"]; ok {
+			completeInfix(t, testcase.Label, testcase.Input, expected)
+		} else {
+			completeInfix(t, testcase.Label, testcase.Input, "no expected value")
+		}
+	}
+}
+
+func completeInfix(t *testing.T, label, input, expected string) {
 	runner := driver.NewPassRunner()
 	runner.AddPass(codata.Flat{})
 	runner.AddPass(infix.NewInfixResolver())
 
 	nodes, err := runner.RunSource(input)
 	if err != nil {
-		t.Errorf("RunSource returned error: %v", err)
+		t.Errorf("RunSource %s returned error: %v", label, err)
 	}
 
 	var b strings.Builder
@@ -28,18 +40,6 @@ func completeInfix(t *testing.T, input, expected string) {
 	actual := b.String()
 
 	if actual != expected {
-		t.Errorf("RunSource returned:\n%s\n\nexpected:\n%s", actual, expected)
-	}
-}
-
-func TestInfix(t *testing.T) {
-	testcases := utils.ReadTestData()
-
-	for _, testcase := range testcases {
-		if expected, ok := testcase.Expected["infix"]; ok {
-			completeInfix(t, testcase.Input, expected)
-		} else {
-			completeInfix(t, testcase.Input, "no expected value")
-		}
+		t.Errorf("RunSource %s returned:\n%s\n\nexpected:\n%s", label, actual, expected)
 	}
 }
