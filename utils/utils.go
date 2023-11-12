@@ -38,6 +38,8 @@ func MsgAt(t token.Token, msg string) string {
 }
 
 type TestData struct {
+	Label    string
+	Enable   bool
 	Input    string
 	Expected map[string]string
 }
@@ -52,6 +54,16 @@ func ReadTestData() []TestData {
 	if err := yaml.Unmarshal(s, &data); err != nil {
 		panic(err)
 	}
+
+	// Remove disabled test cases.
+	i := 0
+	for _, d := range data {
+		if d.Enable {
+			data[i] = d
+			i++
+		}
+	}
+	data = data[:i]
 
 	return data
 }
