@@ -150,10 +150,7 @@ func (b builder) object(clauses []*ast.Clause) ast.Node {
 			// if c has no accessors, generate pattern matching clause
 			plist := c.Pattern.(patternList)
 			if len(plist.accessors) == 0 {
-				caseClauses[i] = &ast.Clause{
-					Pattern: &ast.Paren{Elems: plist.params},
-					Exprs:   c.Exprs,
-				}
+				caseClauses[i] = plistToClause(c.Pattern, c.Exprs...)
 			} else {
 				// otherwise, add to restClauses
 				restClauses[i] = c
@@ -162,16 +159,12 @@ func (b builder) object(clauses []*ast.Clause) ast.Node {
 
 		// construct a clause for rest of (co) patterns
 		restClausesList := make([]*ast.Clause, 0)
-		utils.OrderedFor(restClauses, func(_ int, v *ast.Clause) {
-			restClausesList = append(restClausesList, v)
+		utils.OrderedFor(restClauses, func(_ int, c *ast.Clause) {
+			restClausesList = append(restClausesList, c)
 		})
 
 		for i, c := range restClauses {
-			plist := c.Pattern.(patternList)
-			caseClauses[i] = &ast.Clause{
-				Pattern: &ast.Paren{Elems: plist.params},
-				Exprs:   []ast.Node{b.object(restClausesList)},
-			}
+			caseClauses[i] = plistToClause(c.Pattern, b.object(restClausesList))
 		}
 
 		fields = append(fields,
@@ -184,7 +177,17 @@ func (b builder) object(clauses []*ast.Clause) ast.Node {
 	return &ast.Object{Fields: fields}
 }
 
+func plistToClause(pattern ast.Node, exprs ...ast.Node) *ast.Clause {
+	plist, ok := pattern.(patternList)
+	if !ok {
+		panic(UnsupportedPatternError{Clause: &ast.Clause{Pattern: pattern, Exprs: exprs}})
+	}
+	return &ast.Clause{Pattern: &ast.Paren{Elems: plist.params}, Exprs: exprs}
+}
+
 func newCaseField(scrs []ast.Node, cs []*ast.Clause) []ast.Node {
+	// if there is no scrutinee, return Exprs of the first clause
+	// because case expression always matches the first clause.
 	if len(scrs) == 0 {
 		return cs[0].Exprs
 	}
@@ -197,7 +200,7 @@ func (b *builder) lambda(arity int, clauses []*ast.Clause) ast.Node {
 	// Generate Scrutinees
 	b.scrutinees = make([]ast.Node, arity)
 	for i := 0; i < arity; i++ {
-		b.scrutinees[i] = &ast.Var{Name: token.Token{Kind: token.IDENT, Lexeme: fmt.Sprintf("x%d", i), Line: baseToken.Line, Literal: nil}}
+		b.scrutinees[i] = newVar(fmt.Sprintf("x%d", i), baseToken)
 	}
 
 	// If any of clauses has accessors, body expression is Object.
@@ -222,6 +225,11 @@ func (b *builder) lambda(arity int, clauses []*ast.Clause) ast.Node {
 			},
 		},
 	}
+}
+
+// newVar creates a new Var node with the given name and a token.
+func newVar(name string, base token.Token) *ast.Var {
+	return &ast.Var{Name: token.Token{Kind: token.IDENT, Lexeme: name, Line: base.Line, Literal: nil}}
 }
 
 type InvalidCallPatternError struct {
