@@ -4,7 +4,10 @@ go 1.21.1
 
 require github.com/peterh/liner v1.2.2
 
-require gopkg.in/yaml.v3 v3.0.1 // indirect
+require (
+	github.com/sergi/go-diff v1.3.1 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
+)
 
 require (
 	github.com/adrg/xdg v0.4.0

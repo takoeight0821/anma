@@ -130,75 +130,65 @@ func (b builder) object(clauses []*ast.Clause) ast.Node {
 	// Generate each field's body expression
 	// Object fields are generated in the dictionary order of field names.
 	utils.OrderedFor(next, func(field string, cs []*ast.Clause) {
-		hasAccessors := func(c *ast.Clause) bool {
-			return len(c.Pattern.(patternList).accessors) != 0
-		}
+		// if any of cs has no accessors and has guards, generate Case expression
 
-		if utils.All(cs, hasAccessors) {
-			// if all pattern lists have accessors, call Object recursively
-			fields = append(fields, &ast.Field{Name: field, Exprs: []ast.Node{b.object(cs)}})
-		} else if len(b.scrutinees) != 0 {
-			// if any of cs has no accessors and has guards, generate Case expression
-
-			/*
-				case b.Scrutinee {
-					caseClauses[0] (p0 -> e0)
-					caseClauses[1] (p1 -> {restClauses})
-					caseClauses[2] (p2 -> {restClauses})
-				}
-				(restClauses = caseClauses[1, 2])
-			*/
-
-			// case-clauses
-			caseClauses := make([]*ast.Clause, len(cs))
-			// case-clauses that have other accessors
-			// for keeping order of clauses, use map[int]Clause instead of []Clause
-			restClauses := make(map[int]*ast.Clause)
-			for i, c := range cs {
-				plist := c.Pattern.(patternList)
-				if len(plist.accessors) == 0 {
-					caseClauses[i] = &ast.Clause{
-						Pattern: &ast.Paren{Elems: plist.params},
-						Exprs:   c.Exprs,
-					}
-				} else {
-					restClauses[i] = c
-				}
+		/*
+			case b.Scrutinee {
+				caseClauses[0] (p0 -> e0)
+				caseClauses[1] (p1 -> {restClauses})
+				caseClauses[2] (p2 -> {restClauses})
 			}
+			(restClauses = caseClauses[1, 2])
+		*/
 
-			restClausesList := make([]*ast.Clause, 0)
-			utils.OrderedFor(restClauses, func(_ int, v *ast.Clause) {
-				restClausesList = append(restClausesList, v)
-			})
+		// new clauses for case expression in a field
+		caseClauses := make([]*ast.Clause, len(cs))
 
-			for i, c := range restClauses {
-				plist := c.Pattern.(patternList)
+		// for keeping order of clauses, use map[int]Clause instead of []Clause
+		restClauses := make(map[int]*ast.Clause)
+		for i, c := range cs {
+			// if c has no accessors, generate pattern matching clause
+			plist := c.Pattern.(patternList)
+			if len(plist.accessors) == 0 {
 				caseClauses[i] = &ast.Clause{
 					Pattern: &ast.Paren{Elems: plist.params},
-					Exprs:   []ast.Node{b.object(restClausesList)},
+					Exprs:   c.Exprs,
 				}
+			} else {
+				// otherwise, add to restClauses
+				restClauses[i] = c
 			}
-
-			fields = append(fields,
-				&ast.Field{
-					Name: field,
-					Exprs: []ast.Node{
-						&ast.Case{
-							Scrutinee: &ast.Paren{Elems: b.scrutinees},
-							Clauses:   caseClauses,
-						},
-					},
-				})
-		} else {
-			// if there is no scrutinee, simply insert the clause's body expression
-			fields = append(fields,
-				&ast.Field{
-					Name:  field,
-					Exprs: cs[0].Exprs,
-				})
 		}
+
+		// construct a clause for rest of (co) patterns
+		restClausesList := make([]*ast.Clause, 0)
+		utils.OrderedFor(restClauses, func(_ int, v *ast.Clause) {
+			restClausesList = append(restClausesList, v)
+		})
+
+		for i, c := range restClauses {
+			plist := c.Pattern.(patternList)
+			caseClauses[i] = &ast.Clause{
+				Pattern: &ast.Paren{Elems: plist.params},
+				Exprs:   []ast.Node{b.object(restClausesList)},
+			}
+		}
+
+		fields = append(fields,
+			&ast.Field{
+				Name:  field,
+				Exprs: newCaseField(b.scrutinees, caseClauses),
+			})
+		return
 	})
 	return &ast.Object{Fields: fields}
+}
+
+func newCaseField(scrs []ast.Node, cs []*ast.Clause) []ast.Node {
+	if len(scrs) == 0 {
+		return cs[0].Exprs
+	}
+	return []ast.Node{&ast.Case{Scrutinee: &ast.Paren{Elems: scrs}, Clauses: cs}}
 }
 
 // Generate lambda and dispatch body expression to Object or Case based on existence of accessors.

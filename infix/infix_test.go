@@ -40,6 +40,6 @@ func completeInfix(t *testing.T, label, input, expected string) {
 	actual := b.String()
 
 	if actual != expected {
-		t.Errorf("RunSource %s returned:\n%s\n\nexpected:\n%s", label, actual, expected)
+		t.Errorf("RunSource %s expected -> actual\n%s", label, utils.SprintDiff(expected, actual))
 	}
 }
