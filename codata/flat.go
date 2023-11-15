@@ -56,35 +56,29 @@ func (e ArityError) Error() string {
 	return utils.MsgAt(e.Where, fmt.Sprintf("arity mismatch: expected %d arguments", e.Expected))
 }
 
+func checkArity(expected, actual int, where token.Token) {
+	if expected == notChecked {
+		return
+	}
+	if expected != actual {
+		panic(ArityError{Expected: expected, Where: where})
+	}
+}
+
 func flatCodata(c *ast.Codata) ast.Node {
 	// Generate PatternList
 	arity := notChecked
+	clauses := make([]*ast.Clause, len(c.Clauses))
 	for i, cl := range c.Clauses {
 		plist := patternList{accessors: accessors(cl.Pattern), params: params(cl.Pattern)}
-		c.Clauses[i] = &ast.Clause{Pattern: plist, Exprs: cl.Exprs}
+		clauses[i] = &ast.Clause{Pattern: plist, Exprs: cl.Exprs}
 		if arity == notChecked {
-			if plist.params == nil {
-				arity = noArgs
-				continue
-			}
-			arity = len(plist.params)
+			arity = arityOf(plist)
 		}
-		if arity == noArgs {
-			if plist.params != nil {
-				panic(ArityError{Expected: noArgs, Where: c.Base()})
-			}
-			continue
-		}
-		if arity != len(plist.params) {
-			panic(ArityError{Expected: arity, Where: c.Base()})
-		}
+		checkArity(arity, arityOf(plist), cl.Base())
 	}
 
-	if arity == notChecked {
-		panic(ArityError{Expected: notChecked, Where: c.Base()})
-	}
-
-	return newBuilder().build(arity, c.Clauses)
+	return newBuilder().build(arity, clauses)
 }
 
 type builder struct {
@@ -296,6 +290,13 @@ func (p patternList) String() string {
 }
 
 var _ ast.Node = patternList{}
+
+func arityOf(p patternList) int {
+	if p.params == nil {
+		return noArgs
+	}
+	return len(p.params)
+}
 
 // Split PatternList into the first accessor and the rest.
 func pop(p patternList) (token.Token, patternList, bool) {
