@@ -42,25 +42,22 @@ func (l *Literal) Base() token.Token {
 
 var _ Node = &Literal{}
 
-type Paren struct {
-	// If len(Exprs) == 0, it is an empty tuple.
-	// If len(Exprs) == 1, it is a parenthesized expression.
-	// Otherwise, it is a tuple.
+type Tuple struct {
 	Elems []Node
 }
 
-func (p Paren) String() string {
-	return parenthesize("paren", p.Elems...)
+func (p Tuple) String() string {
+	return parenthesize("tuple", p.Elems...)
 }
 
-func (p *Paren) Base() token.Token {
+func (p *Tuple) Base() token.Token {
 	if len(p.Elems) == 0 {
 		return token.Token{}
 	}
 	return p.Elems[0].Base()
 }
 
-var _ Node = &Paren{}
+var _ Node = &Tuple{}
 
 type Access struct {
 	Receiver Node
@@ -366,7 +363,7 @@ func prepend(elem Node, slice []Node) []Node {
 //tool:ignore
 func Transform(n Node, f func(Node) Node) Node {
 	switch n := n.(type) {
-	case *Paren:
+	case *Tuple:
 		for i, elem := range n.Elems {
 			n.Elems[i] = Transform(elem, f)
 		}

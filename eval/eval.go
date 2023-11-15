@@ -233,7 +233,7 @@ func (ev *Evaluator) apply(base token.Token, fun Value, args ...Value) Value {
 func (ev *Evaluator) match(pattern ast.Node, args []Value) (map[token.Token]Value, error) {
 	println("match", pattern.String(), args)
 	switch p := pattern.(type) {
-	case *ast.Paren:
+	case *ast.Tuple:
 		if len(p.Elems) != len(args) {
 			return nil, ArityError{Base: p.Base(), Expected: len(p.Elems), Args: args}
 		}

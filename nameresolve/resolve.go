@@ -118,7 +118,7 @@ func (r *Resolver) solve(node ast.Node) ast.Node {
 		return n
 	case *ast.Literal:
 		return n
-	case *ast.Paren:
+	case *ast.Tuple:
 		for i, elem := range n.Elems {
 			n.Elems[i] = r.solve(elem)
 		}
@@ -303,7 +303,7 @@ func asPattern(r *Resolver, node ast.Node) []string {
 		return []string{n.Name.Lexeme}
 	case *ast.Literal:
 		return nil
-	case *ast.Paren:
+	case *ast.Tuple:
 		var defined []string
 		for _, elem := range n.Elems {
 			new := r.assign(elem, asPattern)

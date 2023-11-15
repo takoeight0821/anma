@@ -87,10 +87,14 @@ func RunPrompt() error {
 		}
 
 		ev := eval.NewEvaluator()
+		ev.SetErrorHandler(func(evErr error) {
+			err = evErr
+		})
 		for _, node := range nodes {
-			value, err := ev.Eval(node)
+			value := ev.Eval(node)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				continue
 			}
 			fmt.Println(value)
 		}

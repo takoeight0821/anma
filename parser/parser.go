@@ -148,7 +148,7 @@ func (p *Parser) atom() ast.Node {
 	case token.LEFTPAREN:
 		if p.match(token.RIGHTPAREN) {
 			p.advance()
-			return &ast.Paren{}
+			return &ast.Tuple{}
 		}
 		elems := []ast.Node{p.expr()}
 		for p.match(token.COMMA) {
@@ -159,7 +159,7 @@ func (p *Parser) atom() ast.Node {
 			elems = append(elems, p.expr())
 		}
 		p.consume(token.RIGHTPAREN)
-		return &ast.Paren{Elems: elems}
+		return &ast.Tuple{Elems: elems}
 	case token.LEFTBRACE:
 		return p.codata()
 	default:
@@ -335,7 +335,7 @@ func (p *Parser) atomPat() ast.Node {
 	case token.LEFTPAREN:
 		if p.match(token.RIGHTPAREN) {
 			p.advance()
-			return &ast.Paren{}
+			return &ast.Tuple{}
 		}
 		patterns := []ast.Node{p.pattern()}
 		for p.match(token.COMMA) {
@@ -346,7 +346,7 @@ func (p *Parser) atomPat() ast.Node {
 			patterns = append(patterns, p.pattern())
 		}
 		p.consume(token.RIGHTPAREN)
-		return &ast.Paren{Elems: patterns}
+		return &ast.Tuple{Elems: patterns}
 	default:
 		p.recover(unexpectedTokenError(t, "identifier", "integer", "string", "`(`"))
 		return nil
@@ -440,7 +440,7 @@ func (p *Parser) atomType() ast.Node {
 	case token.LEFTPAREN:
 		if p.match(token.RIGHTPAREN) {
 			p.advance()
-			return &ast.Paren{}
+			return &ast.Tuple{}
 		}
 		types := []ast.Node{p.typ()}
 		for p.match(token.COMMA) {
@@ -451,7 +451,7 @@ func (p *Parser) atomType() ast.Node {
 			types = append(types, p.typ())
 		}
 		p.consume(token.RIGHTPAREN)
-		return &ast.Paren{Elems: types}
+		return &ast.Tuple{Elems: types}
 	default:
 		p.recover(unexpectedTokenError(t, "identifier", "`{`", "`(`"))
 		return nil

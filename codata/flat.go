@@ -202,7 +202,7 @@ func newLambda(params []ast.Node, exprs ...ast.Node) *ast.Lambda {
 	if len(params) == 1 {
 		return &ast.Lambda{Pattern: params[0], Exprs: exprs}
 	}
-	return &ast.Lambda{Pattern: &ast.Paren{Elems: params}, Exprs: exprs}
+	return &ast.Lambda{Pattern: &ast.Tuple{Elems: params}, Exprs: exprs}
 }
 
 // newVar creates a new Var node with the given name and a token.
@@ -213,7 +213,7 @@ func newVar(name string, base token.Token) *ast.Var {
 // plistToClause creates a new Clause node with the given pattern and expressions.
 // pattern must be a patternList.
 func plistToClause(plist patternList, exprs ...ast.Node) *ast.Clause {
-	return &ast.Clause{Pattern: &ast.Paren{Elems: plist.params}, Exprs: exprs}
+	return &ast.Clause{Pattern: &ast.Tuple{Elems: plist.params}, Exprs: exprs}
 }
 
 // newCase creates a new Case node with the given scrutinees and clauses.
@@ -224,7 +224,7 @@ func newCase(scrs []ast.Node, cs []*ast.Clause) []ast.Node {
 	if len(scrs) == 0 {
 		return cs[0].Exprs
 	}
-	return []ast.Node{&ast.Case{Scrutinee: &ast.Paren{Elems: scrs}, Clauses: cs}}
+	return []ast.Node{&ast.Case{Scrutinee: &ast.Tuple{Elems: scrs}, Clauses: cs}}
 }
 
 type InvalidCallPatternError struct {
