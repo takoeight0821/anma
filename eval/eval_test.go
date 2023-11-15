@@ -17,7 +17,7 @@ func TestEval(t *testing.T) {
 		expected string
 	}{
 		{[]string{"prim(add, 1, 2)"}, "3"},
-		// {[]string{"def + = { #(x, y) -> prim(add, x, y) }", "1 + 2"}, "3"},
+		{[]string{"def + = { #(x, y) -> prim(add, x, y) }", "1 + 2"}, "3"},
 	}
 
 	for _, testcase := range testcases {
@@ -40,14 +40,15 @@ func completeEval(t *testing.T, input []string, expected string) {
 		nodes = append(nodes, ns...)
 	}
 
+	ev := eval.NewEvaluator()
+	ev.SetErrorHandler(func(err error) {
+		t.Errorf("Eval returned error: %v", err)
+	})
+
 	values := make([]eval.Value, len(nodes))
 
 	for i, node := range nodes {
-		var err error
-		values[i], err = eval.NewEvaluator().Eval(node)
-		if err != nil {
-			t.Errorf("Eval returned error: %v", err)
-		}
+		values[i] = ev.Eval(node)
 	}
 
 	actual := values[len(values)-1].String()
