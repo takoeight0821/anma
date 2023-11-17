@@ -70,8 +70,8 @@ func flatCodata(c *ast.Codata) ast.Node {
 	arity := notChecked
 	clauses := make([]*ast.Clause, len(c.Clauses))
 	for i, cl := range c.Clauses {
-		plist := patternList{accessors: accessors(cl.Pattern), params: params(cl.Pattern)}
-		clauses[i] = &ast.Clause{Pattern: plist, Exprs: cl.Exprs}
+		plist := NewPatternList(cl)
+		clauses[i] = &ast.Clause{Patterns: []ast.Node{plist}, Exprs: cl.Exprs}
 		if arity == notChecked {
 			arity = arityOf(plist)
 		}
@@ -109,11 +109,11 @@ func (b builder) object(clauses []*ast.Clause) ast.Node {
 	// Pop the first accessor of each clause and group remaining clauses by the popped accessor.
 	next := make(map[string][]*ast.Clause)
 	for _, c := range clauses {
-		plist := c.Pattern.(patternList)
+		plist := getPlist(c)
 		if field, plist, ok := pop(plist); ok {
 			next[field.Pretty()] = append(
 				next[field.Pretty()],
-				&ast.Clause{Pattern: plist, Exprs: c.Exprs})
+				&ast.Clause{Patterns: []ast.Node{plist}, Exprs: c.Exprs})
 		} else {
 			panic(UnsupportedPatternError{Clause: c})
 		}
@@ -142,9 +142,9 @@ func (b builder) object(clauses []*ast.Clause) ast.Node {
 		restClauses := make(map[int]*ast.Clause)
 		for i, c := range cs {
 			// if c has no accessors, generate pattern matching clause
-			plist := c.Pattern.(patternList)
+			plist := getPlist(c)
 			if len(plist.accessors) == 0 {
-				caseClauses[i] = plistToClause(c.Pattern.(patternList), c.Exprs...)
+				caseClauses[i] = plistToClause(plist, c.Exprs...)
 			} else {
 				// otherwise, add to restClauses
 				restClauses[i] = c
@@ -158,7 +158,7 @@ func (b builder) object(clauses []*ast.Clause) ast.Node {
 		})
 
 		for i, c := range restClauses {
-			caseClauses[i] = plistToClause(c.Pattern.(patternList), b.object(restClausesList))
+			caseClauses[i] = plistToClause(getPlist(c), b.object(restClausesList))
 		}
 
 		fields = append(fields,
@@ -182,7 +182,7 @@ func (b *builder) lambda(arity int, clauses []*ast.Clause) ast.Node {
 
 	// If any of clauses has accessors, body expression is Object.
 	for _, c := range clauses {
-		if len(c.Pattern.(patternList).accessors) != 0 {
+		if len(getPlist(c).accessors) != 0 {
 			return newLambda(b.scrutinees, b.object(clauses))
 		}
 	}
@@ -190,7 +190,7 @@ func (b *builder) lambda(arity int, clauses []*ast.Clause) ast.Node {
 	// otherwise, body expression is Case.
 	caseClauses := make([]*ast.Clause, 0)
 	for _, c := range clauses {
-		caseClauses = append(caseClauses, plistToClause(c.Pattern.(patternList), c.Exprs...))
+		caseClauses = append(caseClauses, plistToClause(getPlist(c), c.Exprs...))
 	}
 	return newLambda(b.scrutinees, newCase(b.scrutinees, caseClauses)...)
 }
@@ -213,7 +213,7 @@ func newVar(name string, base token.Token) *ast.Var {
 // plistToClause creates a new Clause node with the given pattern and expressions.
 // pattern must be a patternList.
 func plistToClause(plist patternList, exprs ...ast.Node) *ast.Clause {
-	return &ast.Clause{Pattern: &ast.Tuple{Elems: plist.params}, Exprs: exprs}
+	return &ast.Clause{Patterns: plist.params, Exprs: exprs}
 }
 
 // newCase creates a new Case node with the given scrutinees and clauses.
@@ -263,6 +263,27 @@ func params(p ast.Node) []ast.Node {
 type patternList struct {
 	accessors []token.Token
 	params    []ast.Node
+}
+
+func NewPatternList(clause *ast.Clause) patternList {
+	if len(clause.Patterns) != 1 {
+		panic("invalid pattern")
+	}
+
+	accessors := accessors(clause.Patterns[0])
+	params := params(clause.Patterns[0])
+	return patternList{accessors: accessors, params: params}
+}
+
+func NewPlistClause(clause *ast.Clause) *ast.Clause {
+	return &ast.Clause{Patterns: []ast.Node{NewPatternList(clause)}, Exprs: clause.Exprs}
+}
+
+func getPlist(cl *ast.Clause) patternList {
+	if len(cl.Patterns) != 1 {
+		panic("invalid pattern")
+	}
+	return cl.Patterns[0].(patternList)
 }
 
 func (p patternList) Base() token.Token {

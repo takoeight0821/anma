@@ -273,7 +273,7 @@ func (p *Parser) clause() *ast.Clause {
 		}
 		exprs = append(exprs, p.expr())
 	}
-	return &ast.Clause{Pattern: pattern, Exprs: exprs}
+	return &ast.Clause{Patterns: []ast.Node{pattern}, Exprs: exprs}
 }
 
 // pattern = accessPat ;

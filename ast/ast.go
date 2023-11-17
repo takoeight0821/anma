@@ -215,7 +215,9 @@ func (l *Let) Plate(f func(Node) Node) Node {
 var _ Node = &Let{}
 
 type Codata struct {
-	Clauses []*Clause // len(Clauses) > 0
+	// len(Clauses) > 0
+	// for each clause, len(Patterns) == 1
+	Clauses []*Clause
 }
 
 func (c Codata) String() string {
@@ -239,23 +241,44 @@ func (c *Codata) Plate(f func(Node) Node) Node {
 var _ Node = &Codata{}
 
 type Clause struct {
-	Pattern Node
-	Exprs   []Node // len(Exprs) > 0
+	Patterns []Node
+	Exprs    []Node // len(Exprs) > 0
 }
 
 func (c Clause) String() string {
-	return parenthesize("clause", prepend(c.Pattern, c.Exprs)...)
+	var b strings.Builder
+	b.WriteString("(clause")
+	for i, pattern := range c.Patterns {
+		if i == 0 && len(c.Patterns) > 1 {
+			b.WriteString(" (")
+		} else {
+			b.WriteString(" ")
+		}
+		b.WriteString(pattern.String())
+	}
+	if len(c.Patterns) > 1 {
+		b.WriteString(")")
+	}
+
+	for _, expr := range c.Exprs {
+		b.WriteString(" ")
+		b.WriteString(expr.String())
+	}
+	b.WriteString(")")
+	return b.String()
 }
 
 func (c *Clause) Base() token.Token {
-	if c.Pattern == nil {
-		return token.Token{}
+	if len(c.Patterns) > 0 {
+		return c.Patterns[0].Base()
 	}
-	return c.Pattern.Base()
+	return c.Exprs[0].Base()
 }
 
 func (c *Clause) Plate(f func(Node) Node) Node {
-	c.Pattern = f(c.Pattern)
+	for i, pattern := range c.Patterns {
+		c.Patterns[i] = f(pattern)
+	}
 	for i, expr := range c.Exprs {
 		c.Exprs[i] = f(expr)
 	}

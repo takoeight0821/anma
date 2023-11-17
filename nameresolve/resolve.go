@@ -161,8 +161,10 @@ func (r *Resolver) solve(node ast.Node) ast.Node {
 	case *ast.Clause:
 		r.env = newEnv(r.env)
 		defer func() { r.env = r.env.parent }()
-		r.assign(n.Pattern, asPattern)
-		n.Pattern = r.solve(n.Pattern)
+		for i, pattern := range n.Patterns {
+			r.assign(pattern, asPattern)
+			n.Patterns[i] = r.solve(pattern)
+		}
 		for i, expr := range n.Exprs {
 			n.Exprs[i] = r.solve(expr)
 		}
