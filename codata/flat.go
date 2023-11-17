@@ -289,6 +289,13 @@ func (p patternList) String() string {
 	return "[" + strings.Join(accessors, " ") + " | " + strings.Join(params, " ") + "]"
 }
 
+func (pl patternList) Plate(f func(ast.Node) ast.Node) ast.Node {
+	for i, p := range pl.params {
+		pl.params[i] = f(p)
+	}
+	return pl
+}
+
 var _ ast.Node = patternList{}
 
 func arityOf(p patternList) int {

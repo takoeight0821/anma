@@ -12,6 +12,10 @@ import (
 type Node interface {
 	fmt.Stringer
 	Base() token.Token
+	// Plate applies the given function to each child node.
+	// It is similar to Visitor pattern.
+	// FYI: https://hackage.haskell.org/package/lens-5.2.3/docs/Control-Lens-Plated.html
+	Plate(func(Node) Node) Node
 }
 
 type Var struct {
@@ -26,6 +30,10 @@ func (v *Var) Base() token.Token {
 	return v.Name
 }
 
+func (v *Var) Plate(f func(Node) Node) Node {
+	return v
+}
+
 var _ Node = &Var{}
 
 type Literal struct {
@@ -38,6 +46,10 @@ func (l Literal) String() string {
 
 func (l *Literal) Base() token.Token {
 	return l.Token
+}
+
+func (l *Literal) Plate(f func(Node) Node) Node {
+	return l
 }
 
 var _ Node = &Literal{}
@@ -57,6 +69,13 @@ func (p *Tuple) Base() token.Token {
 	return p.Elems[0].Base()
 }
 
+func (p *Tuple) Plate(f func(Node) Node) Node {
+	for i, elem := range p.Elems {
+		p.Elems[i] = f(elem)
+	}
+	return p
+}
+
 var _ Node = &Tuple{}
 
 type Access struct {
@@ -72,6 +91,11 @@ func (a *Access) Base() token.Token {
 	return a.Name
 }
 
+func (a *Access) Plate(f func(Node) Node) Node {
+	a.Receiver = f(a.Receiver)
+	return a
+}
+
 var _ Node = &Access{}
 
 type Call struct {
@@ -85,6 +109,14 @@ func (c Call) String() string {
 
 func (c *Call) Base() token.Token {
 	return c.Func.Base()
+}
+
+func (c *Call) Plate(f func(Node) Node) Node {
+	c.Func = f(c.Func)
+	for i, arg := range c.Args {
+		c.Args[i] = f(arg)
+	}
+	return c
 }
 
 var _ Node = &Call{}
@@ -109,6 +141,13 @@ func (p *Prim) Base() token.Token {
 	return p.Name
 }
 
+func (p *Prim) Plate(f func(Node) Node) Node {
+	for i, arg := range p.Args {
+		p.Args[i] = f(arg)
+	}
+	return p
+}
+
 var _ Node = &Prim{}
 
 type Binary struct {
@@ -123,6 +162,12 @@ func (b Binary) String() string {
 
 func (b *Binary) Base() token.Token {
 	return b.Op
+}
+
+func (b *Binary) Plate(f func(Node) Node) Node {
+	b.Left = f(b.Left)
+	b.Right = f(b.Right)
+	return b
 }
 
 var _ Node = &Binary{}
@@ -140,6 +185,12 @@ func (a *Assert) Base() token.Token {
 	return a.Expr.Base()
 }
 
+func (a *Assert) Plate(f func(Node) Node) Node {
+	a.Expr = f(a.Expr)
+	a.Type = f(a.Type)
+	return a
+}
+
 var _ Node = &Assert{}
 
 type Let struct {
@@ -153,6 +204,12 @@ func (l Let) String() string {
 
 func (l *Let) Base() token.Token {
 	return l.Bind.Base()
+}
+
+func (l *Let) Plate(f func(Node) Node) Node {
+	l.Bind = f(l.Bind)
+	l.Body = f(l.Body)
+	return l
 }
 
 var _ Node = &Let{}
@@ -170,6 +227,13 @@ func (c *Codata) Base() token.Token {
 		return token.Token{}
 	}
 	return c.Clauses[0].Base()
+}
+
+func (c *Codata) Plate(f func(Node) Node) Node {
+	for i, clause := range c.Clauses {
+		c.Clauses[i] = f(clause).(*Clause)
+	}
+	return c
 }
 
 var _ Node = &Codata{}
@@ -190,6 +254,14 @@ func (c *Clause) Base() token.Token {
 	return c.Pattern.Base()
 }
 
+func (c *Clause) Plate(f func(Node) Node) Node {
+	c.Pattern = f(c.Pattern)
+	for i, expr := range c.Exprs {
+		c.Exprs[i] = f(expr)
+	}
+	return c
+}
+
 var _ Node = &Clause{}
 
 type Lambda struct {
@@ -203,6 +275,14 @@ func (l Lambda) String() string {
 
 func (l *Lambda) Base() token.Token {
 	return l.Pattern.Base()
+}
+
+func (l *Lambda) Plate(f func(Node) Node) Node {
+	l.Pattern = f(l.Pattern)
+	for i, expr := range l.Exprs {
+		l.Exprs[i] = f(expr)
+	}
+	return l
 }
 
 var _ Node = &Lambda{}
@@ -220,6 +300,14 @@ func (c *Case) Base() token.Token {
 	return c.Scrutinee.Base()
 }
 
+func (c *Case) Plate(f func(Node) Node) Node {
+	c.Scrutinee = f(c.Scrutinee)
+	for i, clause := range c.Clauses {
+		c.Clauses[i] = f(clause).(*Clause)
+	}
+	return c
+}
+
 var _ Node = &Case{}
 
 type Object struct {
@@ -232,6 +320,13 @@ func (o Object) String() string {
 
 func (o *Object) Base() token.Token {
 	return o.Fields[0].Base()
+}
+
+func (o *Object) Plate(f func(Node) Node) Node {
+	for i, field := range o.Fields {
+		o.Fields[i] = f(field).(*Field)
+	}
+	return o
 }
 
 var _ Node = &Object{}
@@ -247,6 +342,13 @@ func (f Field) String() string {
 
 func (f *Field) Base() token.Token {
 	return f.Exprs[0].Base()
+}
+
+func (f *Field) Plate(g func(Node) Node) Node {
+	for i, expr := range f.Exprs {
+		f.Exprs[i] = g(expr)
+	}
+	return f
 }
 
 var _ Node = &Field{}
@@ -273,6 +375,14 @@ func (t *TypeDecl) Base() token.Token {
 	return t.Def.Base()
 }
 
+func (t *TypeDecl) Plate(f func(Node) Node) Node {
+	t.Def = f(t.Def)
+	for i, typ := range t.Types {
+		t.Types[i] = f(typ)
+	}
+	return t
+}
+
 var _ Node = &TypeDecl{}
 
 type VarDecl struct {
@@ -295,6 +405,16 @@ func (v *VarDecl) Base() token.Token {
 	return v.Name
 }
 
+func (v *VarDecl) Plate(f func(Node) Node) Node {
+	if v.Type != nil {
+		v.Type = f(v.Type)
+	}
+	if v.Expr != nil {
+		v.Expr = f(v.Expr)
+	}
+	return v
+}
+
 var _ Node = &VarDecl{}
 
 type InfixDecl struct {
@@ -311,6 +431,10 @@ func (i *InfixDecl) Base() token.Token {
 	return i.Assoc
 }
 
+func (i *InfixDecl) Plate(f func(Node) Node) Node {
+	return i
+}
+
 var _ Node = &InfixDecl{}
 
 type This struct {
@@ -323,6 +447,10 @@ func (t This) String() string {
 
 func (t *This) Base() token.Token {
 	return t.Token
+}
+
+func (t *This) Plate(f func(Node) Node) Node {
+	return t
 }
 
 var _ Node = &This{}
@@ -362,61 +490,27 @@ func prepend(elem Node, slice []Node) []Node {
 //
 //tool:ignore
 func Transform(n Node, f func(Node) Node) Node {
-	switch n := n.(type) {
-	case *Tuple:
-		for i, elem := range n.Elems {
-			n.Elems[i] = Transform(elem, f)
-		}
-	case *Access:
-		n.Receiver = Transform(n.Receiver, f)
-	case *Call:
-		n.Func = Transform(n.Func, f)
-		for i, arg := range n.Args {
-			n.Args[i] = Transform(arg, f)
-		}
-	case *Binary:
-		n.Left = Transform(n.Left, f)
-		n.Right = Transform(n.Right, f)
-	case *Assert:
-		n.Expr = Transform(n.Expr, f)
-		n.Type = Transform(n.Type, f)
-	case *Let:
-		n.Bind = Transform(n.Bind, f)
-		n.Body = Transform(n.Body, f)
-	case *Codata:
-		for i, clause := range n.Clauses {
-			n.Clauses[i] = Transform(clause, f).(*Clause)
-		}
-	case *Clause:
-		n.Pattern = Transform(n.Pattern, f)
-		for i, expr := range n.Exprs {
-			n.Exprs[i] = Transform(expr, f)
-		}
-	case *Lambda:
-		n.Pattern = Transform(n.Pattern, f)
-		for i, expr := range n.Exprs {
-			n.Exprs[i] = Transform(expr, f)
-		}
-	case *Case:
-		n.Scrutinee = Transform(n.Scrutinee, f)
-		for i, clause := range n.Clauses {
-			n.Clauses[i] = Transform(clause, f).(*Clause)
-		}
-	case *Object:
-		for i, field := range n.Fields {
-			n.Fields[i] = Transform(field, f).(*Field)
-		}
-	case *Field:
-		for i, expr := range n.Exprs {
-			n.Exprs[i] = Transform(expr, f)
-		}
-	case *TypeDecl:
-		for i, typ := range n.Types {
-			n.Types[i] = Transform(typ, f)
-		}
-	case *VarDecl:
-		n.Type = Transform(n.Type, f)
-		n.Expr = Transform(n.Expr, f)
-	}
-	return f(n)
+	return f(n.Plate(func(n Node) Node {
+		return Transform(n, f)
+	}))
+}
+
+//tool:ignore
+func Children(n Node) []Node {
+	var children []Node
+	n.Plate(func(n Node) Node {
+		children = append(children, n)
+		return n
+	})
+	return children
+}
+
+//tool:ignore
+func Universe(n Node) []Node {
+	var nodes []Node
+	Transform(n, func(n Node) Node {
+		nodes = append(nodes, n)
+		return n
+	})
+	return nodes
 }
