@@ -82,7 +82,7 @@ func flatCodata(c *ast.Codata) ast.Node {
 }
 
 type builder struct {
-	scrutinees []ast.Node
+	scrutinees []token.Token
 }
 
 func newBuilder() *builder {
@@ -175,7 +175,7 @@ func (b builder) object(clauses []*ast.Clause) ast.Node {
 func (b *builder) lambda(arity int, clauses []*ast.Clause) ast.Node {
 	baseToken := clauses[0].Base()
 	// Generate Scrutinees
-	b.scrutinees = make([]ast.Node, arity)
+	b.scrutinees = make([]token.Token, arity)
 	for i := 0; i < arity; i++ {
 		b.scrutinees[i] = newVar(fmt.Sprintf("x%d", i), baseToken)
 	}
@@ -198,16 +198,16 @@ func (b *builder) lambda(arity int, clauses []*ast.Clause) ast.Node {
 // newLambda creates a new Lambda node with the given parameters and expressions.
 // If there is only one parameter, return it without Paren pattern.
 // Otherwise, parameters are wrapped by Paren pattern.
-func newLambda(params []ast.Node, exprs ...ast.Node) *ast.Lambda {
+func newLambda(params []token.Token, exprs ...ast.Node) *ast.Lambda {
 	if len(params) == 1 {
-		return &ast.Lambda{Pattern: params[0], Exprs: exprs}
+		return &ast.Lambda{Params: params, Exprs: exprs}
 	}
-	return &ast.Lambda{Pattern: &ast.Tuple{Elems: params}, Exprs: exprs}
+	return &ast.Lambda{Params: params, Exprs: exprs}
 }
 
 // newVar creates a new Var node with the given name and a token.
-func newVar(name string, base token.Token) *ast.Var {
-	return &ast.Var{Name: token.Token{Kind: token.IDENT, Lexeme: name, Line: base.Line, Literal: nil}}
+func newVar(name string, base token.Token) token.Token {
+	return token.Token{Kind: token.IDENT, Lexeme: name, Line: base.Line, Literal: nil}
 }
 
 // plistToClause creates a new Clause node with the given pattern and expressions.
@@ -218,13 +218,17 @@ func plistToClause(plist patternList, exprs ...ast.Node) *ast.Clause {
 
 // newCase creates a new Case node with the given scrutinees and clauses.
 // If there is no scrutinee, return Exprs of the first clause.
-func newCase(scrs []ast.Node, cs []*ast.Clause) []ast.Node {
+func newCase(scrs []token.Token, cs []*ast.Clause) []ast.Node {
 	// if there is no scrutinee, return Exprs of the first clause
 	// because case expression always matches the first clause.
 	if len(scrs) == 0 {
 		return cs[0].Exprs
 	}
-	return []ast.Node{&ast.Case{Scrutinee: &ast.Tuple{Elems: scrs}, Clauses: cs}}
+	vars := make([]ast.Node, len(scrs))
+	for i, s := range scrs {
+		vars[i] = &ast.Var{Name: s}
+	}
+	return []ast.Node{&ast.Case{Scrutinees: vars, Clauses: cs}}
 }
 
 type InvalidCallPatternError struct {

@@ -288,20 +288,34 @@ func (c *Clause) Plate(f func(Node) Node) Node {
 var _ Node = &Clause{}
 
 type Lambda struct {
-	Pattern Node
-	Exprs   []Node // len(Exprs) > 0
+	Params []token.Token
+	Exprs  []Node // len(Exprs) > 0
 }
 
 func (l Lambda) String() string {
-	return parenthesize("lambda", prepend(l.Pattern, l.Exprs)...)
+	var b strings.Builder
+	b.WriteString("(lambda (")
+	for i, param := range l.Params {
+		if i != 0 {
+			b.WriteString(" ")
+		}
+		b.WriteString(param.Pretty())
+	}
+	b.WriteString(")")
+
+	for _, expr := range l.Exprs {
+		b.WriteString(" ")
+		b.WriteString(expr.String())
+	}
+	b.WriteString(")")
+	return b.String()
 }
 
 func (l *Lambda) Base() token.Token {
-	return l.Pattern.Base()
+	return l.Params[0]
 }
 
 func (l *Lambda) Plate(f func(Node) Node) Node {
-	l.Pattern = f(l.Pattern)
 	for i, expr := range l.Exprs {
 		l.Exprs[i] = f(expr)
 	}
@@ -311,20 +325,41 @@ func (l *Lambda) Plate(f func(Node) Node) Node {
 var _ Node = &Lambda{}
 
 type Case struct {
-	Scrutinee Node
-	Clauses   []*Clause // len(Clauses) > 0
+	Scrutinees []Node
+	Clauses    []*Clause // len(Clauses) > 0
 }
 
 func (c Case) String() string {
-	return parenthesize("case", prepend(c.Scrutinee, squash(c.Clauses))...)
+	var b strings.Builder
+	b.WriteString("(case")
+	for i, scrutinee := range c.Scrutinees {
+		if i == 0 && len(c.Scrutinees) > 1 {
+			b.WriteString(" (")
+		} else {
+			b.WriteString(" ")
+		}
+		b.WriteString(scrutinee.String())
+	}
+	if len(c.Scrutinees) > 1 {
+		b.WriteString(")")
+	}
+
+	for _, clause := range c.Clauses {
+		b.WriteString(" ")
+		b.WriteString(clause.String())
+	}
+	b.WriteString(")")
+	return b.String()
 }
 
 func (c *Case) Base() token.Token {
-	return c.Scrutinee.Base()
+	return c.Scrutinees[0].Base()
 }
 
 func (c *Case) Plate(f func(Node) Node) Node {
-	c.Scrutinee = f(c.Scrutinee)
+	for i, scrutinee := range c.Scrutinees {
+		c.Scrutinees[i] = f(scrutinee)
+	}
 	for i, clause := range c.Clauses {
 		c.Clauses[i] = f(clause).(*Clause)
 	}

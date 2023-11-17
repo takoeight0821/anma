@@ -3,6 +3,7 @@ package eval
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/takoeight0821/anma/ast"
 	"github.com/takoeight0821/anma/token"
@@ -74,13 +75,29 @@ func (f Float) String() string {
 }
 
 type Function struct {
-	ev      *Evaluator
-	pattern ast.Node
-	exprs   []ast.Node
+	ev     *Evaluator
+	params []token.Token
+	exprs  []ast.Node
 }
 
 func (f *Function) String() string {
-	return fmt.Sprintf("func(%v) {%v}", f.pattern, f.exprs)
+	var b strings.Builder
+	b.WriteString("func(")
+	for i, param := range f.params {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(param.Pretty())
+	}
+	b.WriteString(") {")
+	for i, expr := range f.exprs {
+		if i > 0 {
+			b.WriteString("; ")
+		}
+		b.WriteString(expr.String())
+	}
+	b.WriteString("}")
+	return b.String()
 }
 
 type Tuple struct {
@@ -109,7 +126,7 @@ func (ev *Evaluator) Eval(node ast.Node) Value {
 		rhs := ev.Eval(n.Right)
 		return ev.apply(n.Base(), op, lhs, rhs)
 	case *ast.Lambda:
-		return newFunction(ev, n.Pattern, n.Exprs)
+		return newFunction(ev, n.Params, n.Exprs)
 	case *ast.VarDecl:
 		value := ev.Eval(n.Expr)
 		ev.define(n.Name, value)
@@ -189,14 +206,14 @@ func (ev *Evaluator) evalPrim(name token.Token, args []Value) Value {
 	}
 }
 
-func newFunction(ev *Evaluator, pattern ast.Node, exprs []ast.Node) Value {
+func newFunction(ev *Evaluator, params []token.Token, exprs []ast.Node) Value {
 	// copy evaluator
 	newEv := &Evaluator{env: make(map[id]Value)}
 	for k, v := range ev.env {
 		newEv.env[k] = v
 	}
 
-	return &Function{ev: newEv, pattern: pattern, exprs: exprs}
+	return &Function{ev: newEv, params: params, exprs: exprs}
 }
 
 type NotFunctionError struct {
@@ -211,13 +228,8 @@ func (e NotFunctionError) Error() string {
 func (ev *Evaluator) apply(base token.Token, fun Value, args ...Value) Value {
 	switch f := fun.(type) {
 	case *Function:
-		env, err := f.ev.match(f.pattern, args)
-		if err != nil {
-			ev.Throw(err)
-			return nil
-		}
-		for k, v := range env {
-			f.ev.define(k, v)
+		for i, param := range f.params {
+			f.ev.define(param, args[i])
 		}
 		var value Value
 		for _, expr := range f.exprs {
@@ -228,33 +240,4 @@ func (ev *Evaluator) apply(base token.Token, fun Value, args ...Value) Value {
 		ev.Throw(NotFunctionError{Base: base, Value: fun})
 		return nil
 	}
-}
-
-func (ev *Evaluator) match(pattern ast.Node, args []Value) (map[token.Token]Value, error) {
-	println("match", pattern.String(), args)
-	switch p := pattern.(type) {
-	case *ast.Tuple:
-		if len(p.Elems) != len(args) {
-			return nil, ArityError{Base: p.Base(), Expected: len(p.Elems), Args: args}
-		}
-		result := make(map[token.Token]Value)
-		for i, elem := range p.Elems {
-			env, err := ev.match(elem, []Value{args[i]})
-			if err != nil {
-				return nil, err
-			}
-			for k, v := range env {
-				result[k] = v
-			}
-		}
-		return result, nil
-	case *ast.Var:
-		if len(args) != 1 {
-			return nil, ArityError{Base: p.Base(), Expected: 1, Args: args}
-		}
-		result := make(map[token.Token]Value)
-		result[p.Name] = args[0]
-		return result, nil
-	}
-	panic("not implemented")
 }

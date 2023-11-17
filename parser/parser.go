@@ -120,10 +120,24 @@ func (p *Parser) let() *ast.Let {
 	return &ast.Let{Bind: pattern, Body: expr}
 }
 
-// fn = "fn" pattern "{" expr (";" expr)* ";"? "}" ;
+// fn = "fn" "(" param_list? ")" "{" expr (";" expr)* ";"? "}" ;
+// param_list = param ("," param)* ","? ;
 func (p *Parser) fn() *ast.Lambda {
 	p.advance()
-	pattern := p.pattern()
+	p.consume(token.LEFTPAREN)
+	params := []token.Token{}
+	if p.match(token.IDENT) {
+		params = append(params, p.advance())
+		for p.match(token.COMMA) {
+			p.advance()
+			if p.match(token.RIGHTPAREN) {
+				break
+			}
+			params = append(params, p.consume(token.IDENT))
+		}
+	}
+	p.consume(token.RIGHTPAREN)
+
 	p.consume(token.LEFTBRACE)
 	exprs := []ast.Node{p.expr()}
 	for p.match(token.SEMICOLON) {
@@ -134,7 +148,7 @@ func (p *Parser) fn() *ast.Lambda {
 		exprs = append(exprs, p.expr())
 	}
 	p.consume(token.RIGHTBRACE)
-	return &ast.Lambda{Pattern: pattern, Exprs: exprs}
+	return &ast.Lambda{Params: params, Exprs: exprs}
 }
 
 // atom = var | literal | paren | codata ;
