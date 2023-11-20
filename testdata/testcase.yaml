@@ -174,7 +174,7 @@
       (def *.1 (lambda (x0.7 x1.8) (case ((var x0.7) (var x1.8)) (clause ((var x.9) (var y.10)) (prim mul (var x.9) (var y.10))))))
       (def main.2 (lambda () (binary (binary (literal 1) *.1 (literal 2)) +.0 (literal 3))))
 - label: infix3
-  enable: false
+  enable: true
   input: |
     infixl 6 +
     infixl 8 *
@@ -188,6 +188,21 @@
       (def + (codata (clause (call (this #) (var x) (var y)) (prim add (var x) (var y)))))
       (def * (codata (clause (call (this #) (var x) (var y)) (prim mul (var x) (var y)))))
       (def main (codata (clause (call (this #)) (binary (literal 1) * (paren (binary (literal 2) + (literal 3)))))))
-    codata: ""
-    infix: ""
-    nameresolve: ""
+    codata: |
+      (infix infixl 6 +)
+      (infix infixl 8 *)
+      (def + (lambda (x0 x1) (case ((var x0) (var x1)) (clause ((var x) (var y)) (prim add (var x) (var y))))))
+      (def * (lambda (x0 x1) (case ((var x0) (var x1)) (clause ((var x) (var y)) (prim mul (var x) (var y))))))
+      (def main (lambda () (binary (literal 1) * (tuple (binary (literal 2) + (literal 3))))))
+    infix: |
+      (infix infixl 6 +)
+      (infix infixl 8 *)
+      (def + (lambda (x0 x1) (case ((var x0) (var x1)) (clause ((var x) (var y)) (prim add (var x) (var y))))))
+      (def * (lambda (x0 x1) (case ((var x0) (var x1)) (clause ((var x) (var y)) (prim mul (var x) (var y))))))
+      (def main (lambda () (binary (literal 1) * (binary (literal 2) + (literal 3)))))
+    nameresolve: |
+      (infix infixl 6 +.0)
+      (infix infixl 8 *.1)
+      (def +.0 (lambda (x0.3 x1.4) (case ((var x0.3) (var x1.4)) (clause ((var x.5) (var y.6)) (prim add (var x.5) (var y.6))))))
+      (def *.1 (lambda (x0.7 x1.8) (case ((var x0.7) (var x1.8)) (clause ((var x.9) (var y.10)) (prim mul (var x.9) (var y.10))))))
+      (def main.2 (lambda () (binary (literal 1) *.1 (binary (literal 2) +.0 (literal 3)))))

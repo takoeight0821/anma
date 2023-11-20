@@ -12,7 +12,6 @@ import (
 )
 
 func TestEval(t *testing.T) {
-	t.Skip("TODO: implement")
 	testcases := []struct {
 		input    []string
 		expected string

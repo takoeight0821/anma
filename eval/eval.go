@@ -228,6 +228,7 @@ func (e NotFunctionError) Error() string {
 func (ev *Evaluator) apply(base token.Token, fun Value, args ...Value) Value {
 	switch f := fun.(type) {
 	case *Function:
+		// override parameters in function evaluator
 		for i, param := range f.params {
 			f.ev.define(param, args[i])
 		}
