@@ -54,29 +54,24 @@ func (l *Literal) Plate(f func(Node) Node) Node {
 
 var _ Node = &Literal{}
 
-type Tuple struct {
-	Elems []Node
+type Paren struct {
+	Expr Node
 }
 
-func (p Tuple) String() string {
-	return parenthesize("tuple", p.Elems...)
+func (p Paren) String() string {
+	return fmt.Sprintf("(paren %v)", p.Expr)
 }
 
-func (p *Tuple) Base() token.Token {
-	if len(p.Elems) == 0 {
-		return token.Token{}
-	}
-	return p.Elems[0].Base()
+func (p *Paren) Base() token.Token {
+	return p.Expr.Base()
 }
 
-func (p *Tuple) Plate(f func(Node) Node) Node {
-	for i, elem := range p.Elems {
-		p.Elems[i] = f(elem)
-	}
+func (p *Paren) Plate(f func(Node) Node) Node {
+	p.Expr = f(p.Expr)
 	return p
 }
 
-var _ Node = &Tuple{}
+var _ Node = &Paren{}
 
 type Access struct {
 	Receiver Node

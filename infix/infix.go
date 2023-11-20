@@ -42,10 +42,8 @@ func (r *InfixResolver) Run(program []ast.Node) ([]ast.Node, error) {
 			switch n := n.(type) {
 			case *ast.Binary:
 				return r.mkBinary(n.Op, n.Left, n.Right)
-			case *ast.Tuple:
-				if len(n.Elems) == 1 {
-					return n.Elems[0]
-				}
+			case *ast.Paren:
+				return n.Expr
 			}
 			return n
 		})

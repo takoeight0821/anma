@@ -160,20 +160,9 @@ func (p *Parser) atom() ast.Node {
 	case token.INTEGER, token.STRING:
 		return &ast.Literal{Token: t}
 	case token.LEFTPAREN:
-		if p.match(token.RIGHTPAREN) {
-			p.advance()
-			return &ast.Tuple{}
-		}
-		elems := []ast.Node{p.expr()}
-		for p.match(token.COMMA) {
-			p.advance()
-			if p.match(token.RIGHTPAREN) {
-				break
-			}
-			elems = append(elems, p.expr())
-		}
+		expr := p.expr()
 		p.consume(token.RIGHTPAREN)
-		return &ast.Tuple{Elems: elems}
+		return &ast.Paren{Expr: expr}
 	case token.LEFTBRACE:
 		return p.codata()
 	default:
@@ -336,7 +325,7 @@ func (p *Parser) finishCallPat(fun ast.Node) *ast.Call {
 	return &ast.Call{Func: fun, Args: args}
 }
 
-// atomPat = IDENT | INTEGER | STRING | "(" pattern ("," pattern)* ","? ")" ;
+// atomPat = IDENT | INTEGER | STRING | "(" pattern ")" ;
 func (p *Parser) atomPat() ast.Node {
 	//exhaustive:ignore
 	switch t := p.advance(); t.Kind {
@@ -347,20 +336,9 @@ func (p *Parser) atomPat() ast.Node {
 	case token.INTEGER, token.STRING:
 		return &ast.Literal{Token: t}
 	case token.LEFTPAREN:
-		if p.match(token.RIGHTPAREN) {
-			p.advance()
-			return &ast.Tuple{}
-		}
-		patterns := []ast.Node{p.pattern()}
-		for p.match(token.COMMA) {
-			p.advance()
-			if p.match(token.RIGHTPAREN) {
-				break
-			}
-			patterns = append(patterns, p.pattern())
-		}
+		pat := p.pattern()
 		p.consume(token.RIGHTPAREN)
-		return &ast.Tuple{Elems: patterns}
+		return &ast.Paren{Expr: pat}
 	default:
 		p.recover(unexpectedTokenError(t, "identifier", "integer", "string", "`(`"))
 		return nil
@@ -452,20 +430,9 @@ func (p *Parser) atomType() ast.Node {
 		p.consume(token.RIGHTBRACE)
 		return &ast.Object{Fields: fields}
 	case token.LEFTPAREN:
-		if p.match(token.RIGHTPAREN) {
-			p.advance()
-			return &ast.Tuple{}
-		}
-		types := []ast.Node{p.typ()}
-		for p.match(token.COMMA) {
-			p.advance()
-			if p.match(token.RIGHTPAREN) {
-				break
-			}
-			types = append(types, p.typ())
-		}
+		typ := p.typ()
 		p.consume(token.RIGHTPAREN)
-		return &ast.Tuple{Elems: types}
+		return &ast.Paren{Expr: typ}
 	default:
 		p.recover(unexpectedTokenError(t, "identifier", "`{`", "`(`"))
 		return nil
