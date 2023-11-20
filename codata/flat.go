@@ -70,8 +70,8 @@ func flatCodata(c *ast.Codata) ast.Node {
 	arity := notChecked
 	clauses := make([]*ast.Clause, len(c.Clauses))
 	for i, cl := range c.Clauses {
-		plist := patternList{accessors: accessors(cl.Pattern), params: params(cl.Pattern)}
-		clauses[i] = &ast.Clause{Pattern: plist, Exprs: cl.Exprs}
+		plist := NewPatternList(cl)
+		clauses[i] = &ast.Clause{Patterns: []ast.Node{plist}, Exprs: cl.Exprs}
 		if arity == notChecked {
 			arity = arityOf(plist)
 		}
@@ -82,7 +82,7 @@ func flatCodata(c *ast.Codata) ast.Node {
 }
 
 type builder struct {
-	scrutinees []ast.Node
+	scrutinees []token.Token
 }
 
 func newBuilder() *builder {
@@ -109,11 +109,11 @@ func (b builder) object(clauses []*ast.Clause) ast.Node {
 	// Pop the first accessor of each clause and group remaining clauses by the popped accessor.
 	next := make(map[string][]*ast.Clause)
 	for _, c := range clauses {
-		plist := c.Pattern.(patternList)
+		plist := getPlist(c)
 		if field, plist, ok := pop(plist); ok {
 			next[field.Pretty()] = append(
 				next[field.Pretty()],
-				&ast.Clause{Pattern: plist, Exprs: c.Exprs})
+				&ast.Clause{Patterns: []ast.Node{plist}, Exprs: c.Exprs})
 		} else {
 			panic(UnsupportedPatternError{Clause: c})
 		}
@@ -142,9 +142,9 @@ func (b builder) object(clauses []*ast.Clause) ast.Node {
 		restClauses := make(map[int]*ast.Clause)
 		for i, c := range cs {
 			// if c has no accessors, generate pattern matching clause
-			plist := c.Pattern.(patternList)
+			plist := getPlist(c)
 			if len(plist.accessors) == 0 {
-				caseClauses[i] = plistToClause(c.Pattern.(patternList), c.Exprs...)
+				caseClauses[i] = plistToClause(plist, c.Exprs...)
 			} else {
 				// otherwise, add to restClauses
 				restClauses[i] = c
@@ -158,7 +158,7 @@ func (b builder) object(clauses []*ast.Clause) ast.Node {
 		})
 
 		for i, c := range restClauses {
-			caseClauses[i] = plistToClause(c.Pattern.(patternList), b.object(restClausesList))
+			caseClauses[i] = plistToClause(getPlist(c), b.object(restClausesList))
 		}
 
 		fields = append(fields,
@@ -175,14 +175,14 @@ func (b builder) object(clauses []*ast.Clause) ast.Node {
 func (b *builder) lambda(arity int, clauses []*ast.Clause) ast.Node {
 	baseToken := clauses[0].Base()
 	// Generate Scrutinees
-	b.scrutinees = make([]ast.Node, arity)
+	b.scrutinees = make([]token.Token, arity)
 	for i := 0; i < arity; i++ {
 		b.scrutinees[i] = newVar(fmt.Sprintf("x%d", i), baseToken)
 	}
 
 	// If any of clauses has accessors, body expression is Object.
 	for _, c := range clauses {
-		if len(c.Pattern.(patternList).accessors) != 0 {
+		if len(getPlist(c).accessors) != 0 {
 			return newLambda(b.scrutinees, b.object(clauses))
 		}
 	}
@@ -190,7 +190,7 @@ func (b *builder) lambda(arity int, clauses []*ast.Clause) ast.Node {
 	// otherwise, body expression is Case.
 	caseClauses := make([]*ast.Clause, 0)
 	for _, c := range clauses {
-		caseClauses = append(caseClauses, plistToClause(c.Pattern.(patternList), c.Exprs...))
+		caseClauses = append(caseClauses, plistToClause(getPlist(c), c.Exprs...))
 	}
 	return newLambda(b.scrutinees, newCase(b.scrutinees, caseClauses)...)
 }
@@ -198,33 +198,37 @@ func (b *builder) lambda(arity int, clauses []*ast.Clause) ast.Node {
 // newLambda creates a new Lambda node with the given parameters and expressions.
 // If there is only one parameter, return it without Paren pattern.
 // Otherwise, parameters are wrapped by Paren pattern.
-func newLambda(params []ast.Node, exprs ...ast.Node) *ast.Lambda {
+func newLambda(params []token.Token, exprs ...ast.Node) *ast.Lambda {
 	if len(params) == 1 {
-		return &ast.Lambda{Pattern: params[0], Exprs: exprs}
+		return &ast.Lambda{Params: params, Exprs: exprs}
 	}
-	return &ast.Lambda{Pattern: &ast.Tuple{Elems: params}, Exprs: exprs}
+	return &ast.Lambda{Params: params, Exprs: exprs}
 }
 
 // newVar creates a new Var node with the given name and a token.
-func newVar(name string, base token.Token) *ast.Var {
-	return &ast.Var{Name: token.Token{Kind: token.IDENT, Lexeme: name, Line: base.Line, Literal: nil}}
+func newVar(name string, base token.Token) token.Token {
+	return token.Token{Kind: token.IDENT, Lexeme: name, Line: base.Line, Literal: nil}
 }
 
 // plistToClause creates a new Clause node with the given pattern and expressions.
 // pattern must be a patternList.
 func plistToClause(plist patternList, exprs ...ast.Node) *ast.Clause {
-	return &ast.Clause{Pattern: &ast.Tuple{Elems: plist.params}, Exprs: exprs}
+	return &ast.Clause{Patterns: plist.params, Exprs: exprs}
 }
 
 // newCase creates a new Case node with the given scrutinees and clauses.
 // If there is no scrutinee, return Exprs of the first clause.
-func newCase(scrs []ast.Node, cs []*ast.Clause) []ast.Node {
+func newCase(scrs []token.Token, cs []*ast.Clause) []ast.Node {
 	// if there is no scrutinee, return Exprs of the first clause
 	// because case expression always matches the first clause.
 	if len(scrs) == 0 {
 		return cs[0].Exprs
 	}
-	return []ast.Node{&ast.Case{Scrutinee: &ast.Tuple{Elems: scrs}, Clauses: cs}}
+	vars := make([]ast.Node, len(scrs))
+	for i, s := range scrs {
+		vars[i] = &ast.Var{Name: s}
+	}
+	return []ast.Node{&ast.Case{Scrutinees: vars, Clauses: cs}}
 }
 
 type InvalidCallPatternError struct {
@@ -263,6 +267,27 @@ func params(p ast.Node) []ast.Node {
 type patternList struct {
 	accessors []token.Token
 	params    []ast.Node
+}
+
+func NewPatternList(clause *ast.Clause) patternList {
+	if len(clause.Patterns) != 1 {
+		panic("invalid pattern")
+	}
+
+	accessors := accessors(clause.Patterns[0])
+	params := params(clause.Patterns[0])
+	return patternList{accessors: accessors, params: params}
+}
+
+func NewPlistClause(clause *ast.Clause) *ast.Clause {
+	return &ast.Clause{Patterns: []ast.Node{NewPatternList(clause)}, Exprs: clause.Exprs}
+}
+
+func getPlist(cl *ast.Clause) patternList {
+	if len(cl.Patterns) != 1 {
+		panic("invalid pattern")
+	}
+	return cl.Patterns[0].(patternList)
 }
 
 func (p patternList) Base() token.Token {

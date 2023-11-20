@@ -108,6 +108,12 @@ func (r *Resolver) registerTopLevel(node ast.Node) {
 	}
 }
 
+func (r *Resolver) solveToken(t token.Token) token.Token {
+	name, err := r.env.lookup(t)
+	r.addError(err)
+	return name
+}
+
 // solve all variables in the node.
 func (r *Resolver) solve(node ast.Node) ast.Node {
 	switch n := node.(type) {
@@ -118,10 +124,8 @@ func (r *Resolver) solve(node ast.Node) ast.Node {
 		return n
 	case *ast.Literal:
 		return n
-	case *ast.Tuple:
-		for i, elem := range n.Elems {
-			n.Elems[i] = r.solve(elem)
-		}
+	case *ast.Paren:
+		n.Expr = r.solve(n.Expr)
 		return n
 	case *ast.Access:
 		n.Receiver = r.solve(n.Receiver)
@@ -161,8 +165,10 @@ func (r *Resolver) solve(node ast.Node) ast.Node {
 	case *ast.Clause:
 		r.env = newEnv(r.env)
 		defer func() { r.env = r.env.parent }()
-		r.assign(n.Pattern, asPattern)
-		n.Pattern = r.solve(n.Pattern)
+		for i, pattern := range n.Patterns {
+			r.assign(pattern, asPattern)
+			n.Patterns[i] = r.solve(pattern)
+		}
 		for i, expr := range n.Exprs {
 			n.Exprs[i] = r.solve(expr)
 		}
@@ -170,14 +176,18 @@ func (r *Resolver) solve(node ast.Node) ast.Node {
 	case *ast.Lambda:
 		r.env = newEnv(r.env)
 		defer func() { r.env = r.env.parent }()
-		r.assign(n.Pattern, asPattern)
-		n.Pattern = r.solve(n.Pattern)
+		for i, param := range n.Params {
+			r.assignToken(param, asPattern)
+			n.Params[i] = r.solveToken(param)
+		}
 		for i, expr := range n.Exprs {
 			n.Exprs[i] = r.solve(expr)
 		}
 		return n
 	case *ast.Case:
-		n.Scrutinee = r.solve(n.Scrutinee)
+		for i, scr := range n.Scrutinees {
+			n.Scrutinees[i] = r.solve(scr)
+		}
 		for i, clause := range n.Clauses {
 			n.Clauses[i] = r.solve(clause).(*ast.Clause)
 		}
@@ -303,13 +313,8 @@ func asPattern(r *Resolver, node ast.Node) []string {
 		return []string{n.Name.Lexeme}
 	case *ast.Literal:
 		return nil
-	case *ast.Tuple:
-		var defined []string
-		for _, elem := range n.Elems {
-			new := r.assign(elem, asPattern)
-			defined = append(defined, new...)
-		}
-		return defined
+	case *ast.Paren:
+		return r.assign(n.Expr, asPattern)
 	case *ast.Access:
 		return r.assign(n.Receiver, asPattern)
 	case *ast.Call:
@@ -330,4 +335,8 @@ func asPattern(r *Resolver, node ast.Node) []string {
 // Returns a list of defined variables.
 func (r *Resolver) assign(node ast.Node, mode mode) []string {
 	return mode(r, node)
+}
+
+func (r *Resolver) assignToken(t token.Token, mode mode) []string {
+	return r.assign(&ast.Var{Name: t}, mode)
 }
