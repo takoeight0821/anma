@@ -2,12 +2,10 @@ module github.com/takoeight0821/anma
 
 go 1.21.1
 
-require github.com/peterh/liner v1.2.2
-
 require (
-	github.com/samber/lo v1.38.1 // indirect
-	github.com/sergi/go-diff v1.3.1 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
+	github.com/peterh/liner v1.2.2
+	github.com/sergi/go-diff v1.3.1
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
