@@ -25,7 +25,7 @@ func (r *InfixResolver) Name() string {
 
 func (r *InfixResolver) Init(program []ast.Node) error {
 	for _, node := range program {
-		ast.Transform(node, func(n ast.Node) ast.Node {
+		ast.Traverse(node, func(n ast.Node) ast.Node {
 			switch n := n.(type) {
 			case *ast.InfixDecl:
 				r.add(n)
@@ -38,7 +38,7 @@ func (r *InfixResolver) Init(program []ast.Node) error {
 
 func (r *InfixResolver) Run(program []ast.Node) ([]ast.Node, error) {
 	for i, node := range program {
-		program[i] = ast.Transform(node, func(n ast.Node) ast.Node {
+		program[i] = ast.Traverse(node, func(n ast.Node) ast.Node {
 			switch n := n.(type) {
 			case *ast.Binary:
 				return r.mkBinary(n.Op, n.Left, n.Right)

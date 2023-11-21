@@ -28,7 +28,7 @@ func (Flat) Run(program []ast.Node) ([]ast.Node, error) {
 }
 
 func flat(n ast.Node) ast.Node {
-	return ast.Transform(n, flatEach)
+	return ast.Traverse(n, flatEach)
 }
 
 func flatEach(n ast.Node) ast.Node {

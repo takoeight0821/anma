@@ -503,15 +503,15 @@ func prepend[T fmt.Stringer](elem fmt.Stringer, slice []T) fmt.Stringer {
 	return &b
 }
 
-// Transform the [Node] in depth-first order.
+// Traverse the [Node] in depth-first order.
 // f is called for each node.
-// If n is defined in ast.go and has children, Transform modifies each child before n.
+// If n is defined in ast.go and has children, Traverse modifies each child before n.
 // Otherwise, n is directly applied to f.
 //
 //tool:ignore
-func Transform(n Node, f func(Node) Node) Node {
+func Traverse(n Node, f func(Node) Node) Node {
 	return f(n.Plate(func(n Node) Node {
-		return Transform(n, f)
+		return Traverse(n, f)
 	}))
 }
 
@@ -528,7 +528,7 @@ func Children(n Node) []Node {
 //tool:ignore
 func Universe(n Node) []Node {
 	var nodes []Node
-	Transform(n, func(n Node) Node {
+	Traverse(n, func(n Node) Node {
 		nodes = append(nodes, n)
 		return n
 	})

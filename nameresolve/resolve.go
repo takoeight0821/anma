@@ -248,7 +248,7 @@ func (e AlreadyDefinedError) Error() string {
 // If a variable is already defined in current scope, it is an error.
 func allVariables(r *Resolver, node ast.Node) []string {
 	var defined []string
-	ast.Transform(node, func(n ast.Node) ast.Node {
+	ast.Traverse(node, func(n ast.Node) ast.Node {
 		switch n := n.(type) {
 		case *ast.Var:
 			if _, ok := r.env.table[n.Name.Lexeme]; ok {
@@ -266,7 +266,7 @@ func allVariables(r *Resolver, node ast.Node) []string {
 // If a variable is already defined in current scope, it is overwritten.
 func overwrite(r *Resolver, node ast.Node) []string {
 	var defined []string
-	ast.Transform(node, func(n ast.Node) ast.Node {
+	ast.Traverse(node, func(n ast.Node) ast.Node {
 		switch n := n.(type) {
 		case *ast.Var:
 			r.define(n.Name)
@@ -280,7 +280,7 @@ func overwrite(r *Resolver, node ast.Node) []string {
 // ifNotDefined define variables in the node if they are not defined.
 func ifNotDefined(r *Resolver, node ast.Node) []string {
 	var defined []string
-	ast.Transform(node, func(n ast.Node) ast.Node {
+	ast.Traverse(node, func(n ast.Node) ast.Node {
 		switch n := n.(type) {
 		case *ast.Var:
 			if _, err := r.env.lookup(n.Name); err != nil {
