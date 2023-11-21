@@ -111,8 +111,8 @@ func (b builder) object(clauses []*ast.Clause) ast.Node {
 	for _, c := range clauses {
 		plist := getPlist(c)
 		if field, plist, ok := pop(plist); ok {
-			next[field.Pretty()] = append(
-				next[field.Pretty()],
+			next[field.String()] = append(
+				next[field.String()],
 				&ast.Clause{Patterns: []ast.Node{plist}, Exprs: c.Exprs})
 		} else {
 			panic(UnsupportedPatternError{Clause: c})

@@ -87,7 +87,7 @@ func (f *Function) String() string {
 		if i > 0 {
 			b.WriteString(", ")
 		}
-		b.WriteString(param.Pretty())
+		b.WriteString(param.String())
 	}
 	b.WriteString(") {")
 	for i, expr := range f.exprs {

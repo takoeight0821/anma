@@ -24,7 +24,7 @@ type Var struct {
 }
 
 func (v Var) String() string {
-	return fmt.Sprintf("(var %s)", v.Name.Pretty())
+	return parenthesize("var", v.Name)
 }
 
 func (v *Var) Base() token.Token {
@@ -42,7 +42,7 @@ type Literal struct {
 }
 
 func (l Literal) String() string {
-	return fmt.Sprintf("(literal %s)", l.Token.Pretty())
+	return parenthesize("literal", l.Token)
 }
 
 func (l *Literal) Base() token.Token {
@@ -60,7 +60,7 @@ type Paren struct {
 }
 
 func (p Paren) String() string {
-	return fmt.Sprintf("(paren %v)", p.Expr)
+	return parenthesize("paren", p.Expr)
 }
 
 func (p *Paren) Base() token.Token {
@@ -80,7 +80,7 @@ type Access struct {
 }
 
 func (a Access) String() string {
-	return fmt.Sprintf("(access %v %s)", a.Receiver, a.Name.Pretty())
+	return parenthesize[fmt.Stringer]("access", a.Receiver, a.Name)
 }
 
 func (a *Access) Base() token.Token {
@@ -123,14 +123,7 @@ type Prim struct {
 }
 
 func (p Prim) String() string {
-	args := make([]string, len(p.Args))
-	for i, arg := range p.Args {
-		args[i] = arg.String()
-	}
-	if len(args) == 0 {
-		return fmt.Sprintf("(prim %s)", p.Name.Pretty())
-	}
-	return fmt.Sprintf("(prim %s %s)", p.Name.Pretty(), strings.Join(args, " "))
+	return parenthesize("prim", prepend(p.Name, p.Args)...)
 }
 
 func (p *Prim) Base() token.Token {
@@ -153,7 +146,7 @@ type Binary struct {
 }
 
 func (b Binary) String() string {
-	return fmt.Sprintf("(binary %v %s %v)", b.Left, b.Op.Pretty(), b.Right)
+	return parenthesize[fmt.Stringer]("binary", b.Left, b.Op, b.Right)
 }
 
 func (b *Binary) Base() token.Token {
@@ -242,29 +235,14 @@ type Clause struct {
 }
 
 func (c Clause) String() string {
-	var b strings.Builder
-	b.WriteString("(clause ")
-
+	var patBuilder strings.Builder
 	if len(c.Patterns) > 1 {
-		b.WriteString("(")
+		patBuilder.WriteString(parenthesize("", c.Patterns...))
+	} else {
+		patBuilder.WriteString(c.Patterns[0].String())
 	}
 
-	b.WriteString(strings.Join(lo.Map(c.Patterns, func(p Node, _ int) string {
-		return p.String()
-	}), " "))
-
-	if len(c.Patterns) > 1 {
-		b.WriteString(")")
-	}
-
-	b.WriteString(" ")
-
-	b.WriteString(strings.Join(lo.Map(c.Exprs, func(e Node, _ int) string {
-		return e.String()
-	}), " "))
-
-	b.WriteString(")")
-	return b.String()
+	return parenthesize[fmt.Stringer]("clause", prepend(&patBuilder, c.Exprs)...)
 }
 
 func (c *Clause) Base() token.Token {
@@ -292,14 +270,10 @@ type Lambda struct {
 }
 
 func (l Lambda) String() string {
-	return fmt.Sprintf("(lambda (%s) %s)",
-		strings.Join(lo.Map(l.Params, func(p token.Token, _ int) string {
-			return p.Pretty()
-		}), " "),
-		strings.Join(lo.Map(l.Exprs, func(e Node, _ int) string {
-			return e.String()
-		}), " "),
-	)
+	var paramBuilder strings.Builder
+	paramBuilder.WriteString(parenthesize("", squash(l.Params)...))
+
+	return parenthesize("lambda", prepend(&paramBuilder, l.Exprs)...)
 }
 
 func (l *Lambda) Base() token.Token {
@@ -321,14 +295,10 @@ type Case struct {
 }
 
 func (c Case) String() string {
-	return fmt.Sprintf("(case (%s) %s)",
-		strings.Join(lo.Map(c.Scrutinees, func(s Node, _ int) string {
-			return s.String()
-		}), " "),
-		strings.Join(lo.Map(c.Clauses, func(clause *Clause, _ int) string {
-			return clause.String()
-		}), " "),
-	)
+	var scrutineeBuilder strings.Builder
+	scrutineeBuilder.WriteString(parenthesize("", c.Scrutinees...))
+
+	return parenthesize("case", prepend(&scrutineeBuilder, squash(c.Clauses))...)
 }
 
 func (c *Case) Base() token.Token {
@@ -421,12 +391,12 @@ type VarDecl struct {
 
 func (v VarDecl) String() string {
 	if v.Type == nil {
-		return fmt.Sprintf("(def %s %v)", v.Name.Pretty(), v.Expr)
+		return parenthesize[fmt.Stringer]("def", v.Name, v.Expr)
 	}
 	if v.Expr == nil {
-		return fmt.Sprintf("(def %s %v)", v.Name.Pretty(), v.Type)
+		return parenthesize[fmt.Stringer]("def", v.Name, v.Type)
 	}
-	return fmt.Sprintf("(def %s %v %v)", v.Name.Pretty(), v.Type, v.Expr)
+	return parenthesize[fmt.Stringer]("def", v.Name, v.Type, v.Expr)
 }
 
 func (v *VarDecl) Base() token.Token {
@@ -452,7 +422,7 @@ type InfixDecl struct {
 }
 
 func (i InfixDecl) String() string {
-	return fmt.Sprintf("(infix %s %s %s)", i.Assoc.Pretty(), i.Prec.Pretty(), i.Name.Pretty())
+	return parenthesize("infix", i.Assoc, i.Prec, i.Name)
 }
 
 func (i *InfixDecl) Base() token.Token {
@@ -470,7 +440,7 @@ type This struct {
 }
 
 func (t This) String() string {
-	return fmt.Sprintf("(this %s)", t.Token.Pretty())
+	return parenthesize("this", t.Token)
 }
 
 func (t *This) Base() token.Token {
@@ -483,32 +453,33 @@ func (t *This) Plate(f func(Node) Node) Node {
 
 var _ Node = &This{}
 
-func parenthesize(head string, nodes ...Node) string {
-	var b strings.Builder
-	b.WriteString("(")
-	b.WriteString(head)
-	for _, node := range nodes {
-		b.WriteString(" ")
-		if node == nil {
-			b.WriteString("<nil>")
-		} else {
-			b.WriteString(node.String())
-		}
+func parenthesize[T fmt.Stringer](head string, nodes ...T) string {
+	if head == "" {
+		return fmt.Sprintf("(%s)", strings.Join(lo.Map(nodes, func(n T, _ int) string {
+			return n.String()
+		}), " "))
+	} else {
+		return fmt.Sprintf("(%s %s)", head, strings.Join(lo.Map(nodes, func(n T, _ int) string {
+			return n.String()
+		}), " "))
 	}
-	b.WriteString(")")
-	return b.String()
 }
 
-func squash[T Node](elems []T) []Node {
-	nodes := make([]Node, len(elems))
+func squash[T fmt.Stringer](elems []T) []fmt.Stringer {
+	strs := make([]fmt.Stringer, len(elems))
 	for i, elem := range elems {
-		nodes[i] = elem
+		strs[i] = elem
 	}
-	return nodes
+	return strs
 }
 
-func prepend(elem Node, slice []Node) []Node {
-	return append([]Node{elem}, slice...)
+func prepend[T fmt.Stringer](elem fmt.Stringer, slice []T) []fmt.Stringer {
+	newSlice := make([]fmt.Stringer, len(slice)+1)
+	newSlice[0] = elem
+	for i, elem := range slice {
+		newSlice[i+1] = elem
+	}
+	return newSlice
 }
 
 // Transform the [Node] in depth-first order.
