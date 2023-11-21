@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/samber/lo"
 	"github.com/takoeight0821/anma/token"
 )
 
@@ -24,7 +23,7 @@ type Var struct {
 }
 
 func (v Var) String() string {
-	return parenthesize("var", v.Name)
+	return parenthesize("var", v.Name).String()
 }
 
 func (v *Var) Base() token.Token {
@@ -42,7 +41,7 @@ type Literal struct {
 }
 
 func (l Literal) String() string {
-	return parenthesize("literal", l.Token)
+	return parenthesize("literal", l.Token).String()
 }
 
 func (l *Literal) Base() token.Token {
@@ -60,7 +59,7 @@ type Paren struct {
 }
 
 func (p Paren) String() string {
-	return parenthesize("paren", p.Expr)
+	return parenthesize("paren", p.Expr).String()
 }
 
 func (p *Paren) Base() token.Token {
@@ -80,7 +79,7 @@ type Access struct {
 }
 
 func (a Access) String() string {
-	return parenthesize[fmt.Stringer]("access", a.Receiver, a.Name)
+	return parenthesize("access", a.Receiver, a.Name).String()
 }
 
 func (a *Access) Base() token.Token {
@@ -100,7 +99,7 @@ type Call struct {
 }
 
 func (c Call) String() string {
-	return parenthesize("call", prepend(c.Func, c.Args)...)
+	return parenthesize("call", c.Func, concat(c.Args)).String()
 }
 
 func (c *Call) Base() token.Token {
@@ -123,7 +122,7 @@ type Prim struct {
 }
 
 func (p Prim) String() string {
-	return parenthesize("prim", prepend(p.Name, p.Args)...)
+	return parenthesize("prim", p.Name, concat(p.Args)).String()
 }
 
 func (p *Prim) Base() token.Token {
@@ -146,7 +145,7 @@ type Binary struct {
 }
 
 func (b Binary) String() string {
-	return parenthesize[fmt.Stringer]("binary", b.Left, b.Op, b.Right)
+	return parenthesize("binary", b.Left, b.Op, b.Right).String()
 }
 
 func (b *Binary) Base() token.Token {
@@ -167,7 +166,7 @@ type Assert struct {
 }
 
 func (a Assert) String() string {
-	return parenthesize("assert", a.Expr, a.Type)
+	return parenthesize("assert", a.Expr, a.Type).String()
 }
 
 func (a *Assert) Base() token.Token {
@@ -188,7 +187,7 @@ type Let struct {
 }
 
 func (l Let) String() string {
-	return parenthesize("let", l.Bind, l.Body)
+	return parenthesize("let", l.Bind, l.Body).String()
 }
 
 func (l *Let) Base() token.Token {
@@ -210,7 +209,7 @@ type Codata struct {
 }
 
 func (c Codata) String() string {
-	return parenthesize("codata", squash(c.Clauses)...)
+	return parenthesize("codata", concat(c.Clauses)).String()
 }
 
 func (c *Codata) Base() token.Token {
@@ -235,14 +234,14 @@ type Clause struct {
 }
 
 func (c Clause) String() string {
-	var patBuilder strings.Builder
+	var pat fmt.Stringer
 	if len(c.Patterns) > 1 {
-		patBuilder.WriteString(parenthesize("", c.Patterns...))
+		pat = parenthesize("", concat(c.Patterns))
 	} else {
-		patBuilder.WriteString(c.Patterns[0].String())
+		pat = c.Patterns[0]
 	}
 
-	return parenthesize[fmt.Stringer]("clause", prepend(&patBuilder, c.Exprs)...)
+	return parenthesize("clause", pat, concat(c.Exprs)).String()
 }
 
 func (c *Clause) Base() token.Token {
@@ -270,10 +269,7 @@ type Lambda struct {
 }
 
 func (l Lambda) String() string {
-	var paramBuilder strings.Builder
-	paramBuilder.WriteString(parenthesize("", squash(l.Params)...))
-
-	return parenthesize("lambda", prepend(&paramBuilder, l.Exprs)...)
+	return parenthesize("lambda", parenthesize("", concat(l.Params)), concat(l.Exprs)).String()
 }
 
 func (l *Lambda) Base() token.Token {
@@ -295,10 +291,7 @@ type Case struct {
 }
 
 func (c Case) String() string {
-	var scrutineeBuilder strings.Builder
-	scrutineeBuilder.WriteString(parenthesize("", c.Scrutinees...))
-
-	return parenthesize("case", prepend(&scrutineeBuilder, squash(c.Clauses))...)
+	return parenthesize("case", parenthesize("", concat(c.Scrutinees)), concat(c.Clauses)).String()
 }
 
 func (c *Case) Base() token.Token {
@@ -322,7 +315,7 @@ type Object struct {
 }
 
 func (o Object) String() string {
-	return parenthesize("object", squash(o.Fields)...)
+	return parenthesize("object", concat(o.Fields)).String()
 }
 
 func (o *Object) Base() token.Token {
@@ -344,7 +337,7 @@ type Field struct {
 }
 
 func (f Field) String() string {
-	return parenthesize("field "+f.Name, f.Exprs...)
+	return parenthesize("field "+f.Name, concat(f.Exprs)).String()
 }
 
 func (f *Field) Base() token.Token {
@@ -366,7 +359,7 @@ type TypeDecl struct {
 }
 
 func (t TypeDecl) String() string {
-	return parenthesize("type", prepend(t.Def, t.Types)...)
+	return parenthesize("type", t.Def, concat(t.Types)).String()
 }
 
 func (t *TypeDecl) Base() token.Token {
@@ -391,12 +384,12 @@ type VarDecl struct {
 
 func (v VarDecl) String() string {
 	if v.Type == nil {
-		return parenthesize[fmt.Stringer]("def", v.Name, v.Expr)
+		return parenthesize("def", v.Name, v.Expr).String()
 	}
 	if v.Expr == nil {
-		return parenthesize[fmt.Stringer]("def", v.Name, v.Type)
+		return parenthesize("def", v.Name, v.Type).String()
 	}
-	return parenthesize[fmt.Stringer]("def", v.Name, v.Type, v.Expr)
+	return parenthesize("def", v.Name, v.Type, v.Expr).String()
 }
 
 func (v *VarDecl) Base() token.Token {
@@ -422,7 +415,7 @@ type InfixDecl struct {
 }
 
 func (i InfixDecl) String() string {
-	return parenthesize("infix", i.Assoc, i.Prec, i.Name)
+	return parenthesize("infix", i.Assoc, i.Prec, i.Name).String()
 }
 
 func (i *InfixDecl) Base() token.Token {
@@ -440,7 +433,7 @@ type This struct {
 }
 
 func (t This) String() string {
-	return parenthesize("this", t.Token)
+	return parenthesize("this", t.Token).String()
 }
 
 func (t *This) Base() token.Token {
@@ -453,33 +446,61 @@ func (t *This) Plate(f func(Node) Node) Node {
 
 var _ Node = &This{}
 
-func parenthesize[T fmt.Stringer](head string, nodes ...T) string {
-	if head == "" {
-		return fmt.Sprintf("(%s)", strings.Join(lo.Map(nodes, func(n T, _ int) string {
-			return n.String()
-		}), " "))
-	} else {
-		return fmt.Sprintf("(%s %s)", head, strings.Join(lo.Map(nodes, func(n T, _ int) string {
-			return n.String()
-		}), " "))
+// parenthesize takes a head string and a variadic number of nodes that implement the fmt.Stringer interface.
+// It returns a fmt.Stringer that represents a string where each node is parenthesized and separated by a space.
+// If the head string is not empty, it is added at the beginning of the string.
+//
+//tool:ignore
+func parenthesize(head string, elems ...fmt.Stringer) fmt.Stringer {
+	var b strings.Builder
+	b.WriteString("(")
+	elemsStr := concat(elems).String()
+	if head != "" {
+		b.WriteString(head)
 	}
+	if elemsStr != "" {
+		if head != "" {
+			b.WriteString(" ")
+		}
+		b.WriteString(elemsStr)
+	}
+	b.WriteString(")")
+	return &b
 }
 
-func squash[T fmt.Stringer](elems []T) []fmt.Stringer {
-	strs := make([]fmt.Stringer, len(elems))
+// concat takes a slice of nodes that implement the fmt.Stringer interface.
+// It returns a fmt.Stringer that represents a string where each node is separated by a space.
+//
+//tool:ignore
+func concat[T fmt.Stringer](elems []T) fmt.Stringer {
+	var b strings.Builder
 	for i, elem := range elems {
-		strs[i] = elem
+		// ignore empty string
+		// e.g. concat({}) == ""
+		str := elem.String()
+		if str == "" {
+			continue
+		}
+		if i != 0 {
+			b.WriteString(" ")
+		}
+		b.WriteString(str)
 	}
-	return strs
+	return &b
 }
 
-func prepend[T fmt.Stringer](elem fmt.Stringer, slice []T) []fmt.Stringer {
-	newSlice := make([]fmt.Stringer, len(slice)+1)
-	newSlice[0] = elem
-	for i, elem := range slice {
-		newSlice[i+1] = elem
+// prepend takes a node that implements the fmt.Stringer interface and a slice of nodes that implement the fmt.Stringer interface.
+// It returns a fmt.Stringer that represents a string where the first node is prepended to the slice of nodes.
+//
+//tool:ignore
+func prepend[T fmt.Stringer](elem fmt.Stringer, slice []T) fmt.Stringer {
+	var b strings.Builder
+	b.WriteString(elem.String())
+	for _, elem := range slice {
+		b.WriteString(" ")
+		b.WriteString(elem.String())
 	}
-	return newSlice
+	return &b
 }
 
 // Transform the [Node] in depth-first order.
