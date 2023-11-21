@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/samber/lo"
 	"github.com/takoeight0821/anma/token"
 )
 
@@ -242,23 +243,26 @@ type Clause struct {
 
 func (c Clause) String() string {
 	var b strings.Builder
-	b.WriteString("(clause")
-	for i, pattern := range c.Patterns {
-		if i == 0 && len(c.Patterns) > 1 {
-			b.WriteString(" (")
-		} else {
-			b.WriteString(" ")
-		}
-		b.WriteString(pattern.String())
+	b.WriteString("(clause ")
+
+	if len(c.Patterns) > 1 {
+		b.WriteString("(")
 	}
+
+	b.WriteString(strings.Join(lo.Map(c.Patterns, func(p Node, _ int) string {
+		return p.String()
+	}), " "))
+
 	if len(c.Patterns) > 1 {
 		b.WriteString(")")
 	}
 
-	for _, expr := range c.Exprs {
-		b.WriteString(" ")
-		b.WriteString(expr.String())
-	}
+	b.WriteString(" ")
+
+	b.WriteString(strings.Join(lo.Map(c.Exprs, func(e Node, _ int) string {
+		return e.String()
+	}), " "))
+
 	b.WriteString(")")
 	return b.String()
 }
@@ -288,22 +292,14 @@ type Lambda struct {
 }
 
 func (l Lambda) String() string {
-	var b strings.Builder
-	b.WriteString("(lambda (")
-	for i, param := range l.Params {
-		if i != 0 {
-			b.WriteString(" ")
-		}
-		b.WriteString(param.Pretty())
-	}
-	b.WriteString(")")
-
-	for _, expr := range l.Exprs {
-		b.WriteString(" ")
-		b.WriteString(expr.String())
-	}
-	b.WriteString(")")
-	return b.String()
+	return fmt.Sprintf("(lambda (%s) %s)",
+		strings.Join(lo.Map(l.Params, func(p token.Token, _ int) string {
+			return p.Pretty()
+		}), " "),
+		strings.Join(lo.Map(l.Exprs, func(e Node, _ int) string {
+			return e.String()
+		}), " "),
+	)
 }
 
 func (l *Lambda) Base() token.Token {
@@ -325,26 +321,14 @@ type Case struct {
 }
 
 func (c Case) String() string {
-	var b strings.Builder
-	b.WriteString("(case")
-	for i, scrutinee := range c.Scrutinees {
-		if i == 0 && len(c.Scrutinees) > 1 {
-			b.WriteString(" (")
-		} else {
-			b.WriteString(" ")
-		}
-		b.WriteString(scrutinee.String())
-	}
-	if len(c.Scrutinees) > 1 {
-		b.WriteString(")")
-	}
-
-	for _, clause := range c.Clauses {
-		b.WriteString(" ")
-		b.WriteString(clause.String())
-	}
-	b.WriteString(")")
-	return b.String()
+	return fmt.Sprintf("(case (%s) %s)",
+		strings.Join(lo.Map(c.Scrutinees, func(s Node, _ int) string {
+			return s.String()
+		}), " "),
+		strings.Join(lo.Map(c.Clauses, func(clause *Clause, _ int) string {
+			return clause.String()
+		}), " "),
+	)
 }
 
 func (c *Case) Base() token.Token {
@@ -412,16 +396,7 @@ type TypeDecl struct {
 }
 
 func (t TypeDecl) String() string {
-	var b strings.Builder
-	b.WriteString("(type")
-	b.WriteString(" ")
-	b.WriteString(t.Def.String())
-	for _, typ := range t.Types {
-		b.WriteString(" ")
-		b.WriteString(typ.String())
-	}
-	b.WriteString(")")
-	return b.String()
+	return parenthesize("type", prepend(t.Def, t.Types)...)
 }
 
 func (t *TypeDecl) Base() token.Token {
@@ -446,12 +421,12 @@ type VarDecl struct {
 
 func (v VarDecl) String() string {
 	if v.Type == nil {
-		return fmt.Sprintf("(def %s %s)", v.Name.Pretty(), v.Expr.String())
+		return fmt.Sprintf("(def %s %v)", v.Name.Pretty(), v.Expr)
 	}
 	if v.Expr == nil {
-		return fmt.Sprintf("(def %s %s)", v.Name.Pretty(), v.Type.String())
+		return fmt.Sprintf("(def %s %v)", v.Name.Pretty(), v.Type)
 	}
-	return fmt.Sprintf("(def %s %s %s)", v.Name.Pretty(), v.Type.String(), v.Expr.String())
+	return fmt.Sprintf("(def %s %v %v)", v.Name.Pretty(), v.Type, v.Expr)
 }
 
 func (v *VarDecl) Base() token.Token {
