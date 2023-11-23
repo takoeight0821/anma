@@ -68,10 +68,10 @@ func checkArity(expected, actual int, where token.Token) {
 func flatCodata(c *ast.Codata) ast.Node {
 	// Generate PatternList
 	arity := notChecked
-	clauses := make([]*ast.Clause, len(c.Clauses))
+	clauses := make([]plistClause, len(c.Clauses))
 	for i, cl := range c.Clauses {
 		plist := NewPatternList(cl)
-		clauses[i] = &ast.Clause{Patterns: []ast.Node{plist}, Exprs: cl.Exprs}
+		clauses[i] = plistClause{plist, cl.Exprs}
 		if arity == notChecked {
 			arity = arityOf(plist)
 		}
@@ -90,7 +90,7 @@ func newBuilder() *builder {
 }
 
 // dispatch to Object or Lambda based on arity
-func (b *builder) build(arity int, clauses []*ast.Clause) ast.Node {
+func (b *builder) build(arity int, clauses []plistClause) ast.Node {
 	if arity == noArgs {
 		return b.object(clauses)
 	}
@@ -98,22 +98,31 @@ func (b *builder) build(arity int, clauses []*ast.Clause) ast.Node {
 }
 
 type UnsupportedPatternError struct {
-	Clause *ast.Clause
+	Clause plistClause
 }
 
 func (e UnsupportedPatternError) Error() string {
-	return utils.MsgAt(e.Clause.Base(), fmt.Sprintf("unsupported pattern %v", e.Clause))
+	return utils.MsgAt(e.Clause.plist.Base(), fmt.Sprintf("unsupported pattern %v", e.Clause))
 }
 
-func (b builder) object(clauses []*ast.Clause) ast.Node {
+type plistClause struct {
+	plist patternList
+	exprs []ast.Node
+}
+
+func (c plistClause) String() string {
+	return fmt.Sprintf("%v -> %v", c.plist, c.exprs)
+}
+
+func (b builder) object(clauses []plistClause) ast.Node {
 	// Pop the first accessor of each clause and group remaining clauses by the popped accessor.
-	next := make(map[string][]*ast.Clause)
+	next := make(map[string][]plistClause)
 	for _, c := range clauses {
-		plist := getPlist(c)
+		plist := c.plist
 		if field, plist, ok := pop(plist); ok {
 			next[field.String()] = append(
 				next[field.String()],
-				&ast.Clause{Patterns: []ast.Node{plist}, Exprs: c.Exprs})
+				plistClause{plist, c.exprs})
 		} else {
 			panic(UnsupportedPatternError{Clause: c})
 		}
@@ -123,7 +132,7 @@ func (b builder) object(clauses []*ast.Clause) ast.Node {
 
 	// Generate each field's body expression
 	// Object fields are generated in the dictionary order of field names.
-	utils.OrderedFor(next, func(field string, cs []*ast.Clause) {
+	utils.OrderedFor(next, func(field string, cs []plistClause) {
 		// if any of cs has no accessors and has guards, generate Case expression
 
 		/*
@@ -139,12 +148,12 @@ func (b builder) object(clauses []*ast.Clause) ast.Node {
 		caseClauses := make([]*ast.Clause, len(cs))
 
 		// for keeping order of clauses, use map[int]Clause instead of []Clause
-		restClauses := make(map[int]*ast.Clause)
+		// restClauses are clauses which have unpopped accessors
+		restClauses := make(map[int]plistClause)
 		for i, c := range cs {
 			// if c has no accessors, generate pattern matching clause
-			plist := getPlist(c)
-			if len(plist.accessors) == 0 {
-				caseClauses[i] = plistToClause(plist, c.Exprs...)
+			if len(c.plist.accessors) == 0 {
+				caseClauses[i] = plistToClause(c.plist, c.exprs...)
 			} else {
 				// otherwise, add to restClauses
 				restClauses[i] = c
@@ -152,13 +161,15 @@ func (b builder) object(clauses []*ast.Clause) ast.Node {
 		}
 
 		// construct a clause for rest of (co) patterns
-		restClausesList := make([]*ast.Clause, 0)
-		utils.OrderedFor(restClauses, func(_ int, c *ast.Clause) {
+		// for each rest clause, the body expression is sum of expressions of all rest clauses.
+		restClausesList := make([]plistClause, 0)
+		utils.OrderedFor(restClauses, func(_ int, c plistClause) {
 			restClausesList = append(restClausesList, c)
 		})
 
 		for i, c := range restClauses {
-			caseClauses[i] = plistToClause(getPlist(c), b.object(restClausesList))
+			// for each rest clause, perform pattern matching ahead of time.
+			caseClauses[i] = plistToClause(c.plist, b.object(restClausesList))
 		}
 
 		fields = append(fields,
@@ -172,8 +183,8 @@ func (b builder) object(clauses []*ast.Clause) ast.Node {
 }
 
 // Generate lambda and dispatch body expression to Object or Case based on existence of accessors.
-func (b *builder) lambda(arity int, clauses []*ast.Clause) ast.Node {
-	baseToken := clauses[0].Base()
+func (b *builder) lambda(arity int, clauses []plistClause) ast.Node {
+	baseToken := clauses[0].plist.Base()
 	// Generate Scrutinees
 	b.scrutinees = make([]token.Token, arity)
 	for i := 0; i < arity; i++ {
@@ -182,7 +193,7 @@ func (b *builder) lambda(arity int, clauses []*ast.Clause) ast.Node {
 
 	// If any of clauses has accessors, body expression is Object.
 	for _, c := range clauses {
-		if len(getPlist(c).accessors) != 0 {
+		if len(c.plist.accessors) != 0 {
 			return newLambda(b.scrutinees, b.object(clauses))
 		}
 	}
@@ -190,7 +201,7 @@ func (b *builder) lambda(arity int, clauses []*ast.Clause) ast.Node {
 	// otherwise, body expression is Case.
 	caseClauses := make([]*ast.Clause, 0)
 	for _, c := range clauses {
-		caseClauses = append(caseClauses, plistToClause(getPlist(c), c.Exprs...))
+		caseClauses = append(caseClauses, plistToClause(c.plist, c.exprs...))
 	}
 	return newLambda(b.scrutinees, newCase(b.scrutinees, caseClauses)...)
 }
@@ -279,17 +290,6 @@ func NewPatternList(clause *ast.Clause) patternList {
 	return patternList{accessors: accessors, params: params}
 }
 
-func NewPlistClause(clause *ast.Clause) *ast.Clause {
-	return &ast.Clause{Patterns: []ast.Node{NewPatternList(clause)}, Exprs: clause.Exprs}
-}
-
-func getPlist(cl *ast.Clause) patternList {
-	if len(cl.Patterns) != 1 {
-		panic("invalid pattern")
-	}
-	return cl.Patterns[0].(patternList)
-}
-
 func (p patternList) Base() token.Token {
 	if len(p.accessors) != 0 {
 		return p.accessors[0]
@@ -335,7 +335,5 @@ func pop(p patternList) (token.Token, patternList, bool) {
 	if len(p.accessors) == 0 {
 		return token.Token{}, p, false
 	}
-	a := p.accessors[0]
-	p.accessors = p.accessors[1:]
-	return a, p, true
+	return p.accessors[0], patternList{accessors: p.accessors[1:], params: p.params}, true
 }
