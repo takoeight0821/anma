@@ -114,8 +114,8 @@ func (c plistClause) String() string {
 	return fmt.Sprintf("%v -> %v", c.plist, c.exprs)
 }
 
-func (b builder) object(clauses []plistClause) ast.Node {
-	// Pop the first accessor of each clause and group remaining clauses by the popped accessor.
+// Pop the first accessor of each clause and group remaining clauses by the popped accessor.
+func (b builder) groupClausesByAccessor(clauses []plistClause) map[string][]plistClause {
 	next := make(map[string][]plistClause)
 	for _, c := range clauses {
 		plist := c.plist
@@ -127,55 +127,59 @@ func (b builder) object(clauses []plistClause) ast.Node {
 			panic(UnsupportedPatternError{Clause: c})
 		}
 	}
+	return next
+}
+
+func (b builder) fieldBody(cs []plistClause) []*ast.Clause {
+	// if any of cs has no accessors and has guards, generate Case expression
+
+	// new clauses for case expression in a field
+	caseClauses := make([]*ast.Clause, len(cs))
+
+	// restClauses are clauses which have unpopped accessors
+	restPatterns := make([]struct {
+		index int
+		plist patternList
+	}, 0)
+	// for each rest clause, the body expression is sum of expressions of all rest clauses.
+	restClauses := make([]plistClause, 0)
+
+	for i, c := range cs {
+		// if c has no accessors, generate pattern matching clause
+		if len(c.plist.accessors) == 0 {
+			caseClauses[i] = plistToClause(c.plist, c.exprs...)
+		} else {
+			// otherwise, add to restPatterns and restClauses
+			restPatterns = append(restPatterns, struct {
+				index int
+				plist patternList
+			}{i, c.plist})
+
+			restClauses = append(restClauses, c)
+		}
+	}
+
+	for _, p := range restPatterns {
+		// for each rest clause, perform pattern matching ahead of time.
+		caseClauses[p.index] = plistToClause(p.plist, b.object(restClauses))
+	}
+
+	return caseClauses
+}
+
+func (b builder) object(clauses []plistClause) ast.Node {
+	// Pop the first accessor of each clause and group remaining clauses by the popped accessor.
+	next := b.groupClausesByAccessor(clauses)
 
 	fields := make([]*ast.Field, 0)
 
 	// Generate each field's body expression
 	// Object fields are generated in the dictionary order of field names.
 	utils.OrderedFor(next, func(field string, cs []plistClause) {
-		// if any of cs has no accessors and has guards, generate Case expression
-
-		/*
-			case b.Scrutinee {
-				caseClauses[0] (p0 -> e0)
-				caseClauses[1] (p1 -> {restClauses})
-				caseClauses[2] (p2 -> {restClauses})
-			}
-			(restClauses = caseClauses[1, 2])
-		*/
-
-		// new clauses for case expression in a field
-		caseClauses := make([]*ast.Clause, len(cs))
-
-		// for keeping order of clauses, use map[int]Clause instead of []Clause
-		// restClauses are clauses which have unpopped accessors
-		restClauses := make(map[int]plistClause)
-		for i, c := range cs {
-			// if c has no accessors, generate pattern matching clause
-			if len(c.plist.accessors) == 0 {
-				caseClauses[i] = plistToClause(c.plist, c.exprs...)
-			} else {
-				// otherwise, add to restClauses
-				restClauses[i] = c
-			}
-		}
-
-		// construct a clause for rest of (co) patterns
-		// for each rest clause, the body expression is sum of expressions of all rest clauses.
-		restClausesList := make([]plistClause, 0)
-		utils.OrderedFor(restClauses, func(_ int, c plistClause) {
-			restClausesList = append(restClausesList, c)
-		})
-
-		for i, c := range restClauses {
-			// for each rest clause, perform pattern matching ahead of time.
-			caseClauses[i] = plistToClause(c.plist, b.object(restClausesList))
-		}
-
 		fields = append(fields,
 			&ast.Field{
 				Name:  field,
-				Exprs: newCase(b.scrutinees, caseClauses),
+				Exprs: newCase(b.scrutinees, b.fieldBody(cs)),
 			})
 		return
 	})
