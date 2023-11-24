@@ -9,8 +9,6 @@ import (
 
 type Evaluator struct {
 	*EvEnv
-	handler func(error)
-	err     error
 }
 
 func NewEvaluator() *Evaluator {
@@ -19,25 +17,11 @@ func NewEvaluator() *Evaluator {
 	}
 }
 
-func (ev *Evaluator) SetErrorHandler(handler func(error)) {
-	ev.handler = handler
-}
-
-func (ev *Evaluator) ResetError() {
-	ev.err = nil
-}
-
-func (ev *Evaluator) error(where token.Token, err error) {
+func errorAt(where token.Token, err error) error {
 	if where.Kind == token.EOF {
-		ev.err = fmt.Errorf("at end: %w", err)
+		return fmt.Errorf("at end: %w", err)
 	} else {
-		ev.err = fmt.Errorf("at %d: `%s`, %w", where.Line, where.Lexeme, err)
-	}
-
-	if ev.handler != nil {
-		ev.handler(ev.err)
-	} else {
-		panic(ev.err)
+		return fmt.Errorf("at %d: `%s`, %w", where.Line, where.Lexeme, err)
 	}
 }
 

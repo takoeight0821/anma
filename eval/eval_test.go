@@ -40,12 +40,20 @@ func completeEval(t *testing.T, label string, input string, expected string) {
 	values := make([]eval.Value, len(nodes))
 
 	for i, node := range nodes {
-		values[i] = ev.Eval(node)
+		values[i], err = ev.Eval(node)
+		if err != nil {
+			t.Errorf("Eval %s returned error: %v", label, err)
+			return
+		}
 	}
 
 	if main, ok := ev.SearchMain(); ok {
 		top := token.Token{Kind: token.IDENT, Lexeme: "toplevel", Line: 0, Literal: -1}
-		ret := main.Apply(top)
+		ret, err := main.Apply(top)
+		if err != nil {
+			t.Errorf("Eval %s returned error: %v", label, err)
+			return
+		}
 
 		actual := ret.String()
 		if actual != expected {

@@ -70,9 +70,6 @@ func RunPrompt() error {
 	r.AddPass(nameresolve.NewResolver())
 
 	ev := eval.NewEvaluator()
-	ev.SetErrorHandler(func(evErr error) {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", evErr)
-	})
 
 	for {
 		input, err := line.Prompt("> ")
@@ -83,11 +80,15 @@ func RunPrompt() error {
 		nodes, err := r.RunSource(input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			continue
 		}
 		for _, node := range nodes {
-			value := ev.Eval(node)
+			value, err := ev.Eval(node)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				continue
+			}
 			fmt.Println(value)
-			ev.ResetError()
 		}
 	}
 }
@@ -109,7 +110,10 @@ func RunFile(path string) error {
 
 	ev := eval.NewEvaluator()
 	for _, node := range nodes {
-		ev.Eval(node)
+		_, err := ev.Eval(node)
+		if err != nil {
+			return fmt.Errorf("run file: %w", err)
+		}
 	}
 
 	main, ok := ev.SearchMain()
@@ -117,12 +121,12 @@ func RunFile(path string) error {
 		return noMainError{}
 	}
 	top := token.Token{Kind: token.IDENT, Lexeme: "toplevel", Line: 0, Literal: -1}
-	main.SetErrorHandler(func(evErr error) {
-		err = evErr
-	})
-	main.Apply(top)
+	_, err = main.Apply(top)
+	if err != nil {
+		return fmt.Errorf("run file: %w", err)
+	}
 
-	return fmt.Errorf("run file: %w", err)
+	return nil
 }
 
 type noMainError struct{}
