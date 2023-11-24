@@ -17,22 +17,22 @@
       (def + (codata (clause (call (this #) (var x) (var y)) (prim add (var x) (var y)))))
       (def zipWith (codata (clause (access (call (this #) (var f) (var xs) (var ys)) head) (call (var f) (access (var xs) head) (access (var ys) head))) (clause (access (call (this #) (var f) (var xs) (var ys)) tail) (call (var zipWith) (var f) (access (var xs) tail) (access (var ys) tail)))))
       (def fib (codata (clause (access (this #) head) (literal 1)) (clause (access (access (this #) tail) head) (literal 1)) (clause (access (access (this #) tail) tail) (call (var zipWith) (codata (clause (call (this #) (var x) (var y)) (binary (var x) + (var y)))) (var fib) (access (var fib) tail)))))
-      (def main (codata (clause (call (this #)) (call (var fib) (literal 10)))))
+      (def main (codata (clause (call (this #)) (access (access (access (access (var fib) tail) tail) tail) head))))
     codata: |
       (def + (lambda (x0 x1) (case ((var x0) (var x1)) (clause ((var x) (var y)) (prim add (var x) (var y))))))
       (def zipWith (lambda (x0 x1 x2) (object (field head (case ((var x0) (var x1) (var x2)) (clause ((var f) (var xs) (var ys)) (call (var f) (access (var xs) head) (access (var ys) head))))) (field tail (case ((var x0) (var x1) (var x2)) (clause ((var f) (var xs) (var ys)) (call (var zipWith) (var f) (access (var xs) tail) (access (var ys) tail))))))))
       (def fib (object (field head (literal 1)) (field tail (object (field head (literal 1)) (field tail (call (var zipWith) (lambda (x0 x1) (case ((var x0) (var x1)) (clause ((var x) (var y)) (binary (var x) + (var y))))) (var fib) (access (var fib) tail)))))))
-      (def main (lambda () (call (var fib) (literal 10))))
+      (def main (lambda () (access (access (access (access (var fib) tail) tail) tail) head)))
     infix: |
       (def + (lambda (x0 x1) (case ((var x0) (var x1)) (clause ((var x) (var y)) (prim add (var x) (var y))))))
       (def zipWith (lambda (x0 x1 x2) (object (field head (case ((var x0) (var x1) (var x2)) (clause ((var f) (var xs) (var ys)) (call (var f) (access (var xs) head) (access (var ys) head))))) (field tail (case ((var x0) (var x1) (var x2)) (clause ((var f) (var xs) (var ys)) (call (var zipWith) (var f) (access (var xs) tail) (access (var ys) tail))))))))
       (def fib (object (field head (literal 1)) (field tail (object (field head (literal 1)) (field tail (call (var zipWith) (lambda (x0 x1) (case ((var x0) (var x1)) (clause ((var x) (var y)) (binary (var x) + (var y))))) (var fib) (access (var fib) tail)))))))
-      (def main (lambda () (call (var fib) (literal 10))))
+      (def main (lambda () (access (access (access (access (var fib) tail) tail) tail) head)))
     nameresolve: |
       (def +.0 (lambda (x0.4 x1.5) (case ((var x0.4) (var x1.5)) (clause ((var x.6) (var y.7)) (prim add (var x.6) (var y.7))))))
       (def zipWith.1 (lambda (x0.8 x1.9 x2.10) (object (field head (case ((var x0.8) (var x1.9) (var x2.10)) (clause ((var f.11) (var xs.12) (var ys.13)) (call (var f.11) (access (var xs.12) head) (access (var ys.13) head))))) (field tail (case ((var x0.8) (var x1.9) (var x2.10)) (clause ((var f.14) (var xs.15) (var ys.16)) (call (var zipWith.1) (var f.14) (access (var xs.15) tail) (access (var ys.16) tail))))))))
       (def fib.2 (object (field head (literal 1)) (field tail (object (field head (literal 1)) (field tail (call (var zipWith.1) (lambda (x0.17 x1.18) (case ((var x0.17) (var x1.18)) (clause ((var x.19) (var y.20)) (binary (var x.19) +.0 (var y.20))))) (var fib.2) (access (var fib.2) tail)))))))
-      (def main.3 (lambda () (call (var fib.2) (literal 10))))
+      (def main.3 (lambda () (access (access (access (access (var fib.2) tail) tail) tail) head)))
     eval: 3
 - label: tree
   enable: true
