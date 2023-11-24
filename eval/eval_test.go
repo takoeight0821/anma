@@ -3,57 +3,55 @@ package eval_test
 import (
 	"testing"
 
-	"github.com/takoeight0821/anma/ast"
 	"github.com/takoeight0821/anma/codata"
 	"github.com/takoeight0821/anma/driver"
 	"github.com/takoeight0821/anma/eval"
 	"github.com/takoeight0821/anma/infix"
 	"github.com/takoeight0821/anma/nameresolve"
+	"github.com/takoeight0821/anma/token"
+	"github.com/takoeight0821/anma/utils"
 )
 
-func TestEval(t *testing.T) {
-	t.Skip("TODO: implement")
-	testcases := []struct {
-		input    []string
-		expected string
-	}{
-		{[]string{"prim(add, 1, 2)"}, "3"},
-		{[]string{"def + = { #(x, y) -> prim(add, x, y) }", "1 + 2"}, "3"},
-	}
+func TestEvalFromTestData(t *testing.T) {
+	testcases := utils.ReadTestData()
 
 	for _, testcase := range testcases {
-		completeEval(t, testcase.input, testcase.expected)
+		if expected, ok := testcase.Expected["eval"]; ok {
+			completeEval(t, testcase.Label, testcase.Input, expected)
+		} else {
+			completeEval(t, testcase.Label, testcase.Input, "no expected value")
+		}
 	}
 }
 
-func completeEval(t *testing.T, input []string, expected string) {
+func completeEval(t *testing.T, label string, input string, expected string) {
 	runner := driver.NewPassRunner()
 	runner.AddPass(codata.Flat{})
 	runner.AddPass(infix.NewInfixResolver())
 	runner.AddPass(nameresolve.NewResolver())
 
-	var nodes []ast.Node
-	for _, src := range input {
-		ns, err := runner.RunSource(src)
-		if err != nil {
-			t.Errorf("RunSource returned error: %v", err)
-		}
-		nodes = append(nodes, ns...)
+	nodes, err := runner.RunSource(input)
+	if err != nil {
+		t.Errorf("RunSource %s returned error: %v", label, err)
+		return
 	}
 
 	ev := eval.NewEvaluator()
-	ev.SetErrorHandler(func(err error) {
-		t.Errorf("Eval returned error: %v", err)
-	})
-
 	values := make([]eval.Value, len(nodes))
 
 	for i, node := range nodes {
 		values[i] = ev.Eval(node)
 	}
 
-	actual := values[len(values)-1].String()
-	if actual != expected {
-		t.Errorf("Eval returned %q, expected %q", actual, expected)
+	if main, ok := ev.SearchMain(); ok {
+		top := token.Token{Kind: token.IDENT, Lexeme: "toplevel", Line: 0, Literal: -1}
+		ret := main.(eval.Callable).Apply(top)
+
+		actual := ret.String()
+		if actual != expected {
+			t.Errorf("Eval %s returned %q, expected %q", label, actual, expected)
+		}
+	} else {
+		t.Errorf("Eval %s returned no main function", label)
 	}
 }

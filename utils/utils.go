@@ -71,6 +71,8 @@ func ReadTestData() []TestData {
 
 func SprintDiff(expect, actual string) string {
 	dmp := diffmatchpatch.New()
-	diffs := dmp.DiffMain(expect, actual, false)
-	return dmp.DiffPrettyText(diffs)
+	a, b, c := dmp.DiffLinesToChars(expect, actual)
+	diffs := dmp.DiffCharsToLines(dmp.DiffMain(a, b, false), c)
+	patchs := dmp.PatchMake(expect, diffs)
+	return dmp.PatchToText(patchs)
 }
