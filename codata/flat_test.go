@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/takoeight0821/anma/codata"
 	"github.com/takoeight0821/anma/driver"
 	"github.com/takoeight0821/anma/utils"
@@ -27,7 +28,7 @@ func newCompleteFlat(t *testing.T, label, input, expected string) {
 
 	nodes, err := r.RunSource(input)
 	if err != nil {
-		t.Errorf("RunSource %s returned error: %v", label, err)
+		t.Errorf("Flat %s returned error: %v", label, err)
 	}
 
 	var b strings.Builder
@@ -38,7 +39,7 @@ func newCompleteFlat(t *testing.T, label, input, expected string) {
 
 	actual := b.String()
 
-	if actual != expected {
-		t.Errorf("RunSource %s expected -> actual\n%s", label, utils.SprintDiff(expected, actual))
+	if diff := cmp.Diff(expected, actual); diff != "" {
+		t.Errorf("Flat %s mismatch (-want +got):\n%s", label, diff)
 	}
 }

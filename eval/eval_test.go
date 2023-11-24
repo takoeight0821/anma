@@ -3,6 +3,7 @@ package eval_test
 import (
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/takoeight0821/anma/codata"
 	"github.com/takoeight0821/anma/driver"
 	"github.com/takoeight0821/anma/eval"
@@ -32,7 +33,7 @@ func completeEval(t *testing.T, label string, input string, expected string) {
 
 	nodes, err := runner.RunSource(input)
 	if err != nil {
-		t.Errorf("RunSource %s returned error: %v", label, err)
+		t.Errorf("Eval %s returned error: %v", label, err)
 		return
 	}
 
@@ -56,8 +57,8 @@ func completeEval(t *testing.T, label string, input string, expected string) {
 		}
 
 		actual := ret.String()
-		if actual != expected {
-			t.Errorf("Eval %s returned %q, expected %q", label, actual, expected)
+		if diff := cmp.Diff(expected, actual); diff != "" {
+			t.Errorf("Eval %s mismatch (-want +got):\n%s", label, diff)
 		}
 	} else {
 		t.Errorf("Eval %s returned no main function", label)

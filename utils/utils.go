@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/takoeight0821/anma/token"
 	"golang.org/x/exp/constraints"
 	"golang.org/x/exp/slices"
@@ -67,12 +66,4 @@ func ReadTestData() []TestData {
 	data = data[:i]
 
 	return data
-}
-
-func SprintDiff(expect, actual string) string {
-	dmp := diffmatchpatch.New()
-	a, b, c := dmp.DiffLinesToChars(expect, actual)
-	diffs := dmp.DiffCharsToLines(dmp.DiffMain(a, b, false), c)
-	patchs := dmp.PatchMake(expect, diffs)
-	return dmp.PatchToText(patchs)
 }
