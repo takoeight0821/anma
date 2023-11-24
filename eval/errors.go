@@ -35,6 +35,14 @@ func (e UndefinedFieldError) Error() string {
 	return fmt.Sprintf("undefined field `%v` of %s", e.Name, e.Receiver)
 }
 
+type NotObjectError struct {
+	Receiver Value
+}
+
+func (e NotObjectError) Error() string {
+	return fmt.Sprintf("not an object: %v", e.Receiver)
+}
+
 // InvalidIndexError is an error that is returned when the number of arguments is not equal to expected.
 type InvalidArgumentCountError struct {
 	Expected int

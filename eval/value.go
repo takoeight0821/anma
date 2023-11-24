@@ -14,7 +14,7 @@ type Value interface {
 }
 
 type Callable interface {
-	Apply(token.Token, ...Value) Value
+	Apply(token.Token, ...Value) (Value, error)
 }
 
 type Unit struct{}
@@ -99,9 +99,9 @@ func (f Function) match(pattern ast.Node) (map[Name]Value, bool) {
 	return nil, false
 }
 
-func (f Function) Apply(where token.Token, args ...Value) Value {
+func (f Function) Apply(where token.Token, args ...Value) (Value, error) {
 	if len(f.Params) != len(args) {
-		f.error(where, InvalidArgumentCountError{Expected: len(f.Params), Actual: len(args)})
+		return nil, errorAt(where, InvalidArgumentCountError{Expected: len(f.Params), Actual: len(args)})
 	}
 	f.EvEnv = newEvEnv(f.EvEnv)
 	for i, param := range f.Params {
@@ -110,10 +110,14 @@ func (f Function) Apply(where token.Token, args ...Value) Value {
 
 	var ret Value
 	for _, node := range f.Body {
-		ret = f.Eval(node)
+		var err error
+		ret, err = f.Eval(node)
+		if err != nil {
+			return nil, err
+		}
 	}
 	f.EvEnv = f.EvEnv.parent
-	return ret
+	return ret, nil
 }
 
 var (
@@ -140,19 +144,23 @@ func (t Thunk) match(pattern ast.Node) (map[Name]Value, bool) {
 	return nil, false
 }
 
-func runThunk(v Value) Value {
+func runThunk(v Value) (Value, error) {
 	switch v := v.(type) {
 	case Thunk:
 		var ret Value
 		for _, node := range v.Body {
-			ret = v.Eval(node)
+			var err error
+			ret, err = v.Eval(node)
+			if err != nil {
+				return nil, err
+			}
 		}
 		if _, ok := ret.(Thunk); ok {
 			panic("unreachable: thunk cannot return thunk")
 		}
-		return ret
+		return ret, nil
 	default:
-		return v
+		return v, nil
 	}
 }
 
@@ -246,11 +254,11 @@ func (c Constructor) match(pattern ast.Node) (map[Name]Value, bool) {
 	return nil, false
 }
 
-func (c Constructor) Apply(where token.Token, args ...Value) Value {
+func (c Constructor) Apply(where token.Token, args ...Value) (Value, error) {
 	if len(args) != c.Params {
-		c.error(where, InvalidArgumentCountError{Expected: c.Params, Actual: len(args)})
+		return nil, errorAt(where, InvalidArgumentCountError{Expected: c.Params, Actual: len(args)})
 	}
-	return Data{Tag: c.Tag, Elems: args}
+	return Data{Tag: c.Tag, Elems: args}, nil
 }
 
 var (

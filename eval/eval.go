@@ -9,10 +9,7 @@ import (
 )
 
 // Eval evaluates the given node and returns the result.
-func (ev *Evaluator) Eval(node ast.Node) Value {
-	if ev.err != nil {
-		return nil
-	}
+func (ev *Evaluator) Eval(node ast.Node) (Value, error) {
 	switch node := node.(type) {
 	case *ast.Var:
 		return ev.evalVar(node)
@@ -37,11 +34,11 @@ func (ev *Evaluator) Eval(node ast.Node) Value {
 	case *ast.Clause:
 		panic("unreachable: clause cannot appear outside of case")
 	case *ast.Lambda:
-		return ev.evalLambda(node)
+		return ev.evalLambda(node), nil
 	case *ast.Case:
 		return ev.evalCase(node)
 	case *ast.Object:
-		return ev.evalObject(node)
+		return ev.evalObject(node), nil
 	case *ast.Field:
 		panic("unreachable: field cannot appear outside of object")
 	case *ast.TypeDecl:
@@ -49,7 +46,7 @@ func (ev *Evaluator) Eval(node ast.Node) Value {
 	case *ast.VarDecl:
 		return ev.evalVarDecl(node)
 	case *ast.InfixDecl:
-		return Unit{}
+		return Unit{}, nil
 	case *ast.This:
 		panic("unreachable: this cannot appear outside of pattern")
 	}
@@ -57,70 +54,84 @@ func (ev *Evaluator) Eval(node ast.Node) Value {
 	panic(fmt.Sprintf("unreachable: %v", node))
 }
 
-func (ev *Evaluator) evalVar(node *ast.Var) Value {
+func (ev *Evaluator) evalVar(node *ast.Var) (Value, error) {
 	name := tokenToName(node.Name)
 	if v := ev.EvEnv.get(name); v != nil {
-		return v
+		return v, nil
 	}
-	ev.error(node.Base(), UndefinedVariableError{Name: name})
-	return nil
+	return nil, errorAt(node.Base(), UndefinedVariableError{Name: name})
 }
 
-func (ev *Evaluator) evalLiteral(node *ast.Literal) Value {
+func (ev *Evaluator) evalLiteral(node *ast.Literal) (Value, error) {
 	//exhaustive:ignore
 	switch node.Kind {
 	case token.INTEGER:
-		return Int(node.Literal.(int))
+		return Int(node.Literal.(int)), nil
 	case token.STRING:
-		return String(node.Literal.(string))
+		return String(node.Literal.(string)), nil
 	default:
-		ev.error(node.Base(), InvalidLiteralError{Kind: node.Kind})
-		return nil
+		return nil, errorAt(node.Base(), InvalidLiteralError{Kind: node.Kind})
 	}
 }
 
-func (ev *Evaluator) evalParen(node *ast.Paren) Value {
+func (ev *Evaluator) evalParen(node *ast.Paren) (Value, error) {
 	return ev.Eval(node.Expr)
 }
 
-func (ev *Evaluator) evalAccess(node *ast.Access) Value {
-	receiver := ev.Eval(node.Receiver)
+func (ev *Evaluator) evalAccess(node *ast.Access) (Value, error) {
+	receiver, err := ev.Eval(node.Receiver)
+	if err != nil {
+		return nil, err
+	}
+
 	switch receiver := receiver.(type) {
 	case Object:
 		if v, ok := receiver.Fields[node.Name.Lexeme]; ok {
 			// TODO: update receiver.Fields[name] to runThunk(v)
 			return runThunk(v)
 		}
-		ev.error(node.Base(), UndefinedFieldError{Receiver: receiver, Name: node.Name.Lexeme})
+		return nil, errorAt(node.Base(), UndefinedFieldError{Receiver: receiver, Name: node.Name.Lexeme})
 	}
-	return nil
+	return nil, errorAt(node.Base(), NotObjectError{Receiver: receiver})
 }
 
-func (ev *Evaluator) evalCall(node *ast.Call) Value {
-	fn := ev.Eval(node.Func)
+func (ev *Evaluator) evalCall(node *ast.Call) (Value, error) {
+	fn, err := ev.Eval(node.Func)
+	if err != nil {
+		return nil, err
+	}
 	switch fn := fn.(type) {
 	case Callable:
 		args := make([]Value, len(node.Args))
 		for i, arg := range node.Args {
-			args[i] = ev.Eval(arg)
+			args[i], err = ev.Eval(arg)
+			if err != nil {
+				return nil, err
+			}
 		}
-		return fn.Apply(node.Base(), args...)
+		v, err := fn.Apply(node.Base(), args...)
+		if err != nil {
+			return nil, errorAt(node.Base(), err)
+		}
+		return v, nil
 	}
 
-	ev.error(node.Base(), NotCallableError{Func: fn})
-	return nil
+	return nil, errorAt(node.Base(), NotCallableError{Func: fn})
 }
 
-func (ev *Evaluator) evalPrim(node *ast.Prim) Value {
+func (ev *Evaluator) evalPrim(node *ast.Prim) (Value, error) {
 	prim := fetchPrim(node.Name)
 	if prim == nil {
-		ev.error(node.Base(), UndefinedPrimError{Name: node.Name})
-		return nil
+		return nil, errorAt(node.Base(), UndefinedPrimError{Name: node.Name})
 	}
 
 	args := make([]Value, len(node.Args))
 	for i, arg := range node.Args {
-		args[i] = ev.Eval(arg)
+		var err error
+		args[i], err = ev.Eval(arg)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return prim(ev, args...)
@@ -134,77 +145,83 @@ func asInt(v Value) (Int, bool) {
 	return 0, false
 }
 
-func fetchPrim(name token.Token) func(*Evaluator, ...Value) Value {
+func fetchPrim(name token.Token) func(*Evaluator, ...Value) (Value, error) {
 	switch name.Lexeme {
 	case "add":
-		return func(ev *Evaluator, args ...Value) Value {
+		return func(ev *Evaluator, args ...Value) (Value, error) {
 			if len(args) != 2 {
-				ev.error(name, InvalidArgumentCountError{Expected: 2, Actual: len(args)})
-				return nil
+				return nil, errorAt(name, InvalidArgumentCountError{Expected: 2, Actual: len(args)})
 			}
 			v0, ok := asInt(args[0])
 			if !ok {
-				ev.error(name, InvalidArgumentTypeError{Expected: "Int", Actual: args[0]})
-				return nil
+				return nil, errorAt(name, InvalidArgumentTypeError{Expected: "Int", Actual: args[0]})
 			}
 			v1, ok := asInt(args[1])
 			if !ok {
-				ev.error(name, InvalidArgumentTypeError{Expected: "Int", Actual: args[1]})
-				return nil
+				return nil, errorAt(name, InvalidArgumentTypeError{Expected: "Int", Actual: args[1]})
 			}
-			return Int(v0 + v1)
+			return Int(v0 + v1), nil
 		}
 	case "mul":
-		return func(ev *Evaluator, args ...Value) Value {
+		return func(ev *Evaluator, args ...Value) (Value, error) {
 			if len(args) != 2 {
-				ev.error(name, InvalidArgumentCountError{Expected: 2, Actual: len(args)})
-				return nil
+				return nil, errorAt(name, InvalidArgumentCountError{Expected: 2, Actual: len(args)})
 			}
 			v0, ok := asInt(args[0])
 			if !ok {
-				ev.error(name, InvalidArgumentTypeError{Expected: "Int", Actual: args[0]})
-				return nil
+				return nil, errorAt(name, InvalidArgumentTypeError{Expected: "Int", Actual: args[0]})
 			}
 			v1, ok := asInt(args[1])
 			if !ok {
-				ev.error(name, InvalidArgumentTypeError{Expected: "Int", Actual: args[1]})
-				return nil
+				return nil, errorAt(name, InvalidArgumentTypeError{Expected: "Int", Actual: args[1]})
 			}
-			return Int(v0 * v1)
+			return Int(v0 * v1), nil
 		}
 	default:
 		return nil
 	}
 }
 
-func (ev *Evaluator) evalBinary(node *ast.Binary) Value {
+func (ev *Evaluator) evalBinary(node *ast.Binary) (Value, error) {
 	name := tokenToName(node.Op)
 	if op := ev.EvEnv.get(name); op != nil {
 		switch op := op.(type) {
 		case Callable:
-			return op.Apply(node.Base(), ev.Eval(node.Left), ev.Eval(node.Right))
+			left, err := ev.Eval(node.Left)
+			if err != nil {
+				return nil, err
+			}
+			right, err := ev.Eval(node.Right)
+			if err != nil {
+				return nil, err
+			}
+			v, err := op.Apply(node.Base(), left, right)
+			if err != nil {
+				return nil, errorAt(node.Base(), err)
+			}
+			return v, nil
 		}
-		ev.error(node.Base(), NotCallableError{Func: op})
-		return nil
+		return nil, errorAt(node.Base(), NotCallableError{Func: op})
 	}
-	ev.error(node.Base(), UndefinedVariableError{Name: name})
-	return nil
+	return nil, errorAt(node.Base(), UndefinedVariableError{Name: name})
 }
 
-func (ev *Evaluator) evalAssert(node *ast.Assert) Value {
+func (ev *Evaluator) evalAssert(node *ast.Assert) (Value, error) {
 	return ev.Eval(node.Expr)
 }
 
-func (ev *Evaluator) evalLet(node *ast.Let) Value {
-	body := ev.Eval(node.Body)
+func (ev *Evaluator) evalLet(node *ast.Let) (Value, error) {
+	body, err := ev.Eval(node.Body)
+	if err != nil {
+		return nil, err
+	}
 	if env, ok := body.match(node.Bind); ok {
 		for name, v := range env {
 			ev.EvEnv.set(name, v)
 		}
-		return Unit{}
+		return Unit{}, nil
 	}
-	ev.error(node.Base(), PatternMatchError{Patterns: []ast.Node{node.Bind}, Values: []Value{body}})
-	return nil
+	return nil, errorAt(node.Base(), PatternMatchError{Patterns: []ast.Node{node.Bind}, Values: []Value{body}})
 }
 
 func (ev *Evaluator) evalLambda(node *ast.Lambda) Value {
@@ -219,10 +236,14 @@ func (ev *Evaluator) evalLambda(node *ast.Lambda) Value {
 	}
 }
 
-func (ev *Evaluator) evalCase(node *ast.Case) Value {
+func (ev *Evaluator) evalCase(node *ast.Case) (Value, error) {
 	scrs := make([]Value, len(node.Scrutinees))
 	for i, scr := range node.Scrutinees {
-		scrs[i] = ev.Eval(scr)
+		var err error
+		scrs[i], err = ev.Eval(scr)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var err error
@@ -235,16 +256,19 @@ func (ev *Evaluator) evalCase(node *ast.Case) Value {
 			}
 			var ret Value
 			for _, expr := range clause.Exprs {
-				ret = ev.Eval(expr)
+				var err error
+				ret, err = ev.Eval(expr)
+				if err != nil {
+					return nil, err
+				}
 			}
 
 			ev.EvEnv = ev.EvEnv.parent
-			return ret
+			return ret, nil
 		}
 		err = errors.Join(err, PatternMatchError{Patterns: clause.Patterns, Values: scrs})
 	}
-	ev.error(node.Base(), err)
-	return nil
+	return nil, errorAt(node.Base(), err)
 }
 
 func matchClause(clause *ast.Clause, scrs []Value) (map[Name]Value, bool) {
@@ -272,39 +296,46 @@ func (ev *Evaluator) evalObject(node *ast.Object) Value {
 	return Object{Fields: fields}
 }
 
-func (ev *Evaluator) evalTypeDecl(node *ast.TypeDecl) Value {
+func (ev *Evaluator) evalTypeDecl(node *ast.TypeDecl) (Value, error) {
 	for _, ctor := range node.Types {
-		ev.defineConstructor(ctor)
+		err := ev.defineConstructor(ctor)
+		if err != nil {
+			return nil, err
+		}
 	}
-	return Unit{}
+	return Unit{}, nil
 }
 
-func (ev *Evaluator) defineConstructor(node ast.Node) {
+func (ev *Evaluator) defineConstructor(node ast.Node) error {
 	switch node := node.(type) {
 	case *ast.Var:
 		ev.EvEnv.set(tokenToName(node.Name), Data{Tag: tokenToName(node.Name), Elems: nil})
-		return
+		return nil
 	case *ast.Call:
 		switch fn := node.Func.(type) {
 		case *ast.Var:
 			ev.EvEnv.set(tokenToName(fn.Name), Constructor{Evaluator: *ev, Tag: tokenToName(fn.Name), Params: len(node.Args)})
-			return
+			return nil
 		case *ast.Prim:
 			// For type checking
 			// Ignore in evaluation
-			return
+			return nil
 		}
 	case *ast.Prim:
 		// For type checking
 		// Ignore in evaluation
-		return
+		return nil
 	}
-	ev.error(node.Base(), NotConstructorError{Node: node})
+	return errorAt(node.Base(), NotConstructorError{Node: node})
 }
 
-func (ev *Evaluator) evalVarDecl(node *ast.VarDecl) Value {
+func (ev *Evaluator) evalVarDecl(node *ast.VarDecl) (Value, error) {
 	if node.Expr != nil {
-		ev.EvEnv.set(tokenToName(node.Name), ev.Eval(node.Expr))
+		v, err := ev.Eval(node.Expr)
+		if err != nil {
+			return nil, err
+		}
+		ev.EvEnv.set(tokenToName(node.Name), v)
 	}
-	return Unit{}
+	return Unit{}, nil
 }
