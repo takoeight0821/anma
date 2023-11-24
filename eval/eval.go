@@ -3,328 +3,10 @@ package eval
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/takoeight0821/anma/ast"
 	"github.com/takoeight0821/anma/token"
 )
-
-type Evaluator struct {
-	*EvEnv
-	handler func(error)
-}
-
-func NewEvaluator() *Evaluator {
-	return &Evaluator{
-		EvEnv: newEvEnv(nil),
-	}
-}
-
-func (ev *Evaluator) SetErrorHandler(handler func(error)) {
-	ev.handler = handler
-}
-
-func (ev *Evaluator) error(where token.Token, err error) {
-	if where.Kind == token.EOF {
-		err = fmt.Errorf("at end: %w", err)
-	} else {
-		err = fmt.Errorf("at %d: `%s`, %w", where.Line, where.Lexeme, err)
-	}
-
-	if ev.handler != nil {
-		ev.handler(err)
-	} else {
-		panic(err)
-	}
-}
-
-type Name string
-
-func tokenToName(t token.Token) Name {
-	if t.Kind != token.IDENT && t.Kind != token.OPERATOR {
-		panic(fmt.Sprintf("tokenToName: %s", t))
-	}
-
-	return Name(fmt.Sprintf("%s.%#v", t.Lexeme, t.Literal))
-}
-
-type EvEnv struct {
-	parent *EvEnv
-	values map[Name]Value
-}
-
-func newEvEnv(parent *EvEnv) *EvEnv {
-	return &EvEnv{
-		parent: parent,
-		values: make(map[Name]Value),
-	}
-}
-
-func (env *EvEnv) String() string {
-	var b strings.Builder
-	b.WriteString("{")
-	for name, v := range env.values {
-		b.WriteString(fmt.Sprintf(" %s:%v", name, v))
-	}
-	b.WriteString(" }")
-	if env.parent != nil {
-		b.WriteString("\n\t&")
-		b.WriteString(env.parent.String())
-	}
-	return b.String()
-}
-
-func (env *EvEnv) get(name Name) Value {
-	if v, ok := env.values[name]; ok {
-		return v
-	}
-	if env.parent != nil {
-		return env.parent.get(name)
-	}
-	return nil
-}
-
-func (env *EvEnv) set(name Name, v Value) {
-	env.values[name] = v
-}
-
-func (env *EvEnv) SearchMain() (Value, bool) {
-	if env == nil {
-		return nil, false
-	}
-
-	for name, v := range env.values {
-		if strings.HasPrefix(string(name), "main.") {
-			return v, true
-		}
-	}
-
-	return env.parent.SearchMain()
-}
-
-type Value interface {
-	fmt.Stringer
-	match(pattern ast.Node) (map[Name]Value, bool)
-}
-
-type Unit struct{}
-
-func (u Unit) String() string {
-	return "<unit>"
-}
-
-func (u Unit) match(pattern ast.Node) (map[Name]Value, bool) {
-	switch pattern := pattern.(type) {
-	case *ast.Var:
-		return map[Name]Value{tokenToName(pattern.Name): u}, true
-	}
-	return nil, false
-}
-
-type Int int
-
-func (i Int) String() string {
-	return fmt.Sprintf("%d", i)
-}
-
-func (i Int) match(pattern ast.Node) (map[Name]Value, bool) {
-	switch pattern := pattern.(type) {
-	case *ast.Var:
-		return map[Name]Value{tokenToName(pattern.Name): i}, true
-	case *ast.Literal:
-		if pattern.Kind == token.INTEGER && pattern.Literal == i {
-			return map[Name]Value{}, true
-		}
-	}
-	return nil, false
-}
-
-type String string
-
-func (s String) String() string {
-	return fmt.Sprintf("%q", string(s))
-}
-
-func (s String) match(pattern ast.Node) (map[Name]Value, bool) {
-	switch pattern := pattern.(type) {
-	case *ast.Var:
-		return map[Name]Value{tokenToName(pattern.Name): s}, true
-	case *ast.Literal:
-		if pattern.Kind == token.STRING && pattern.Literal == s {
-			return map[Name]Value{}, true
-		}
-	}
-	return nil, false
-}
-
-// Function represents a closure value.
-type Function struct {
-	Evaluator
-	Params []Name
-	Body   []ast.Node
-}
-
-func (f Function) String() string {
-	var b strings.Builder
-	b.WriteString("<function")
-	for _, param := range f.Params {
-		b.WriteString(" ")
-		b.WriteString(string(param))
-	}
-	b.WriteString(">")
-	return b.String()
-}
-
-func (f Function) match(pattern ast.Node) (map[Name]Value, bool) {
-	switch pattern := pattern.(type) {
-	case *ast.Var:
-		return map[Name]Value{tokenToName(pattern.Name): f}, true
-	}
-	return nil, false
-}
-
-func (f Function) Apply(where token.Token, args ...Value) Value {
-	if len(f.Params) != len(args) {
-		f.error(where, InvalidArgumentCountError{Expected: len(f.Params), Actual: len(args)})
-	}
-	f.EvEnv = newEvEnv(f.EvEnv)
-	for i, param := range f.Params {
-		f.EvEnv.set(param, args[i])
-	}
-
-	var ret Value
-	for _, node := range f.Body {
-		ret = f.Eval(node)
-	}
-	f.EvEnv = f.EvEnv.parent
-	return ret
-}
-
-// Thunk represents a thunk value.
-// It is used to delay the evaluation of object fields.
-type Thunk struct {
-	Evaluator
-	Body []ast.Node
-}
-
-func (t Thunk) String() string {
-	return "<thunk>"
-}
-
-func (t Thunk) match(pattern ast.Node) (map[Name]Value, bool) {
-	switch pattern := pattern.(type) {
-	case *ast.Var:
-		return map[Name]Value{tokenToName(pattern.Name): t}, true
-	}
-	return nil, false
-}
-
-func runThunk(v Value) Value {
-	switch v := v.(type) {
-	case Thunk:
-		var ret Value
-		for _, node := range v.Body {
-			ret = v.Eval(node)
-		}
-		if _, ok := ret.(Thunk); ok {
-			panic("unreachable: thunk cannot return thunk")
-		}
-		return ret
-	default:
-		return v
-	}
-}
-
-// Object represents an object value.
-type Object struct {
-	Fields map[string]Value
-}
-
-func (o Object) String() string {
-	return "<object>"
-}
-
-func (o Object) match(pattern ast.Node) (map[Name]Value, bool) {
-	switch pattern := pattern.(type) {
-	case *ast.Var:
-		return map[Name]Value{tokenToName(pattern.Name): o}, true
-	}
-	return nil, false
-}
-
-// Data represents a algebraic data type value.
-type Data struct {
-	Tag   Name
-	Elems []Value
-}
-
-func (d Data) String() string {
-	var b strings.Builder
-	b.WriteString(string(d.Tag))
-	b.WriteString("(")
-	for i, elem := range d.Elems {
-		if i > 0 {
-			b.WriteString(", ")
-		}
-		b.WriteString(elem.String())
-	}
-	b.WriteString(")")
-	return b.String()
-}
-
-func (d Data) match(pattern ast.Node) (map[Name]Value, bool) {
-	switch pattern := pattern.(type) {
-	case *ast.Var:
-		return map[Name]Value{tokenToName(pattern.Name): d}, true
-	case *ast.Call:
-		switch fn := pattern.Func.(type) {
-		case *ast.Var:
-			if tokenToName(fn.Name) != d.Tag {
-				return nil, false
-			}
-			matches := make(map[Name]Value)
-			for i, elem := range d.Elems {
-				if i >= len(pattern.Args) {
-					return nil, false
-				}
-				m, ok := elem.match(pattern.Args[i])
-				if !ok {
-					return nil, false
-				}
-				for k, v := range m {
-					matches[k] = v
-				}
-			}
-			return matches, true
-		}
-	}
-	return nil, false
-}
-
-type Constructor struct {
-	Evaluator
-	Tag    Name
-	Params int
-}
-
-func (c Constructor) String() string {
-	return fmt.Sprintf("%s/%d", c.Tag, c.Params)
-}
-
-func (c Constructor) match(pattern ast.Node) (map[Name]Value, bool) {
-	switch pattern := pattern.(type) {
-	case *ast.Var:
-		return map[Name]Value{tokenToName(pattern.Name): c}, true
-	}
-	return nil, false
-}
-
-func (c Constructor) Apply(where token.Token, args ...Value) Value {
-	if len(args) != c.Params {
-		c.error(where, InvalidArgumentCountError{Expected: c.Params, Actual: len(args)})
-	}
-	return Data{Tag: c.Tag, Elems: args}
-}
 
 // Eval evaluates the given node and returns the result.
 func (ev *Evaluator) Eval(node ast.Node) Value {
@@ -381,14 +63,6 @@ func (ev *Evaluator) evalVar(node *ast.Var) Value {
 	return nil
 }
 
-type UndefinedVariableError struct {
-	Name Name
-}
-
-func (e UndefinedVariableError) Error() string {
-	return fmt.Sprintf("undefined variable `%v`", e.Name)
-}
-
 func (ev *Evaluator) evalLiteral(node *ast.Literal) Value {
 	//exhaustive:ignore
 	switch node.Kind {
@@ -400,14 +74,6 @@ func (ev *Evaluator) evalLiteral(node *ast.Literal) Value {
 		ev.error(node.Base(), InvalidLiteralError{Kind: node.Kind})
 		return nil
 	}
-}
-
-type InvalidLiteralError struct {
-	Kind token.TokenKind
-}
-
-func (e InvalidLiteralError) Error() string {
-	return fmt.Sprintf("invalid literal `%v`", e.Kind)
 }
 
 func (ev *Evaluator) evalParen(node *ast.Paren) Value {
@@ -427,15 +93,6 @@ func (ev *Evaluator) evalAccess(node *ast.Access) Value {
 	return nil
 }
 
-type UndefinedFieldError struct {
-	Receiver Object
-	Name     string
-}
-
-func (e UndefinedFieldError) Error() string {
-	return fmt.Sprintf("undefined field `%v` of %s", e.Name, e.Receiver)
-}
-
 func (ev *Evaluator) evalCall(node *ast.Call) Value {
 	fn := ev.Eval(node.Func)
 	switch fn := fn.(type) {
@@ -447,29 +104,8 @@ func (ev *Evaluator) evalCall(node *ast.Call) Value {
 		return fn.Apply(node.Base(), args...)
 	}
 
-	ev.error(node.Base(), NotFunctionError{Func: fn})
+	ev.error(node.Base(), NotCallableError{Func: fn})
 	return nil
-}
-
-type Callable interface {
-	Apply(token.Token, ...Value) Value
-}
-
-type InvalidArgumentCountError struct {
-	Expected int
-	Actual   int
-}
-
-func (e InvalidArgumentCountError) Error() string {
-	return fmt.Sprintf("invalid argument count: expected %d, actual %d", e.Expected, e.Actual)
-}
-
-type NotFunctionError struct {
-	Func Value
-}
-
-func (e NotFunctionError) Error() string {
-	return fmt.Sprintf("not a function: %v", e.Func)
 }
 
 func (ev *Evaluator) evalPrim(node *ast.Prim) Value {
@@ -526,23 +162,6 @@ func fetchPrim(name token.Token) func(*Evaluator, ...Value) Value {
 	}
 }
 
-type InvalidArgumentTypeError struct {
-	Expected string
-	Actual   Value
-}
-
-func (e InvalidArgumentTypeError) Error() string {
-	return fmt.Sprintf("invalid argument type: expected %s, actual %v", e.Expected, e.Actual)
-}
-
-type UndefinedPrimError struct {
-	Name token.Token
-}
-
-func (e UndefinedPrimError) Error() string {
-	return fmt.Sprintf("undefined prim `%v`", e.Name)
-}
-
 func (ev *Evaluator) evalBinary(node *ast.Binary) Value {
 	name := tokenToName(node.Op)
 	if op := ev.EvEnv.get(name); op != nil {
@@ -550,7 +169,7 @@ func (ev *Evaluator) evalBinary(node *ast.Binary) Value {
 		case Callable:
 			return op.Apply(node.Base(), ev.Eval(node.Left), ev.Eval(node.Right))
 		}
-		ev.error(node.Base(), NotFunctionError{Func: op})
+		ev.error(node.Base(), NotCallableError{Func: op})
 		return nil
 	}
 	ev.error(node.Base(), UndefinedVariableError{Name: name})
@@ -571,15 +190,6 @@ func (ev *Evaluator) evalLet(node *ast.Let) Value {
 	}
 	ev.error(node.Base(), PatternMatchError{Patterns: []ast.Node{node.Bind}, Values: []Value{body}})
 	return nil
-}
-
-type PatternMatchError struct {
-	Patterns []ast.Node
-	Values   []Value
-}
-
-func (e PatternMatchError) Error() string {
-	return fmt.Sprintf("pattern match failed: %v = %v", e.Patterns, e.Values)
 }
 
 func (ev *Evaluator) evalLambda(node *ast.Lambda) Value {
@@ -675,14 +285,6 @@ func (ev *Evaluator) defineConstructor(node ast.Node) {
 		return
 	}
 	ev.error(node.Base(), NotConstructorError{Node: node})
-}
-
-type NotConstructorError struct {
-	Node ast.Node
-}
-
-func (e NotConstructorError) Error() string {
-	return fmt.Sprintf("not a constructor: %v", e.Node)
 }
 
 func (ev *Evaluator) evalVarDecl(node *ast.VarDecl) Value {
