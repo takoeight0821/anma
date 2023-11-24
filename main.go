@@ -83,6 +83,7 @@ func RunPrompt() error {
 		nodes, err := r.RunSource(input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			continue
 		}
 		for _, node := range nodes {
 			value := ev.Eval(node)
