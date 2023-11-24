@@ -214,10 +214,10 @@ func (ev *Evaluator) evalAssert(node *ast.Assert) (Value, error) {
 	return ev.Eval(node.Expr)
 }
 
-func (ev *Evaluator) evalLet(node *ast.Let) (Value, error) {
+func (ev *Evaluator) evalLet(node *ast.Let) (Unit, error) {
 	body, err := ev.Eval(node.Body)
 	if err != nil {
-		return nil, err
+		return Unit{}, err
 	}
 	if env, ok := body.match(node.Bind); ok {
 		for name, v := range env {
@@ -225,10 +225,10 @@ func (ev *Evaluator) evalLet(node *ast.Let) (Value, error) {
 		}
 		return Unit{}, nil
 	}
-	return nil, errorAt(node.Base(), PatternMatchError{Patterns: []ast.Node{node.Bind}, Values: []Value{body}})
+	return Unit{}, errorAt(node.Base(), PatternMatchError{Patterns: []ast.Node{node.Bind}, Values: []Value{body}})
 }
 
-func (ev *Evaluator) evalLambda(node *ast.Lambda) Value {
+func (ev *Evaluator) evalLambda(node *ast.Lambda) Function {
 	params := make([]Name, len(node.Params))
 	for i, param := range node.Params {
 		params[i] = tokenToName(param)
@@ -240,6 +240,10 @@ func (ev *Evaluator) evalLambda(node *ast.Lambda) Value {
 	}
 }
 
+// evalCase evaluates the given case expression.
+// It first evaluates all scrutinees and then tries to match them with each clause.
+// If a match is found, it evaluates the corresponding expressions and returns the result.
+// If no match is found, it returns an error.
 func (ev *Evaluator) evalCase(node *ast.Case) (Value, error) {
 	scrs := make([]Value, len(node.Scrutinees))
 	for i, scr := range node.Scrutinees {
@@ -275,6 +279,7 @@ func (ev *Evaluator) evalCase(node *ast.Case) (Value, error) {
 	return nil, errorAt(node.Base(), err)
 }
 
+// matchClause matches the given clause's patterns with the given scrutinees.
 func matchClause(clause *ast.Clause, scrs []Value) (map[Name]Value, bool) {
 	if len(clause.Patterns) != len(scrs) {
 		return nil, false
@@ -292,7 +297,7 @@ func matchClause(clause *ast.Clause, scrs []Value) (map[Name]Value, bool) {
 	return env, true
 }
 
-func (ev *Evaluator) evalObject(node *ast.Object) Value {
+func (ev *Evaluator) evalObject(node *ast.Object) Object {
 	fields := make(map[string]Value)
 	for _, field := range node.Fields {
 		fields[field.Name] = Thunk{Evaluator: *ev, Body: field.Exprs}
@@ -300,11 +305,11 @@ func (ev *Evaluator) evalObject(node *ast.Object) Value {
 	return Object{Fields: fields}
 }
 
-func (ev *Evaluator) evalTypeDecl(node *ast.TypeDecl) (Value, error) {
+func (ev *Evaluator) evalTypeDecl(node *ast.TypeDecl) (Unit, error) {
 	for _, ctor := range node.Types {
 		err := ev.defineConstructor(ctor)
 		if err != nil {
-			return nil, err
+			return Unit{}, err
 		}
 	}
 	return Unit{}, nil
@@ -333,11 +338,11 @@ func (ev *Evaluator) defineConstructor(node ast.Node) error {
 	return errorAt(node.Base(), NotConstructorError{Node: node})
 }
 
-func (ev *Evaluator) evalVarDecl(node *ast.VarDecl) (Value, error) {
+func (ev *Evaluator) evalVarDecl(node *ast.VarDecl) (Unit, error) {
 	if node.Expr != nil {
 		v, err := ev.Eval(node.Expr)
 		if err != nil {
-			return nil, err
+			return Unit{}, err
 		}
 		ev.EvEnv.set(tokenToName(node.Name), v)
 	}
