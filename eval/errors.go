@@ -5,15 +5,16 @@ import (
 
 	"github.com/takoeight0821/anma/ast"
 	"github.com/takoeight0821/anma/token"
+	"github.com/takoeight0821/anma/utils"
 )
 
 // UndefinedVariableError is an error that is returned when a variable is not defined.
 type UndefinedVariableError struct {
-	Name Name
+	Name token.Token
 }
 
 func (e UndefinedVariableError) Error() string {
-	return fmt.Sprintf("undefined variable `%v`", e.Name)
+	return utils.MsgAt(e.Name, fmt.Sprintf("undefined variable `%v`", e.Name))
 }
 
 // InvalidLiteralError is an error that is returned when a token of given literal is invalid.

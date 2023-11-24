@@ -59,7 +59,7 @@ func (ev *Evaluator) evalVar(node *ast.Var) (Value, error) {
 	if v := ev.EvEnv.get(name); v != nil {
 		return v, nil
 	}
-	return nil, errorAt(node.Base(), UndefinedVariableError{Name: name})
+	return nil, UndefinedVariableError{Name: node.Name}
 }
 
 func (ev *Evaluator) evalLiteral(node *ast.Literal) (Value, error) {
@@ -207,7 +207,7 @@ func (ev *Evaluator) evalBinary(node *ast.Binary) (Value, error) {
 		}
 		return nil, errorAt(node.Base(), NotCallableError{Func: op})
 	}
-	return nil, errorAt(node.Base(), UndefinedVariableError{Name: name})
+	return nil, UndefinedVariableError{Name: node.Op}
 }
 
 func (ev *Evaluator) evalAssert(node *ast.Assert) (Value, error) {

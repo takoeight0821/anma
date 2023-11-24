@@ -30,6 +30,7 @@ func OrderedFor[I constraints.Ordered, V any](m map[I]V, f func(I, V)) {
 	}
 }
 
+// MsgAt returns a string that describes the location of the token.
 func MsgAt(t token.Token, msg string) string {
 	if t.Kind == token.EOF {
 		return fmt.Sprintf("at end: %s", msg)
