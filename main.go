@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -14,6 +13,7 @@ import (
 	"github.com/takoeight0821/anma/eval"
 	"github.com/takoeight0821/anma/infix"
 	"github.com/takoeight0821/anma/nameresolve"
+	"github.com/takoeight0821/anma/token"
 )
 
 func main() {
@@ -68,6 +68,12 @@ func RunPrompt() error {
 	r.AddPass(codata.Flat{})
 	r.AddPass(infix.NewInfixResolver())
 	r.AddPass(nameresolve.NewResolver())
+
+	ev := eval.NewEvaluator()
+	ev.SetErrorHandler(func(evErr error) {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", evErr)
+	})
+
 	for {
 		input, err := line.Prompt("> ")
 		if err != nil {
@@ -76,27 +82,12 @@ func RunPrompt() error {
 		line.AppendHistory(input)
 		nodes, err := r.RunSource(input)
 		if err != nil {
-			var wrappedErr interface{ Unwrap() []error }
-			if errors.As(err, &wrappedErr) {
-				for _, err := range wrappedErr.Unwrap() {
-					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				}
-			} else {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			}
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		}
-
-		ev := eval.NewEvaluator()
-		ev.SetErrorHandler(func(evErr error) {
-			err = evErr
-		})
 		for _, node := range nodes {
 			value := ev.Eval(node)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				continue
-			}
 			fmt.Println(value)
+			ev.ResetError()
 		}
 	}
 }
@@ -111,6 +102,31 @@ func RunFile(path string) error {
 		return fmt.Errorf("read file: %w", err)
 	}
 
-	_, err = r.RunSource(string(bytes))
-	return fmt.Errorf("run source: %w", err)
+	nodes, err := r.RunSource(string(bytes))
+	if err != nil {
+		return fmt.Errorf("run file: %w", err)
+	}
+
+	ev := eval.NewEvaluator()
+	for _, node := range nodes {
+		ev.Eval(node)
+	}
+
+	main, ok := ev.SearchMain()
+	if !ok {
+		return noMainError{}
+	}
+	top := token.Token{Kind: token.IDENT, Lexeme: "toplevel", Line: 0, Literal: -1}
+	main.SetErrorHandler(func(evErr error) {
+		err = evErr
+	})
+	main.Apply(top)
+
+	return fmt.Errorf("run file: %w", err)
+}
+
+type noMainError struct{}
+
+func (noMainError) Error() string {
+	return "no main function"
 }

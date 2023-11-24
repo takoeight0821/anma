@@ -10,6 +10,7 @@ import (
 type Evaluator struct {
 	*EvEnv
 	handler func(error)
+	err     error
 }
 
 func NewEvaluator() *Evaluator {
@@ -22,17 +23,21 @@ func (ev *Evaluator) SetErrorHandler(handler func(error)) {
 	ev.handler = handler
 }
 
+func (ev *Evaluator) ResetError() {
+	ev.err = nil
+}
+
 func (ev *Evaluator) error(where token.Token, err error) {
 	if where.Kind == token.EOF {
-		err = fmt.Errorf("at end: %w", err)
+		ev.err = fmt.Errorf("at end: %w", err)
 	} else {
-		err = fmt.Errorf("at %d: `%s`, %w", where.Line, where.Lexeme, err)
+		ev.err = fmt.Errorf("at %d: `%s`, %w", where.Line, where.Lexeme, err)
 	}
 
 	if ev.handler != nil {
-		ev.handler(err)
+		ev.handler(ev.err)
 	} else {
-		panic(err)
+		panic(ev.err)
 	}
 }
 
@@ -86,14 +91,18 @@ func (env *EvEnv) set(name Name, v Value) {
 	env.values[name] = v
 }
 
-func (env *EvEnv) SearchMain() (Value, bool) {
+func (env *EvEnv) SearchMain() (Function, bool) {
 	if env == nil {
-		return nil, false
+		return Function{}, false
 	}
 
 	for name, v := range env.values {
 		if strings.HasPrefix(string(name), "main.") {
-			return v, true
+			f, ok := v.(Function)
+			if !ok {
+				return Function{}, false
+			}
+			return f, true
 		}
 	}
 

@@ -45,7 +45,7 @@ func completeEval(t *testing.T, label string, input string, expected string) {
 
 	if main, ok := ev.SearchMain(); ok {
 		top := token.Token{Kind: token.IDENT, Lexeme: "toplevel", Line: 0, Literal: -1}
-		ret := main.(eval.Callable).Apply(top)
+		ret := main.Apply(top)
 
 		actual := ret.String()
 		if actual != expected {

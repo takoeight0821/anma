@@ -10,6 +10,9 @@ import (
 
 // Eval evaluates the given node and returns the result.
 func (ev *Evaluator) Eval(node ast.Node) Value {
+	if ev.err != nil {
+		return nil
+	}
 	switch node := node.(type) {
 	case *ast.Var:
 		return ev.evalVar(node)
@@ -123,6 +126,14 @@ func (ev *Evaluator) evalPrim(node *ast.Prim) Value {
 	return prim(ev, args...)
 }
 
+func asInt(v Value) (Int, bool) {
+	switch v := v.(type) {
+	case Int:
+		return v, true
+	}
+	return 0, false
+}
+
 func fetchPrim(name token.Token) func(*Evaluator, ...Value) Value {
 	switch name.Lexeme {
 	case "add":
@@ -131,15 +142,17 @@ func fetchPrim(name token.Token) func(*Evaluator, ...Value) Value {
 				ev.error(name, InvalidArgumentCountError{Expected: 2, Actual: len(args)})
 				return nil
 			}
-			switch args[0].(type) {
-			case Int:
-				switch args[1].(type) {
-				case Int:
-					return Int(args[0].(Int) + args[1].(Int))
-				}
+			v0, ok := asInt(args[0])
+			if !ok {
+				ev.error(name, InvalidArgumentTypeError{Expected: "Int", Actual: args[0]})
+				return nil
 			}
-			ev.error(name, InvalidArgumentTypeError{Expected: "Int", Actual: args[0]})
-			return nil
+			v1, ok := asInt(args[1])
+			if !ok {
+				ev.error(name, InvalidArgumentTypeError{Expected: "Int", Actual: args[1]})
+				return nil
+			}
+			return Int(v0 + v1)
 		}
 	case "mul":
 		return func(ev *Evaluator, args ...Value) Value {
@@ -147,15 +160,17 @@ func fetchPrim(name token.Token) func(*Evaluator, ...Value) Value {
 				ev.error(name, InvalidArgumentCountError{Expected: 2, Actual: len(args)})
 				return nil
 			}
-			switch args[0].(type) {
-			case Int:
-				switch args[1].(type) {
-				case Int:
-					return Int(args[0].(Int) * args[1].(Int))
-				}
+			v0, ok := asInt(args[0])
+			if !ok {
+				ev.error(name, InvalidArgumentTypeError{Expected: "Int", Actual: args[0]})
+				return nil
 			}
-			ev.error(name, InvalidArgumentTypeError{Expected: "Int", Actual: args[0]})
-			return nil
+			v1, ok := asInt(args[1])
+			if !ok {
+				ev.error(name, InvalidArgumentTypeError{Expected: "Int", Actual: args[1]})
+				return nil
+			}
+			return Int(v0 * v1)
 		}
 	default:
 		return nil
