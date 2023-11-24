@@ -87,8 +87,12 @@ func (ev *Evaluator) evalAccess(node *ast.Access) (Value, error) {
 	switch receiver := receiver.(type) {
 	case Object:
 		if v, ok := receiver.Fields[node.Name.Lexeme]; ok {
-			// TODO: update receiver.Fields[name] to runThunk(v)
-			return runThunk(v)
+			v, err = runThunk(v)
+			if err != nil {
+				return nil, err
+			}
+			receiver.Fields[node.Name.Lexeme] = v
+			return v, nil
 		}
 		return nil, errorAt(node.Base(), UndefinedFieldError{Receiver: receiver, Name: node.Name.Lexeme})
 	}
