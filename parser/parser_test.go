@@ -10,6 +10,7 @@ import (
 )
 
 func TestParseFromTestData(t *testing.T) {
+	t.Parallel()
 	testcases := utils.ReadTestData()
 	for _, testcase := range testcases {
 		if expected, ok := testcase.Expected["parser"]; ok {

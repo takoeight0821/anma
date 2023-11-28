@@ -89,7 +89,7 @@ func (p *Parser) infixDecl() *ast.InfixDecl {
 	kind := p.advance()
 	if kind.Kind != token.INFIX && kind.Kind != token.INFIXL && kind.Kind != token.INFIXR {
 		p.recover(unexpectedTokenError(p.peek(), "`infix`", "`infixl`", "`infixr`"))
-		return &ast.InfixDecl{}
+		return nil
 	}
 	precedence := p.consume(token.INTEGER)
 	name := p.consume(token.OPERATOR)

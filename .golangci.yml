@@ -6,10 +6,10 @@ linters:
     # - format
     - import
     # - metalinter
-    # - module
-    # - performance
+    - module
+    - performance
     # - style
-    # - test
+    - test
     # - unused
     # Disable
     # - sql
@@ -24,3 +24,6 @@ linters-settings:
           - github.com/google/go-cmp/cmp
           - github.com/peterh/liner
           - github.com/adrg/xdg
+  exhaustruct:
+    include:
+      - '.*\.<anonymous>'

@@ -20,7 +20,7 @@ type PassRunner struct {
 }
 
 func NewPassRunner() *PassRunner {
-	return &PassRunner{}
+	return &PassRunner{passes: make([]Pass, 0)}
 }
 
 // AddPass adds a pass to the end of the pass list.

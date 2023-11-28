@@ -335,6 +335,8 @@ func arityOf(p patternList) int {
 }
 
 // Split PatternList into the first accessor and the rest.
+//
+//exhaustruct:ignore
 func pop(p patternList) (token.Token, patternList, bool) {
 	if len(p.accessors) == 0 {
 		return token.Token{}, p, false

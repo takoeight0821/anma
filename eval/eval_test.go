@@ -14,6 +14,7 @@ import (
 )
 
 func TestEvalFromTestData(t *testing.T) {
+	t.Parallel()
 	testcases := utils.ReadTestData()
 
 	for _, testcase := range testcases {

@@ -8,6 +8,7 @@ import (
 )
 
 func TestLexer(t *testing.T) {
+	t.Parallel()
 	testcases := []struct {
 		input  string
 		tokens []token.Token

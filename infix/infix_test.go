@@ -12,6 +12,7 @@ import (
 )
 
 func TestInfix(t *testing.T) {
+	t.Parallel()
 	testcases := utils.ReadTestData()
 
 	for _, testcase := range testcases {

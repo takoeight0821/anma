@@ -13,6 +13,7 @@ import (
 )
 
 func TestResolve(t *testing.T) {
+	t.Parallel()
 	testcases := utils.ReadTestData()
 	for _, testcase := range testcases {
 		if expected, ok := testcase.Expected["nameresolve"]; ok {

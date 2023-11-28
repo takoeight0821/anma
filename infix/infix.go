@@ -16,7 +16,7 @@ type InfixResolver struct {
 }
 
 func NewInfixResolver() *InfixResolver {
-	return &InfixResolver{}
+	return &InfixResolver{decls: make([]*ast.InfixDecl, 0)}
 }
 
 func (r *InfixResolver) Name() string {
