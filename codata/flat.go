@@ -89,7 +89,7 @@ func newBuilder() *builder {
 	return &builder{}
 }
 
-// dispatch to Object or Lambda based on arity
+// dispatch to Object or Lambda based on arity.
 func (b *builder) build(arity int, clauses []plistClause) ast.Node {
 	if arity == noArgs {
 		return b.object(clauses)
@@ -264,7 +264,7 @@ func accessors(p ast.Node) []token.Token {
 	}
 }
 
-// Get Args of Call{This, ...}
+// Get Args of Call{This, ...}.
 func params(p ast.Node) []ast.Node {
 	switch p := p.(type) {
 	case *ast.Access:

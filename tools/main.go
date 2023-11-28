@@ -10,8 +10,7 @@ import (
 	"strings"
 )
 
-// Examples:
-// $ ./a.out -comment -in ../ast.go -out ../docs/ast.ebnf
+// Example: `go run main.go -comment -in ../ast.go -out ../docs/ast.ebnf`.
 func main() {
 	var (
 		comment = flag.Bool("comment", false, "comment")

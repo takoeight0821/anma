@@ -1,7 +1,7 @@
 linters:
   presets:
     - bugs
-    # - comment
+    - comment
     - error
     # - format
     - import
@@ -17,6 +17,9 @@ linters:
   disable:
     - wsl
 linters-settings:
+  godot:
+    exclude:
+      - ;$
   forbidigo:
     forbid:
       - ^print.*$
