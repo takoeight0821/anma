@@ -489,20 +489,6 @@ func concat[T fmt.Stringer](elems []T) fmt.Stringer {
 	return &b
 }
 
-// prepend takes a node that implements the fmt.Stringer interface and a slice of nodes that implement the fmt.Stringer interface.
-// It returns a fmt.Stringer that represents a string where the first node is prepended to the slice of nodes.
-//
-//tool:ignore
-func prepend[T fmt.Stringer](elem fmt.Stringer, slice []T) fmt.Stringer {
-	var b strings.Builder
-	b.WriteString(elem.String())
-	for _, elem := range slice {
-		b.WriteString(" ")
-		b.WriteString(elem.String())
-	}
-	return &b
-}
-
 // Traverse the [Node] in depth-first order.
 // f is called for each node.
 // If n is defined in ast.go and has children, Traverse modifies each child before n.

@@ -28,7 +28,7 @@ func (ev *Evaluator) Eval(node ast.Node) (Value, error) {
 	case *ast.Assert:
 		return ev.evalAssert(node)
 	case *ast.Let:
-		return ev.evalLet(node)
+		return Unit{}, ev.evalLet(node)
 	case *ast.Codata:
 		panic("unreachable: codata must be desugared")
 	case *ast.Clause:
@@ -42,9 +42,9 @@ func (ev *Evaluator) Eval(node ast.Node) (Value, error) {
 	case *ast.Field:
 		panic("unreachable: field cannot appear outside of object")
 	case *ast.TypeDecl:
-		return ev.evalTypeDecl(node)
+		return Unit{}, ev.evalTypeDecl(node)
 	case *ast.VarDecl:
-		return ev.evalVarDecl(node)
+		return Unit{}, ev.evalVarDecl(node)
 	case *ast.InfixDecl:
 		return Unit{}, nil
 	case *ast.This:
@@ -217,18 +217,18 @@ func (ev *Evaluator) evalAssert(node *ast.Assert) (Value, error) {
 // evalLet evaluates the given let expression.
 // let expression does not create a new scope.
 // It just overrides the existing bindings or creates new bindings if not exists.
-func (ev *Evaluator) evalLet(node *ast.Let) (Unit, error) {
+func (ev *Evaluator) evalLet(node *ast.Let) error {
 	body, err := ev.Eval(node.Body)
 	if err != nil {
-		return Unit{}, err
+		return err
 	}
 	if env, ok := body.match(node.Bind); ok {
 		for name, v := range env {
 			ev.EvEnv.set(name, v)
 		}
-		return Unit{}, nil
+		return nil
 	}
-	return Unit{}, errorAt(node.Base(), PatternMatchError{Patterns: []ast.Node{node.Bind}, Values: []Value{body}})
+	return errorAt(node.Base(), PatternMatchError{Patterns: []ast.Node{node.Bind}, Values: []Value{body}})
 }
 
 func (ev *Evaluator) evalLambda(node *ast.Lambda) Function {
@@ -308,14 +308,14 @@ func (ev *Evaluator) evalObject(node *ast.Object) Object {
 	return Object{Fields: fields}
 }
 
-func (ev *Evaluator) evalTypeDecl(node *ast.TypeDecl) (Unit, error) {
+func (ev *Evaluator) evalTypeDecl(node *ast.TypeDecl) error {
 	for _, ctor := range node.Types {
 		err := ev.defineConstructor(ctor)
 		if err != nil {
-			return Unit{}, err
+			return err
 		}
 	}
-	return Unit{}, nil
+	return nil
 }
 
 func (ev *Evaluator) defineConstructor(node ast.Node) error {
@@ -341,13 +341,13 @@ func (ev *Evaluator) defineConstructor(node ast.Node) error {
 	return errorAt(node.Base(), NotConstructorError{Node: node})
 }
 
-func (ev *Evaluator) evalVarDecl(node *ast.VarDecl) (Unit, error) {
+func (ev *Evaluator) evalVarDecl(node *ast.VarDecl) error {
 	if node.Expr != nil {
 		v, err := ev.Eval(node.Expr)
 		if err != nil {
-			return Unit{}, err
+			return err
 		}
 		ev.EvEnv.set(tokenToName(node.Name), v)
 	}
-	return Unit{}, nil
+	return nil
 }

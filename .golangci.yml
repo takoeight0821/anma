@@ -10,7 +10,7 @@ linters:
     - performance
     # - style
     - test
-    # - unused
+    - unused
     # Disable
     # - sql
     # - complexity
