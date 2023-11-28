@@ -17,13 +17,6 @@ func NewEvaluator() *Evaluator {
 	}
 }
 
-func errorAt(where token.Token, err error) error {
-	if where.Kind == token.EOF {
-		return fmt.Errorf("at end: %w", err)
-	}
-	return fmt.Errorf("at %d: `%s`, %w", where.Line, where.Lexeme, err)
-}
-
 type Name string
 
 func tokenToName(t token.Token) Name {
