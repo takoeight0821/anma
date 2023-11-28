@@ -3,7 +3,7 @@ linters:
     - bugs
     - comment
     - error
-    # - format
+    - format
     - import
     # - metalinter
     - module
