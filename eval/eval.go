@@ -166,7 +166,7 @@ func fetchPrim(name token.Token) func(*Evaluator, ...Value) (Value, error) {
 			if !ok {
 				return nil, errorAt(name, InvalidArgumentTypeError{Expected: "Int", Actual: args[1]})
 			}
-			return Int(v0 + v1), nil
+			return v0 + v1, nil
 		}
 	case "mul":
 		return func(ev *Evaluator, args ...Value) (Value, error) {
@@ -181,7 +181,7 @@ func fetchPrim(name token.Token) func(*Evaluator, ...Value) (Value, error) {
 			if !ok {
 				return nil, errorAt(name, InvalidArgumentTypeError{Expected: "Int", Actual: args[1]})
 			}
-			return Int(v0 * v1), nil
+			return v0 * v1, nil
 		}
 	default:
 		return nil

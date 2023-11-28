@@ -51,7 +51,7 @@ type ArityError struct {
 
 func (e ArityError) Error() string {
 	if e.Expected == notChecked {
-		return utils.MsgAt(e.Where, fmt.Sprintf("unreachable: arity is not checked"))
+		return utils.MsgAt(e.Where, "unreachable: arity is not checked")
 	}
 	return utils.MsgAt(e.Where, fmt.Sprintf("arity mismatch: expected %d arguments", e.Expected))
 }
@@ -181,7 +181,6 @@ func (b builder) object(clauses []plistClause) ast.Node {
 				Name:  field,
 				Exprs: newCase(b.scrutinees, b.fieldBody(cs)),
 			})
-		return
 	})
 	return &ast.Object{Fields: fields}
 }

@@ -16,6 +16,9 @@ linters:
     # - complexity
   disable:
     - wsl
+  enable:
+    - gosimple
+    - unconvert
 linters-settings:
   godot:
     exclude:
