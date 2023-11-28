@@ -488,7 +488,6 @@ func (p *Parser) consume(kind token.Kind) token.Token {
 }
 
 type UnexpectedTokenError struct {
-	Token    token.Token
 	Expected []string
 }
 
@@ -502,9 +501,9 @@ func (e UnexpectedTokenError) Error() string {
 		msg = msg + ", " + ex
 	}
 
-	return "unexpected token: " + e.Token.Kind.String() + ", expected " + msg
+	return "unexpected token: expected " + msg
 }
 
 func unexpectedToken(t token.Token, expected ...string) error {
-	return utils.ErrorAt{Where: t, Err: UnexpectedTokenError{Token: t, Expected: expected}}
+	return utils.ErrorAt{Where: t, Err: UnexpectedTokenError{Expected: expected}}
 }
