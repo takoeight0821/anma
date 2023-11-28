@@ -214,6 +214,9 @@ func (ev *Evaluator) evalAssert(node *ast.Assert) (Value, error) {
 	return ev.Eval(node.Expr)
 }
 
+// evalLet evaluates the given let expression.
+// let expression does not create a new scope.
+// It just overrides the existing bindings or creates new bindings if not exists.
 func (ev *Evaluator) evalLet(node *ast.Let) (Unit, error) {
 	body, err := ev.Eval(node.Body)
 	if err != nil {

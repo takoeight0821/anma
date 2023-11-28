@@ -4,7 +4,7 @@ linters:
     # - comment
     - error
     # - format
-    # - import
+    - import
     # - metalinter
     # - module
     # - performance
@@ -14,3 +14,13 @@ linters:
     # Disable
     # - sql
     # - complexity
+linters-settings:
+  depguard:
+    rules:
+      main:
+        allow:
+          - $gostd
+          - github.com/takoeight0821/anma
+          - github.com/google/go-cmp/cmp
+          - github.com/peterh/liner
+          - github.com/adrg/xdg
