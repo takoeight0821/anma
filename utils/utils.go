@@ -38,6 +38,15 @@ func MsgAt(t token.Token, msg string) string {
 	return fmt.Sprintf("at %d: `%s`, %s", t.Line, t.Lexeme, msg)
 }
 
+type ErrorAt struct {
+	Where token.Token
+	Err   error
+}
+
+func (e ErrorAt) Error() string {
+	return MsgAt(e.Where, e.Err.Error())
+}
+
 type TestData struct {
 	Label    string
 	Enable   bool

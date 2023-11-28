@@ -69,7 +69,7 @@ func (p *Parser) varDecl() *ast.VarDecl {
 	case p.match(token.OPERATOR):
 		name = p.advance()
 	default:
-		p.recover(unexpectedTokenError(p.peek(), "identifier", "operator"))
+		p.recover(unexpectedToken(p.peek(), "identifier", "operator"))
 		return &ast.VarDecl{}
 	}
 	var typ ast.Node
@@ -89,7 +89,7 @@ func (p *Parser) varDecl() *ast.VarDecl {
 func (p *Parser) infixDecl() *ast.InfixDecl {
 	kind := p.advance()
 	if kind.Kind != token.INFIX && kind.Kind != token.INFIXL && kind.Kind != token.INFIXR {
-		p.recover(unexpectedTokenError(p.peek(), "`infix`", "`infixl`", "`infixr`"))
+		p.recover(unexpectedToken(p.peek(), "`infix`", "`infixl`", "`infixr`"))
 		return nil
 	}
 	precedence := p.consume(token.INTEGER)
@@ -100,7 +100,7 @@ func (p *Parser) infixDecl() *ast.InfixDecl {
 // expr = let | fn | assert ;
 func (p *Parser) expr() ast.Node {
 	if p.IsAtEnd() {
-		p.recover(unexpectedTokenError(p.peek(), "expression"))
+		p.recover(unexpectedToken(p.peek(), "expression"))
 		return nil
 	}
 	if p.match(token.LET) {
@@ -167,7 +167,7 @@ func (p *Parser) atom() ast.Node {
 	case token.LEFTBRACE:
 		return p.codata()
 	default:
-		p.recover(unexpectedTokenError(t, "identifier", "integer", "string", "`(`", "`{`"))
+		p.recover(unexpectedToken(t, "identifier", "integer", "string", "`(`", "`{`"))
 		return nil
 	}
 }
@@ -283,7 +283,7 @@ func (p *Parser) clause() *ast.Clause {
 // pattern = accessPat ;
 func (p *Parser) pattern() ast.Node {
 	if p.IsAtEnd() {
-		p.recover(unexpectedTokenError(p.peek(), "pattern"))
+		p.recover(unexpectedToken(p.peek(), "pattern"))
 		return nil
 	}
 	return p.accessPat()
@@ -341,7 +341,7 @@ func (p *Parser) atomPat() ast.Node {
 		p.consume(token.RIGHTPAREN)
 		return &ast.Paren{Expr: pat}
 	default:
-		p.recover(unexpectedTokenError(t, "identifier", "integer", "string", "`(`"))
+		p.recover(unexpectedToken(t, "identifier", "integer", "string", "`(`"))
 		return nil
 	}
 }
@@ -349,7 +349,7 @@ func (p *Parser) atomPat() ast.Node {
 // type = binopType ;
 func (p *Parser) typ() ast.Node {
 	if p.IsAtEnd() {
-		p.recover(unexpectedTokenError(p.peek(), "type"))
+		p.recover(unexpectedToken(p.peek(), "type"))
 		return nil
 	}
 
@@ -435,7 +435,7 @@ func (p *Parser) atomType() ast.Node {
 		p.consume(token.RIGHTPAREN)
 		return &ast.Paren{Expr: typ}
 	default:
-		p.recover(unexpectedTokenError(t, "identifier", "`{`", "`(`"))
+		p.recover(unexpectedToken(t, "identifier", "`{`", "`(`"))
 		return nil
 	}
 }
@@ -483,7 +483,7 @@ func (p *Parser) consume(kind token.Kind) token.Token {
 		return p.advance()
 	}
 
-	p.err = errors.Join(p.err, unexpectedTokenError(p.peek(), kind.String()))
+	p.err = errors.Join(p.err, unexpectedToken(p.peek(), kind.String()))
 	return p.peek()
 }
 
@@ -502,9 +502,9 @@ func (e UnexpectedTokenError) Error() string {
 		msg = msg + ", " + ex
 	}
 
-	return utils.MsgAt(e.Token, "unexpected token: "+e.Token.Kind.String()+", expected "+msg)
+	return "unexpected token: " + e.Token.Kind.String() + ", expected " + msg
 }
 
-func unexpectedTokenError(t token.Token, expected ...string) error {
-	return UnexpectedTokenError{Token: t, Expected: expected}
+func unexpectedToken(t token.Token, expected ...string) error {
+	return utils.ErrorAt{Where: t, Err: UnexpectedTokenError{Token: t, Expected: expected}}
 }

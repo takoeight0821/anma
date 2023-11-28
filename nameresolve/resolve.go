@@ -73,7 +73,7 @@ type NotDefinedError struct {
 }
 
 func (e NotDefinedError) Error() string {
-	return utils.MsgAt(e.Name, fmt.Sprintf("%s is not defined", e.Name.String()))
+	return fmt.Sprintf("%s is not defined", e.Name.String())
 }
 
 func (e *env) lookup(name token.Token) (token.Token, error) {
@@ -85,7 +85,7 @@ func (e *env) lookup(name token.Token) (token.Token, error) {
 		return e.parent.lookup(name)
 	}
 
-	return name, NotDefinedError{Name: name}
+	return name, utils.ErrorAt{Where: name, Err: NotDefinedError{Name: name}}
 }
 
 // Define all top-level variables in the node.
@@ -104,7 +104,7 @@ func (r *Resolver) registerTopLevel(node ast.Node) error {
 		}
 	case *ast.VarDecl:
 		if _, ok := r.env.table[n.Name.Lexeme]; ok {
-			return AlreadyDefinedError{Name: n.Name}
+			return utils.ErrorAt{Where: n.Base(), Err: AlreadyDefinedError{Name: n.Name}}
 		}
 		r.define(n.Name)
 	}
@@ -329,7 +329,7 @@ type AlreadyDefinedError struct {
 }
 
 func (e AlreadyDefinedError) Error() string {
-	return utils.MsgAt(e.Name, fmt.Sprintf("%s is already defined", e.Name.String()))
+	return fmt.Sprintf("%s is already defined", e.Name.String())
 }
 
 // allVariables define all variables in the node.
@@ -344,7 +344,7 @@ func allVariables(r *Resolver, node ast.Node) ([]string, error) {
 		switch n := n.(type) {
 		case *ast.Var:
 			if _, ok := r.env.table[n.Name.Lexeme]; ok {
-				err = AlreadyDefinedError{Name: n.Name}
+				err = utils.ErrorAt{Where: n.Base(), Err: AlreadyDefinedError{Name: n.Name}}
 				return n
 			}
 			r.define(n.Name)
@@ -397,7 +397,7 @@ type InvalidPatternError struct {
 }
 
 func (e InvalidPatternError) Error() string {
-	return utils.MsgAt(e.Pattern.Base(), fmt.Sprintf("invalid pattern %v", e.Pattern))
+	return fmt.Sprintf("invalid pattern %v", e.Pattern)
 }
 
 // Define variables in the node as pattern.
@@ -406,7 +406,7 @@ func asPattern(r *Resolver, node ast.Node) ([]string, error) {
 	switch n := node.(type) {
 	case *ast.Var:
 		if _, ok := r.env.table[n.Name.Lexeme]; ok {
-			return nil, AlreadyDefinedError{Name: n.Name}
+			return nil, utils.ErrorAt{Where: n.Base(), Err: AlreadyDefinedError{Name: n.Name}}
 		}
 		r.define(n.Name)
 		return []string{n.Name.Lexeme}, nil
@@ -427,7 +427,7 @@ func asPattern(r *Resolver, node ast.Node) ([]string, error) {
 		}
 		return defined, nil
 	default:
-		return nil, InvalidPatternError{Pattern: node}
+		return nil, utils.ErrorAt{Where: node.Base(), Err: InvalidPatternError{Pattern: node}}
 	}
 }
 
