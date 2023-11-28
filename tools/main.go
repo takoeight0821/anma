@@ -20,12 +20,12 @@ func main() {
 	)
 	flag.Parse()
 
-	if *comment {
+	switch {
+	case *comment:
 		commentFile(*in, *out)
-		return
-	} else if *dump {
+	case *dump:
 		dumpFile(*in)
-	} else {
+	default:
 		flag.Usage()
 	}
 }

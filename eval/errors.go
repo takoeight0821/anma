@@ -19,7 +19,7 @@ func (e UndefinedVariableError) Error() string {
 
 // InvalidLiteralError is an error that is returned when a token of given literal is invalid.
 type InvalidLiteralError struct {
-	Kind token.TokenKind
+	Kind token.Kind
 }
 
 func (e InvalidLiteralError) Error() string {

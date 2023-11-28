@@ -30,7 +30,7 @@ func (v *Var) Base() token.Token {
 	return v.Name
 }
 
-func (v *Var) Plate(f func(Node) Node) Node {
+func (v *Var) Plate(_ func(Node) Node) Node {
 	return v
 }
 
@@ -48,7 +48,7 @@ func (l *Literal) Base() token.Token {
 	return l.Token
 }
 
-func (l *Literal) Plate(f func(Node) Node) Node {
+func (l *Literal) Plate(_ func(Node) Node) Node {
 	return l
 }
 
@@ -422,7 +422,7 @@ func (i *InfixDecl) Base() token.Token {
 	return i.Assoc
 }
 
-func (i *InfixDecl) Plate(f func(Node) Node) Node {
+func (i *InfixDecl) Plate(_ func(Node) Node) Node {
 	return i
 }
 
@@ -440,7 +440,7 @@ func (t *This) Base() token.Token {
 	return t.Token
 }
 
-func (t *This) Plate(f func(Node) Node) Node {
+func (t *This) Plate(_ func(Node) Node) Node {
 	return t
 }
 

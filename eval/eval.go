@@ -95,8 +95,9 @@ func (ev *Evaluator) evalAccess(node *ast.Access) (Value, error) {
 			return v, nil
 		}
 		return nil, errorAt(node.Base(), UndefinedFieldError{Receiver: receiver, Name: node.Name.Lexeme})
+	default:
+		return nil, errorAt(node.Base(), NotObjectError{Receiver: receiver})
 	}
-	return nil, errorAt(node.Base(), NotObjectError{Receiver: receiver})
 }
 
 func (ev *Evaluator) evalCall(node *ast.Call) (Value, error) {
@@ -118,9 +119,9 @@ func (ev *Evaluator) evalCall(node *ast.Call) (Value, error) {
 			return nil, errorAt(node.Base(), err)
 		}
 		return v, nil
+	default:
+		return nil, errorAt(node.Base(), NotCallableError{Func: fn})
 	}
-
-	return nil, errorAt(node.Base(), NotCallableError{Func: fn})
 }
 
 func (ev *Evaluator) evalPrim(node *ast.Prim) (Value, error) {
@@ -145,8 +146,9 @@ func asInt(v Value) (Int, bool) {
 	switch v := v.(type) {
 	case Int:
 		return v, true
+	default:
+		return 0, false
 	}
-	return 0, false
 }
 
 func fetchPrim(name token.Token) func(*Evaluator, ...Value) (Value, error) {
@@ -204,8 +206,9 @@ func (ev *Evaluator) evalBinary(node *ast.Binary) (Value, error) {
 				return nil, errorAt(node.Base(), err)
 			}
 			return v, nil
+		default:
+			return nil, errorAt(node.Base(), NotCallableError{Func: op})
 		}
-		return nil, errorAt(node.Base(), NotCallableError{Func: op})
 	}
 	return nil, UndefinedVariableError{Name: node.Op}
 }

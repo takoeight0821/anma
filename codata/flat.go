@@ -70,7 +70,7 @@ func flatCodata(c *ast.Codata) ast.Node {
 	arity := notChecked
 	clauses := make([]plistClause, len(c.Clauses))
 	for i, cl := range c.Clauses {
-		plist := NewPatternList(cl)
+		plist := newPatternList(cl)
 		clauses[i] = plistClause{plist, cl.Exprs}
 		if arity == notChecked {
 			arity = arityOf(plist)
@@ -284,7 +284,7 @@ type patternList struct {
 	params    []ast.Node
 }
 
-func NewPatternList(clause *ast.Clause) patternList {
+func newPatternList(clause *ast.Clause) patternList {
 	if len(clause.Patterns) != 1 {
 		panic("invalid pattern")
 	}
@@ -318,11 +318,11 @@ func (p patternList) String() string {
 	return "[" + strings.Join(accessors, " ") + " | " + strings.Join(params, " ") + "]"
 }
 
-func (pl patternList) Plate(f func(ast.Node) ast.Node) ast.Node {
-	for i, p := range pl.params {
-		pl.params[i] = f(p)
+func (p patternList) Plate(f func(ast.Node) ast.Node) ast.Node {
+	for i, param := range p.params {
+		p.params[i] = f(param)
 	}
-	return pl
+	return p
 }
 
 var _ ast.Node = patternList{}

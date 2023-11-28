@@ -27,8 +27,9 @@ func (u Unit) match(pattern ast.Node) (map[Name]Value, bool) {
 	switch pattern := pattern.(type) {
 	case *ast.Var:
 		return map[Name]Value{tokenToName(pattern.Name): u}, true
+	default:
+		return nil, false
 	}
-	return nil, false
 }
 
 var _ Value = Unit{}
@@ -95,8 +96,9 @@ func (f Function) match(pattern ast.Node) (map[Name]Value, bool) {
 	switch pattern := pattern.(type) {
 	case *ast.Var:
 		return map[Name]Value{tokenToName(pattern.Name): f}, true
+	default:
+		return nil, false
 	}
-	return nil, false
 }
 
 func (f Function) Apply(where token.Token, args ...Value) (Value, error) {
@@ -140,8 +142,9 @@ func (t Thunk) match(pattern ast.Node) (map[Name]Value, bool) {
 	switch pattern := pattern.(type) {
 	case *ast.Var:
 		return map[Name]Value{tokenToName(pattern.Name): t}, true
+	default:
+		return nil, false
 	}
-	return nil, false
 }
 
 func runThunk(v Value) (Value, error) {
@@ -179,8 +182,9 @@ func (o Object) match(pattern ast.Node) (map[Name]Value, bool) {
 	switch pattern := pattern.(type) {
 	case *ast.Var:
 		return map[Name]Value{tokenToName(pattern.Name): o}, true
+	default:
+		return nil, false
 	}
-	return nil, false
 }
 
 var _ Value = Object{}
@@ -229,6 +233,8 @@ func (d Data) match(pattern ast.Node) (map[Name]Value, bool) {
 				}
 			}
 			return matches, true
+		default:
+			panic(fmt.Sprintf("unreachable: %s", pattern.Func))
 		}
 	}
 	return nil, false
@@ -250,8 +256,9 @@ func (c Constructor) match(pattern ast.Node) (map[Name]Value, bool) {
 	switch pattern := pattern.(type) {
 	case *ast.Var:
 		return map[Name]Value{tokenToName(pattern.Name): c}, true
+	default:
+		return nil, false
 	}
-	return nil, false
 }
 
 func (c Constructor) Apply(where token.Token, args ...Value) (Value, error) {

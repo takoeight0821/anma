@@ -53,7 +53,7 @@ func (l *lexer) advance() rune {
 	return l.source[l.current-1]
 }
 
-func (l *lexer) addToken(kind token.TokenKind, literal any) {
+func (l *lexer) addToken(kind token.Kind, literal any) {
 	text := string(l.source[l.start:l.current])
 	l.tokens = append(l.tokens, token.Token{Kind: kind, Lexeme: text, Line: l.line, Literal: literal})
 }
@@ -170,7 +170,7 @@ func (l *lexer) identifier() error {
 	return nil
 }
 
-var keywords = map[string]token.TokenKind{
+var keywords = map[string]token.Kind{
 	"->":     token.ARROW,
 	"|":      token.BAR,
 	"=":      token.EQUAL,
@@ -191,7 +191,7 @@ func isSymbol(c rune) bool {
 }
 
 // These characters are reserved symbols, but they are not included in operator.
-var reservedSymbols = map[rune]token.TokenKind{
+var reservedSymbols = map[rune]token.Kind{
 	'(': token.LEFTPAREN,
 	')': token.RIGHTPAREN,
 	'{': token.LEFTBRACE,

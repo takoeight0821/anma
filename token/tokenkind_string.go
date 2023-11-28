@@ -42,8 +42,8 @@ const _TokenKind_name = "EOFLEFTPARENRIGHTPARENLEFTBRACERIGHTBRACELEFTBRACKETRIG
 
 var _TokenKind_index = [...]uint8{0, 3, 12, 22, 31, 41, 52, 64, 69, 74, 77, 86, 91, 96, 104, 111, 117, 122, 125, 129, 132, 137, 139, 144, 150, 156, 159, 163, 167}
 
-func (i TokenKind) String() string {
-	if i < 0 || i >= TokenKind(len(_TokenKind_index)-1) {
+func (i Kind) String() string {
+	if i < 0 || i >= Kind(len(_TokenKind_index)-1) {
 		return "TokenKind(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
 	return _TokenKind_name[_TokenKind_index[i]:_TokenKind_index[i+1]]

@@ -3,10 +3,10 @@ package token
 import "fmt"
 
 //go:generate go run golang.org/x/tools/cmd/stringer@v0.13.0 -type=TokenKind
-type TokenKind int
+type Kind int
 
 const (
-	EOF TokenKind = iota
+	EOF Kind = iota
 
 	// Single-character tokens.
 	LEFTPAREN
@@ -43,7 +43,7 @@ const (
 )
 
 type Token struct {
-	Kind    TokenKind
+	Kind    Kind
 	Lexeme  string
 	Line    int
 	Literal any

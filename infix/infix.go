@@ -11,32 +11,34 @@ import (
 // After parsing, every infix operator treated as left-associative and has the same precedence.
 // In infix.go, we will fix this.
 
-type InfixResolver struct {
+type Resolver struct {
 	decls []*ast.InfixDecl
 }
 
-func NewInfixResolver() *InfixResolver {
-	return &InfixResolver{decls: make([]*ast.InfixDecl, 0)}
+func NewInfixResolver() *Resolver {
+	return &Resolver{decls: make([]*ast.InfixDecl, 0)}
 }
 
-func (r *InfixResolver) Name() string {
+func (r *Resolver) Name() string {
 	return "infix.InfixResolver"
 }
 
-func (r *InfixResolver) Init(program []ast.Node) error {
+func (r *Resolver) Init(program []ast.Node) error {
 	for _, node := range program {
 		ast.Traverse(node, func(n ast.Node) ast.Node {
 			switch n := n.(type) {
 			case *ast.InfixDecl:
 				r.add(n)
+				return n
+			default:
+				return n
 			}
-			return n
 		})
 	}
 	return nil
 }
 
-func (r *InfixResolver) Run(program []ast.Node) ([]ast.Node, error) {
+func (r *Resolver) Run(program []ast.Node) ([]ast.Node, error) {
 	for i, node := range program {
 		program[i] = ast.Traverse(node, func(n ast.Node) ast.Node {
 			switch n := n.(type) {
@@ -51,11 +53,11 @@ func (r *InfixResolver) Run(program []ast.Node) ([]ast.Node, error) {
 	return program, nil
 }
 
-func (r *InfixResolver) add(infix *ast.InfixDecl) {
+func (r *Resolver) add(infix *ast.InfixDecl) {
 	r.decls = append(r.decls, infix)
 }
 
-func (r InfixResolver) prec(op token.Token) int {
+func (r Resolver) prec(op token.Token) int {
 	for _, decl := range r.decls {
 		if decl.Name.Lexeme == op.Lexeme {
 			return decl.Prec.Literal.(int)
@@ -64,7 +66,7 @@ func (r InfixResolver) prec(op token.Token) int {
 	return 0
 }
 
-func (r InfixResolver) assoc(op token.Token) token.TokenKind {
+func (r Resolver) assoc(op token.Token) token.Kind {
 	for _, decl := range r.decls {
 		if decl.Name.Lexeme == op.Lexeme {
 			return decl.Assoc.Kind
@@ -73,7 +75,7 @@ func (r InfixResolver) assoc(op token.Token) token.TokenKind {
 	return token.INFIXL
 }
 
-func (r InfixResolver) mkBinary(op token.Token, left, right ast.Node) ast.Node {
+func (r Resolver) mkBinary(op token.Token, left, right ast.Node) ast.Node {
 	switch left := left.(type) {
 	case *ast.Binary:
 		// (left.Left left.Op left.Right) op right
@@ -82,11 +84,13 @@ func (r InfixResolver) mkBinary(op token.Token, left, right ast.Node) ast.Node {
 			newRight := r.mkBinary(op, left.Right, right)
 			return &ast.Binary{Left: left.Left, Op: left.Op, Right: newRight}
 		}
+		return &ast.Binary{Left: left, Op: op, Right: right}
+	default:
+		return &ast.Binary{Left: left, Op: op, Right: right}
 	}
-	return &ast.Binary{Left: left, Op: op, Right: right}
 }
 
-func (r InfixResolver) assocRight(op1, op2 token.Token) bool {
+func (r Resolver) assocRight(op1, op2 token.Token) bool {
 	prec1 := r.prec(op1)
 	prec2 := r.prec(op2)
 	if prec1 > prec2 {

@@ -63,11 +63,12 @@ func (p *Parser) typeDecl() *ast.TypeDecl {
 func (p *Parser) varDecl() *ast.VarDecl {
 	p.consume(token.DEF)
 	var name token.Token
-	if p.match(token.IDENT) {
+	switch {
+	case p.match(token.IDENT):
 		name = p.advance()
-	} else if p.match(token.OPERATOR) {
+	case p.match(token.OPERATOR):
 		name = p.advance()
-	} else {
+	default:
 		p.recover(unexpectedTokenError(p.peek(), "identifier", "operator"))
 		return &ast.VarDecl{}
 	}
@@ -470,14 +471,14 @@ func (p Parser) IsAtEnd() bool {
 	return p.peek().Kind == token.EOF
 }
 
-func (p Parser) match(kind token.TokenKind) bool {
+func (p Parser) match(kind token.Kind) bool {
 	if p.IsAtEnd() {
 		return false
 	}
 	return p.peek().Kind == kind
 }
 
-func (p *Parser) consume(kind token.TokenKind) token.Token {
+func (p *Parser) consume(kind token.Kind) token.Token {
 	if p.match(kind) {
 		return p.advance()
 	}

@@ -349,8 +349,10 @@ func allVariables(r *Resolver, node ast.Node) ([]string, error) {
 			}
 			r.define(n.Name)
 			defined = append(defined, n.Name.Lexeme)
+			return n
+		default:
+			return n
 		}
-		return n
 	})
 	return defined, err
 }
@@ -364,8 +366,10 @@ func overwrite(r *Resolver, node ast.Node) ([]string, error) {
 		case *ast.Var:
 			r.define(n.Name)
 			defined = append(defined, n.Name.Lexeme)
+			return n
+		default:
+			return n
 		}
-		return n
 	})
 	return defined, nil
 }
@@ -380,8 +384,10 @@ func ifNotDefined(r *Resolver, node ast.Node) ([]string, error) {
 				r.define(n.Name)
 				defined = append(defined, n.Name.Lexeme)
 			}
+			return n
+		default:
+			return n
 		}
-		return n
 	})
 	return defined, nil
 }
@@ -413,11 +419,11 @@ func asPattern(r *Resolver, node ast.Node) ([]string, error) {
 	case *ast.Call:
 		var defined []string
 		for _, arg := range n.Args {
-			new, err := r.assign(arg, asPattern)
+			newDefs, err := r.assign(arg, asPattern)
 			if err != nil {
 				return nil, err
 			}
-			defined = append(defined, new...)
+			defined = append(defined, newDefs...)
 		}
 		return defined, nil
 	default:
