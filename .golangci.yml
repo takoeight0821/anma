@@ -14,7 +14,12 @@ linters:
     # Disable
     # - sql
     # - complexity
+  disable:
+    - wsl
 linters-settings:
+  forbidigo:
+    forbid:
+      - ^print.*$
   depguard:
     rules:
       main:
@@ -27,3 +32,10 @@ linters-settings:
   exhaustruct:
     include:
       - '.*\.<anonymous>'
+  ireturn:
+    allow:
+      - anon
+      - error
+      - empty
+      - stdlib
+      - Node
