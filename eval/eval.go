@@ -6,6 +6,7 @@ import (
 
 	"github.com/takoeight0821/anma/ast"
 	"github.com/takoeight0821/anma/token"
+	"github.com/takoeight0821/anma/utils"
 )
 
 // Eval evaluates the given node and returns the result.
@@ -59,7 +60,7 @@ func (ev *Evaluator) evalVar(node *ast.Var) (Value, error) {
 	if v := ev.EvEnv.get(name); v != nil {
 		return v, nil
 	}
-	return nil, UndefinedVariableError{Name: node.Name}
+	return nil, utils.ErrorAt{Where: node.Base(), Err: UndefinedVariableError{Name: node.Name}}
 }
 
 func (ev *Evaluator) evalLiteral(node *ast.Literal) (Value, error) {
@@ -210,7 +211,7 @@ func (ev *Evaluator) evalBinary(node *ast.Binary) (Value, error) {
 			return nil, errorAt(node.Base(), NotCallableError{Func: op})
 		}
 	}
-	return nil, UndefinedVariableError{Name: node.Op}
+	return nil, utils.ErrorAt{Where: node.Base(), Err: UndefinedVariableError{Name: node.Op}}
 }
 
 func (ev *Evaluator) evalAssert(node *ast.Assert) (Value, error) {

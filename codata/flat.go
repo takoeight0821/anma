@@ -46,14 +46,13 @@ const (
 
 type ArityError struct {
 	Expected int // expected arity, or notChecked, or noArgs
-	Where    token.Token
 }
 
 func (e ArityError) Error() string {
 	if e.Expected == notChecked {
-		return utils.MsgAt(e.Where, "unreachable: arity is not checked")
+		return "unreachable: arity is not checked"
 	}
-	return utils.MsgAt(e.Where, fmt.Sprintf("arity mismatch: expected %d arguments", e.Expected))
+	return fmt.Sprintf("arity mismatch: expected %d arguments", e.Expected)
 }
 
 func checkArity(expected, actual int, where token.Token) {
@@ -61,7 +60,7 @@ func checkArity(expected, actual int, where token.Token) {
 		return
 	}
 	if expected != actual {
-		panic(ArityError{Expected: expected, Where: where})
+		panic(utils.ErrorAt{Where: where, Err: ArityError{Expected: expected}})
 	}
 }
 
@@ -102,7 +101,7 @@ type UnsupportedPatternError struct {
 }
 
 func (e UnsupportedPatternError) Error() string {
-	return utils.MsgAt(e.Clause.plist.Base(), fmt.Sprintf("unsupported pattern %v", e.Clause))
+	return fmt.Sprintf("unsupported pattern %v", e.Clause)
 }
 
 type plistClause struct {
@@ -124,7 +123,7 @@ func (b builder) groupClausesByAccessor(clauses []plistClause) map[string][]plis
 				next[field.String()],
 				plistClause{plist, c.exprs})
 		} else {
-			panic(UnsupportedPatternError{Clause: c})
+			panic(utils.ErrorAt{Where: plist.Base(), Err: UnsupportedPatternError{Clause: c}})
 		}
 	}
 	return next
@@ -250,7 +249,7 @@ type InvalidCallPatternError struct {
 }
 
 func (e InvalidCallPatternError) Error() string {
-	return utils.MsgAt(e.Pattern.Base(), fmt.Sprintf("invalid call pattern %v", e.Pattern))
+	return fmt.Sprintf("invalid call pattern %v", e.Pattern)
 }
 
 // Collect all Access patterns recursively.
@@ -270,7 +269,7 @@ func params(p ast.Node) []ast.Node {
 		return params(p.Receiver)
 	case *ast.Call:
 		if _, ok := p.Func.(*ast.This); !ok {
-			panic(InvalidCallPatternError{Pattern: p})
+			panic(utils.ErrorAt{Where: p.Base(), Err: InvalidCallPatternError{Pattern: p}})
 		}
 		return p.Args
 	default:

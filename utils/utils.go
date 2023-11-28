@@ -30,21 +30,16 @@ func OrderedFor[I constraints.Ordered, V any](m map[I]V, f func(I, V)) {
 	}
 }
 
-// MsgAt returns a string that describes the location of the token.
-func MsgAt(t token.Token, msg string) string {
-	if t.Kind == token.EOF {
-		return fmt.Sprintf("at end: %s", msg)
-	}
-	return fmt.Sprintf("at %d: `%s`, %s", t.Line, t.Lexeme, msg)
-}
-
 type ErrorAt struct {
 	Where token.Token
 	Err   error
 }
 
 func (e ErrorAt) Error() string {
-	return MsgAt(e.Where, e.Err.Error())
+	if e.Where.Kind == token.EOF {
+		return fmt.Sprintf("at end: %s", e.Err.Error())
+	}
+	return fmt.Sprintf("at %d: `%s`, %s", e.Where.Line, e.Where.Lexeme, e.Err.Error())
 }
 
 type TestData struct {

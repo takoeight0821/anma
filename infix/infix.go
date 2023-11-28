@@ -100,14 +100,15 @@ func (r Resolver) assocRight(op1, op2 token.Token) bool {
 	}
 	// same precedence
 	if r.assoc(op1) != r.assoc(op2) {
-		panic(NeedParenError{LeftOp: op1, RightOp: op2})
+		panic(utils.ErrorAt{Where: op1, Err: NeedParenError{LeftOp: op1, RightOp: op2}})
 	}
 	if r.assoc(op1) == token.INFIXL {
 		return false
 	} else if r.assoc(op1) == token.INFIXR {
 		return true
 	}
-	panic(NeedParenError{LeftOp: op1, RightOp: op2})
+
+	panic(utils.ErrorAt{Where: op1, Err: NeedParenError{LeftOp: op1, RightOp: op2}})
 }
 
 type NeedParenError struct {
@@ -115,5 +116,5 @@ type NeedParenError struct {
 }
 
 func (e NeedParenError) Error() string {
-	return utils.MsgAt(e.LeftOp, fmt.Sprintf("need parentheses around %v and %v", e.LeftOp, e.RightOp))
+	return fmt.Sprintf("need parentheses around %v and %v", e.LeftOp, e.RightOp)
 }
