@@ -152,7 +152,7 @@ func (p *Parser) fn() *ast.Lambda {
 	return &ast.Lambda{Params: params, Exprs: exprs}
 }
 
-// atom = var | literal | paren | codata ;
+// atom = var | literal | paren | codata | PRIM "(" IDENTIFIER ("," expr)* ","? ")" ;
 func (p *Parser) atom() ast.Node {
 	//exhaustive:ignore
 	switch t := p.advance(); t.Kind {
@@ -166,6 +166,21 @@ func (p *Parser) atom() ast.Node {
 		return &ast.Paren{Expr: expr}
 	case token.LEFTBRACE:
 		return p.codata()
+	case token.PRIM:
+		p.consume(token.LEFTPAREN)
+		name := p.consume(token.IDENT)
+		args := []ast.Node{}
+		if !p.match(token.RIGHTPAREN) {
+			for p.match(token.COMMA) {
+				p.advance()
+				if p.match(token.RIGHTPAREN) {
+					break
+				}
+				args = append(args, p.expr())
+			}
+		}
+		p.consume(token.RIGHTPAREN)
+		return &ast.Prim{Name: name, Args: args}
 	default:
 		p.recover(unexpectedToken(t, "identifier", "integer", "string", "`(`", "`{`"))
 		return nil
@@ -183,58 +198,47 @@ func (p *Parser) assert() ast.Node {
 	return expr
 }
 
-// binary = access (operator access)* ;
+// binary = method (operator method)* ;
 func (p *Parser) binary() ast.Node {
-	expr := p.access()
+	expr := p.method()
 	for p.match(token.OPERATOR) {
 		op := p.advance()
-		right := p.access()
+		right := p.method()
 		expr = &ast.Binary{Left: expr, Op: op, Right: right}
 	}
 	return expr
 }
 
-// access = call ("." IDENTIFIER)* ;
-func (p *Parser) access() ast.Node {
-	expr := p.call()
-	for p.match(token.DOT) {
-		p.advance()
-		name := p.consume(token.IDENT)
-		expr = &ast.Access{Receiver: expr, Name: name}
-	}
-	return expr
-}
-
-// call = (PRIM "(" IDENTIFIER ("," expr)* ","? ")" | atom) ("(" ")" | "(" expr ("," expr)* ","? ")")* ;
-func (p *Parser) call() ast.Node {
-	var expr ast.Node
-	if p.match(token.PRIM) {
-		p.advance()
-		p.consume(token.LEFTPAREN)
-		name := p.consume(token.IDENT)
-		args := []ast.Node{}
-		if !p.match(token.RIGHTPAREN) {
-			for p.match(token.COMMA) {
-				p.advance()
-				if p.match(token.RIGHTPAREN) {
-					break
-				}
-				args = append(args, p.expr())
-			}
+// method = atom (accessTail | callTail)* ;
+func (p *Parser) method() ast.Node {
+	expr := p.atom()
+	for {
+		switch {
+		case p.match(token.DOT):
+			expr = p.accessTail(expr)
+		case p.match(token.LEFTPAREN):
+			expr = p.callTail(expr)
+		default:
+			return expr
 		}
-		p.consume(token.RIGHTPAREN)
-		expr = &ast.Prim{Name: name, Args: args}
-	} else {
-		expr = p.atom()
+	}
+}
+
+// accessTail = "." IDENTIFIER callTail? ;
+func (p *Parser) accessTail(receiver ast.Node) ast.Node {
+	p.consume(token.DOT)
+	name := p.consume(token.IDENT)
+	expr := &ast.Access{Receiver: receiver, Name: name}
+
+	if p.match(token.LEFTPAREN) {
+		return p.callTail(expr)
 	}
 
-	for p.match(token.LEFTPAREN) {
-		expr = p.finishCall(expr)
-	}
 	return expr
 }
 
-func (p *Parser) finishCall(fun ast.Node) *ast.Call {
+// callTail = "(" ")" | "(" expr ("," expr)* ","? ")" ;
+func (p *Parser) callTail(fun ast.Node) ast.Node {
 	p.consume(token.LEFTPAREN)
 	args := []ast.Node{}
 	if !p.match(token.RIGHTPAREN) {
@@ -280,36 +284,45 @@ func (p *Parser) clause() *ast.Clause {
 	return &ast.Clause{Patterns: []ast.Node{pattern}, Exprs: exprs}
 }
 
-// pattern = accessPat ;
+// pattern = methodPat ;
 func (p *Parser) pattern() ast.Node {
 	if p.IsAtEnd() {
 		p.recover(unexpectedToken(p.peek(), "pattern"))
 		return nil
 	}
-	return p.accessPat()
+	return p.methodPat()
 }
 
-// accessPat = callPat ("." IDENTIFIER)* ;
-func (p *Parser) accessPat() ast.Node {
-	pat := p.callPat()
-	for p.match(token.DOT) {
-		p.advance()
-		name := p.consume(token.IDENT)
-		pat = &ast.Access{Receiver: pat, Name: name}
-	}
-	return pat
-}
-
-// callPat = atomPat ("(" ")" | "(" pattern ("," pattern)* ","? ")")* ;
-func (p *Parser) callPat() ast.Node {
+// methodPat = atomPat (accessPatTail | callPatTail)* ;
+func (p *Parser) methodPat() ast.Node {
 	pat := p.atomPat()
-	for p.match(token.LEFTPAREN) {
-		pat = p.finishCallPat(pat)
+	for {
+		switch {
+		case p.match(token.DOT):
+			pat = p.accessPatTail(pat)
+		case p.match(token.LEFTPAREN):
+			pat = p.callPatTail(pat)
+		default:
+			return pat
+		}
 	}
+}
+
+// accessPatTail = "." IDENTIFIER callPatTail? ;
+func (p *Parser) accessPatTail(receiver ast.Node) ast.Node {
+	p.consume(token.DOT)
+	name := p.consume(token.IDENT)
+	pat := &ast.Access{Receiver: receiver, Name: name}
+
+	if p.match(token.LEFTPAREN) {
+		return p.callPatTail(pat)
+	}
+
 	return pat
 }
 
-func (p *Parser) finishCallPat(fun ast.Node) *ast.Call {
+// callPatTail = "(" ")" | "(" pattern ("," pattern)* ","? ")" ;
+func (p *Parser) callPatTail(fun ast.Node) ast.Node {
 	p.consume(token.LEFTPAREN)
 	args := []ast.Node{}
 	if !p.match(token.RIGHTPAREN) {
@@ -364,6 +377,7 @@ func (p *Parser) binopType() ast.Node {
 		right := p.callType()
 		typ = &ast.Binary{Left: typ, Op: op, Right: right}
 	}
+
 	return typ
 }
 
@@ -391,12 +405,12 @@ func (p *Parser) callType() ast.Node {
 	}
 
 	for p.match(token.LEFTPAREN) {
-		typ = p.finishCallType(typ)
+		typ = p.callTypeTail(typ)
 	}
 	return typ
 }
 
-func (p *Parser) finishCallType(fun ast.Node) *ast.Call {
+func (p *Parser) callTypeTail(fun ast.Node) *ast.Call {
 	p.consume(token.LEFTPAREN)
 	args := []ast.Node{}
 	if !p.match(token.RIGHTPAREN) {
