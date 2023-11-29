@@ -28,14 +28,18 @@ func (Flat) Run(program []ast.Node) ([]ast.Node, error) {
 }
 
 func flat(n ast.Node) ast.Node {
-	return ast.Traverse(n, flatEach)
+	v, err := ast.Traverse(n, flatEach)
+	if err != nil {
+		panic(err)
+	}
+	return v
 }
 
-func flatEach(n ast.Node) ast.Node {
+func flatEach(n ast.Node, _ error) (ast.Node, error) {
 	if n, ok := n.(*ast.Codata); ok {
-		return flatCodata(n)
+		return flatCodata(n), nil
 	}
-	return n
+	return n, nil
 }
 
 const (
@@ -316,11 +320,11 @@ func (p patternList) String() string {
 	return "[" + strings.Join(accessors, " ") + " | " + strings.Join(params, " ") + "]"
 }
 
-func (p patternList) Plate(f func(ast.Node) ast.Node) ast.Node {
+func (p patternList) Plate(err error, f func(ast.Node, error) (ast.Node, error)) (ast.Node, error) {
 	for i, param := range p.params {
-		p.params[i] = f(param)
+		p.params[i], err = f(param, err)
 	}
-	return p
+	return p, err
 }
 
 var _ ast.Node = patternList{}

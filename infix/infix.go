@@ -25,30 +25,37 @@ func (r *Resolver) Name() string {
 
 func (r *Resolver) Init(program []ast.Node) error {
 	for _, node := range program {
-		ast.Traverse(node, func(n ast.Node) ast.Node {
+		_, err := ast.Traverse(node, func(n ast.Node, _ error) (ast.Node, error) {
 			switch n := n.(type) {
 			case *ast.InfixDecl:
 				r.add(n)
-				return n
+				return n, nil
 			default:
-				return n
+				return n, nil
 			}
 		})
+		if err != nil {
+			return fmt.Errorf("infix: %w", err)
+		}
 	}
 	return nil
 }
 
 func (r *Resolver) Run(program []ast.Node) ([]ast.Node, error) {
 	for i, node := range program {
-		program[i] = ast.Traverse(node, func(n ast.Node) ast.Node {
+		var err error
+		program[i], err = ast.Traverse(node, func(n ast.Node, _ error) (ast.Node, error) {
 			switch n := n.(type) {
 			case *ast.Binary:
-				return r.mkBinary(n.Op, n.Left, n.Right)
+				return r.mkBinary(n.Op, n.Left, n.Right), nil
 			case *ast.Paren:
-				return n.Expr
+				return n.Expr, nil
 			}
-			return n
+			return n, nil
 		})
+		if err != nil {
+			return program, fmt.Errorf("infix: %w", err)
+		}
 	}
 	return program, nil
 }

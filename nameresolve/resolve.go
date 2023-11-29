@@ -336,59 +336,66 @@ func (e AlreadyDefinedError) Error() string {
 // If a variable is already defined in current scope, it is an error.
 func allVariables(r *Resolver, node ast.Node) ([]string, error) {
 	var defined []string
-	var err error
-	ast.Traverse(node, func(n ast.Node) ast.Node {
+	_, err := ast.Traverse(node, func(n ast.Node, err error) (ast.Node, error) {
 		if err != nil {
-			return n
+			return n, err
 		}
 		switch n := n.(type) {
 		case *ast.Var:
 			if _, ok := r.env.table[n.Name.Lexeme]; ok {
-				err = utils.ErrorAt{Where: n.Base(), Err: AlreadyDefinedError{Name: n.Name}}
-				return n
+				return n, utils.ErrorAt{Where: n.Base(), Err: AlreadyDefinedError{Name: n.Name}}
 			}
 			r.define(n.Name)
 			defined = append(defined, n.Name.Lexeme)
-			return n
+			return n, nil
 		default:
-			return n
+			return n, nil
 		}
 	})
-	return defined, err
+	if err != nil {
+		return nil, fmt.Errorf("allVariables: %w", err)
+	}
+	return defined, nil
 }
 
 // overwrite defines all variables in the node.
 // If a variable is already defined in current scope, it is overwritten.
 func overwrite(r *Resolver, node ast.Node) ([]string, error) {
 	var defined []string
-	ast.Traverse(node, func(n ast.Node) ast.Node {
+	_, err := ast.Traverse(node, func(n ast.Node, _ error) (ast.Node, error) {
 		switch n := n.(type) {
 		case *ast.Var:
 			r.define(n.Name)
 			defined = append(defined, n.Name.Lexeme)
-			return n
+			return n, nil
 		default:
-			return n
+			return n, nil
 		}
 	})
+	if err != nil {
+		return nil, fmt.Errorf("overwrite: %w", err)
+	}
 	return defined, nil
 }
 
 // ifNotDefined define variables in the node if they are not defined.
 func ifNotDefined(r *Resolver, node ast.Node) ([]string, error) {
 	var defined []string
-	ast.Traverse(node, func(n ast.Node) ast.Node {
+	_, err := ast.Traverse(node, func(n ast.Node, _ error) (ast.Node, error) {
 		switch n := n.(type) {
 		case *ast.Var:
 			if _, err := r.env.lookup(n.Name); err != nil {
 				r.define(n.Name)
 				defined = append(defined, n.Name.Lexeme)
 			}
-			return n
+			return n, nil
 		default:
-			return n
+			return n, nil
 		}
 	})
+	if err != nil {
+		return nil, fmt.Errorf("ifNotDefined: %w", err)
+	}
 	return defined, nil
 }
 
