@@ -241,7 +241,7 @@
     def main = { #() -> printer.print(1) }
   expected:
     parser: |
-      (def printer (codata (clause (access (this #) print) (lambda (x) (prim print (var x))))))
+      (def printer (codata (clause (call (access (this #) print) (var x)) (prim print (var x)))))
       (def main (codata (clause (call (this #)) (call (access (var printer) print) (literal 1)))))
     codata: |
       (def printer (object (field print (lambda (x) (prim print (var x))))))

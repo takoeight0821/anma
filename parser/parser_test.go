@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/takoeight0821/anma/driver"
 	"github.com/takoeight0821/anma/utils"
 )
@@ -37,7 +36,7 @@ func newCompleteParse(t *testing.T, label, input, expected string) {
 
 	actual := b.String()
 
-	if diff := cmp.Diff(expected, actual); diff != "" {
+	if diff := utils.Diff(expected, actual); diff != "" {
 		t.Errorf("Parser %s mismatch (-want +got):\n%s", label, diff)
 	}
 }
