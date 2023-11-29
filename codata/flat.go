@@ -33,20 +33,26 @@ func (Flat) Run(program []ast.Node) ([]ast.Node, error) {
 }
 
 func flat(n ast.Node) (ast.Node, error) {
-	v, err := ast.Traverse(n, flatEach)
+	n, err := ast.Traverse(n, flatEach)
 	if err != nil {
-		return nil, fmt.Errorf("flat: %w", err)
+		return n, fmt.Errorf("flat %v: %w", n, err)
 	}
-	return v, nil
+	return n, nil
 }
 
+// flatEach converts Copatterns ([Access] and [This] in [Pattern]) into [Object] and [Lambda].
+// If error occurred, return the original node and the error. Because ast.Traverse needs it.
 func flatEach(n ast.Node, err error) (ast.Node, error) {
 	// early return if error occurred
 	if err != nil {
 		return n, err
 	}
-	if n, ok := n.(*ast.Codata); ok {
-		return flatCodata(n)
+	if c, ok := n.(*ast.Codata); ok {
+		newNode, err := flatCodata(c)
+		if err != nil {
+			return n, err
+		}
+		return newNode, nil
 	}
 	return n, nil
 }

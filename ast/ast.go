@@ -13,6 +13,7 @@ type Node interface {
 	fmt.Stringer
 	Base() token.Token
 	// Plate applies the given function to each child node.
+	// If f returns an error, f also must return the original argument n.
 	// It is similar to Visitor pattern.
 	// FYI: https://hackage.haskell.org/package/lens-5.2.3/docs/Control-Lens-Plated.html
 	Plate(error, func(Node, error) (Node, error)) (Node, error)
@@ -497,6 +498,7 @@ func concat[T fmt.Stringer](elems []T) fmt.Stringer {
 
 // Traverse the [Node] in depth-first order.
 // f is called for each node.
+// If f returns an error, f also must return the original argument n.
 // If n is defined in ast.go and has children, Traverse modifies each child before n.
 // Otherwise, n is directly applied to f.
 //
