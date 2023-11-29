@@ -41,6 +41,7 @@ func flat(n ast.Node) (ast.Node, error) {
 }
 
 func flatEach(n ast.Node, err error) (ast.Node, error) {
+	// early return if error occurred
 	if err != nil {
 		return n, err
 	}

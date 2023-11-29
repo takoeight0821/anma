@@ -2,7 +2,7 @@
 
 decl = typeDecl | varDecl | infixDecl ; (* func decl *)
 
-typeDecl = "type" type "=" type ; (* func typeDecl *)
+typeDecl = "type" type "=" type ("|" type)* ; (* func typeDecl *)
 
 varDecl = "def" identifier "=" expr | "def" identifier ":" type | "def" identifier ":" type "=" expr ; (* func varDecl *)
 
@@ -12,31 +12,36 @@ expr = let | fn | assert ; (* func expr *)
 
 let = "let" pattern "=" assert ; (* func let *)
 
-fn = "fn" pattern "{" expr (";" expr)* ";"? "}" ; (* func fn *)
+fn = "fn" "(" param_list? ")" "{" expr (";" expr)* ";"? "}" ;
+param_list = param ("," param)* ","? ; (* func fn *)
 
-atom = var | literal | paren | codata ; (* func atom *)
+atom = var | literal | paren | codata | PRIM "(" IDENTIFIER ("," expr)* ","? ")" ; (* func atom *)
 
 assert = binop (":" type)* ; (* func assert *)
 
-binary = access (operator access)* ; (* func binary *)
+binary = method (operator method)* ; (* func binary *)
 
-access = call ("." IDENTIFIER)* ; (* func access *)
+method = atom (accessTail | callTail)* ; (* func method *)
 
-call = (PRIM "(" IDENTIFIER ("," expr)* ","? ")" | atom) ("(" ")" | "(" expr ("," expr)* ","? ")")* ; (* func call *)
+accessTail = "." IDENTIFIER callTail? ; (* func accessTail *)
+
+callTail = "(" ")" | "(" expr ("," expr)* ","? ")" ; (* func callTail *)
 
 codata = "{" clause ("," clause)* ","? "}" ; (* func codata *)
 
 clause = pattern "->" expr (";" expr)* ";"? ; (* func clause *)
 
-pattern = accessPat ; (* func pattern *)
+pattern = methodPat ; (* func pattern *)
 
-accessPat = callPat ("." IDENTIFIER)* ; (* func accessPat *)
+methodPat = atomPat (accessPatTail | callPatTail)* ; (* func methodPat *)
 
-callPat = atomPat ("(" ")" | "(" pattern ("," pattern)* ","? ")")* ; (* func callPat *)
+accessPatTail = "." IDENTIFIER callPatTail? ; (* func accessPatTail *)
 
-atomPat = IDENT | INTEGER | STRING | "(" pattern ("," pattern)* ","? ")" ; (* func atomPat *)
+callPatTail = "(" ")" | "(" pattern ("," pattern)* ","? ")" ; (* func callPatTail *)
 
-type = binopType ("|" binopType)* ; (* func typ *)
+atomPat = IDENT | INTEGER | STRING | "(" pattern ")" ; (* func atomPat *)
+
+type = binopType ; (* func typ *)
 
 binopType = callType (operator callType)* ; (* func binopType *)
 
