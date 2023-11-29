@@ -30,6 +30,7 @@ func newCompleteFlat(t *testing.T, label, input, expected string) {
 	nodes, err := r.RunSource(input)
 	if err != nil {
 		t.Errorf("Flat %s returned error: %v", label, err)
+		return
 	}
 
 	var b strings.Builder
