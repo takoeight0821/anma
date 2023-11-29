@@ -32,6 +32,7 @@ func completeInfix(t *testing.T, label, input, expected string) {
 	nodes, err := runner.RunSource(input)
 	if err != nil {
 		t.Errorf("Infix %s returned error: %v", label, err)
+		return
 	}
 
 	var b strings.Builder
