@@ -57,7 +57,7 @@ func (ev *Evaluator) Eval(node ast.Node) (Value, error) {
 
 func (ev *Evaluator) evalVar(node *ast.Var) (Value, error) {
 	name := tokenToName(node.Name)
-	if v := ev.EvEnv.get(name); v != nil {
+	if v := ev.evEnv.get(name); v != nil {
 		return v, nil
 	}
 	return nil, utils.ErrorAt{Where: node.Base(), Err: UndefinedVariableError{Name: node.Name}}
@@ -203,7 +203,7 @@ func fetchPrim(name token.Token) func(*Evaluator, ...Value) (Value, error) {
 
 func (ev *Evaluator) evalBinary(node *ast.Binary) (Value, error) {
 	name := tokenToName(node.Op)
-	if op := ev.EvEnv.get(name); op != nil {
+	if op := ev.evEnv.get(name); op != nil {
 		switch op := op.(type) {
 		case Callable:
 			left, err := ev.Eval(node.Left)
@@ -240,7 +240,7 @@ func (ev *Evaluator) evalLet(node *ast.Let) error {
 	}
 	if env, ok := body.match(node.Bind); ok {
 		for name, v := range env {
-			ev.EvEnv.set(name, v)
+			ev.evEnv.set(name, v)
 		}
 		return nil
 	}
@@ -276,10 +276,10 @@ func (ev *Evaluator) evalCase(node *ast.Case) (Value, error) {
 	var err error
 	for _, clause := range node.Clauses {
 		if env, ok := matchClause(clause, scrs); ok {
-			ev.EvEnv = newEvEnv(ev.EvEnv)
+			ev.evEnv = newEvEnv(ev.evEnv)
 
 			for name, v := range env {
-				ev.EvEnv.set(name, v)
+				ev.evEnv.set(name, v)
 			}
 			var ret Value
 			for _, expr := range clause.Exprs {
@@ -290,7 +290,7 @@ func (ev *Evaluator) evalCase(node *ast.Case) (Value, error) {
 				}
 			}
 
-			ev.EvEnv = ev.EvEnv.parent
+			ev.evEnv = ev.evEnv.parent
 			return ret, nil
 		}
 		err = errors.Join(err, PatternMatchError{Patterns: clause.Patterns, Values: scrs})
@@ -337,12 +337,12 @@ func (ev *Evaluator) evalTypeDecl(node *ast.TypeDecl) error {
 func (ev *Evaluator) defineConstructor(node ast.Node) error {
 	switch node := node.(type) {
 	case *ast.Var:
-		ev.EvEnv.set(tokenToName(node.Name), Data{Tag: tokenToName(node.Name), Elems: nil})
+		ev.evEnv.set(tokenToName(node.Name), Data{Tag: tokenToName(node.Name), Elems: nil})
 		return nil
 	case *ast.Call:
 		switch fn := node.Func.(type) {
 		case *ast.Var:
-			ev.EvEnv.set(tokenToName(fn.Name), Constructor{Evaluator: *ev, Tag: tokenToName(fn.Name), Params: len(node.Args)})
+			ev.evEnv.set(tokenToName(fn.Name), Constructor{Evaluator: *ev, Tag: tokenToName(fn.Name), Params: len(node.Args)})
 			return nil
 		case *ast.Prim:
 			// For type checking
@@ -363,7 +363,7 @@ func (ev *Evaluator) evalVarDecl(node *ast.VarDecl) error {
 		if err != nil {
 			return err
 		}
-		ev.EvEnv.set(tokenToName(node.Name), v)
+		ev.evEnv.set(tokenToName(node.Name), v)
 	}
 	return nil
 }

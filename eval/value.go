@@ -105,9 +105,9 @@ func (f Function) Apply(where token.Token, args ...Value) (Value, error) {
 	if len(f.Params) != len(args) {
 		return nil, errorAt(where, InvalidArgumentCountError{Expected: len(f.Params), Actual: len(args)})
 	}
-	f.EvEnv = newEvEnv(f.EvEnv)
+	f.evEnv = newEvEnv(f.evEnv)
 	for i, param := range f.Params {
-		f.EvEnv.set(param, args[i])
+		f.evEnv.set(param, args[i])
 	}
 
 	var ret Value
@@ -118,7 +118,7 @@ func (f Function) Apply(where token.Token, args ...Value) (Value, error) {
 			return nil, err
 		}
 	}
-	f.EvEnv = f.EvEnv.parent
+	f.evEnv = f.evEnv.parent
 	return ret, nil
 }
 
