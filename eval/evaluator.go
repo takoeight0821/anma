@@ -8,12 +8,12 @@ import (
 )
 
 type Evaluator struct {
-	*EvEnv
+	*evEnv
 }
 
 func NewEvaluator() *Evaluator {
 	return &Evaluator{
-		EvEnv: newEvEnv(nil),
+		evEnv: newEvEnv(nil),
 	}
 }
 
@@ -27,19 +27,19 @@ func tokenToName(t token.Token) Name {
 	return Name(fmt.Sprintf("%s.%#v", t.Lexeme, t.Literal))
 }
 
-type EvEnv struct {
-	parent *EvEnv
+type evEnv struct {
+	parent *evEnv
 	values map[Name]Value
 }
 
-func newEvEnv(parent *EvEnv) *EvEnv {
-	return &EvEnv{
+func newEvEnv(parent *evEnv) *evEnv {
+	return &evEnv{
 		parent: parent,
 		values: make(map[Name]Value),
 	}
 }
 
-func (env *EvEnv) String() string {
+func (env *evEnv) String() string {
 	var b strings.Builder
 	b.WriteString("{")
 	for name, v := range env.values {
@@ -53,7 +53,7 @@ func (env *EvEnv) String() string {
 	return b.String()
 }
 
-func (env *EvEnv) get(name Name) Value {
+func (env *evEnv) get(name Name) Value {
 	if v, ok := env.values[name]; ok {
 		return v
 	}
@@ -63,11 +63,11 @@ func (env *EvEnv) get(name Name) Value {
 	return nil
 }
 
-func (env *EvEnv) set(name Name, v Value) {
+func (env *evEnv) set(name Name, v Value) {
 	env.values[name] = v
 }
 
-func (env *EvEnv) SearchMain() (Function, bool) {
+func (env *evEnv) SearchMain() (Function, bool) {
 	if env == nil {
 		return Function{}, false
 	}
