@@ -38,6 +38,15 @@ func TestLexer(t *testing.T) {
 				{Kind: token.EOF, Lexeme: "", Line: 2, Literal: nil},
 			},
 		},
+		{
+			input: "ああ +いい",
+			tokens: []token.Token{
+				{Kind: token.IDENT, Lexeme: "ああ", Line: 1, Literal: nil},
+				{Kind: token.OPERATOR, Lexeme: "+", Line: 1, Literal: nil},
+				{Kind: token.IDENT, Lexeme: "いい", Line: 1, Literal: nil},
+				{Kind: token.EOF, Lexeme: "", Line: 1, Literal: nil},
+			},
+		},
 	}
 
 	for _, testcase := range testcases {
