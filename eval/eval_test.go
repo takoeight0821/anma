@@ -26,7 +26,11 @@ func TestEvalFromTestData(t *testing.T) {
 	}
 }
 
-func completeEval(t *testing.T, label string, input string, expected string) {
+type Reporter interface {
+	Errorf(format string, args ...interface{})
+}
+
+func completeEval(t Reporter, label string, input string, expected string) {
 	runner := driver.NewPassRunner()
 	runner.AddPass(codata.Flat{})
 	runner.AddPass(infix.NewInfixResolver())
@@ -63,5 +67,17 @@ func completeEval(t *testing.T, label string, input string, expected string) {
 		}
 	} else {
 		t.Errorf("Eval %s returned no main function", label)
+	}
+}
+
+func BenchmarkFromTestData(b *testing.B) {
+	testcases := utils.ReadTestData()
+
+	for _, testcase := range testcases {
+		b.Run(testcase.Label, func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				completeEval(b, testcase.Label, testcase.Input, testcase.Expected["eval"])
+			}
+		})
 	}
 }
