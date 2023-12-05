@@ -2,7 +2,8 @@
   "packages": [
     "go@latest",
     "gibo@latest",
-    "golangci-lint@latest"
+    "golangci-lint@latest",
+    "graphviz@latest"
   ],
   "shell": {
     "init_hook": [
