@@ -49,6 +49,11 @@ func completeFlat(t reporter, label, input, expected string) {
 		return
 	}
 
+	if _, ok := t.(*testing.B); ok {
+		// do nothing for benchmark
+		return
+	}
+
 	var b strings.Builder
 	for _, node := range nodes {
 		b.WriteString(node.String())

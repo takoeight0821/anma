@@ -73,7 +73,13 @@ func completeEval(t reporter, label string, input string, expected string) {
 			return
 		}
 
+		if _, ok := t.(*testing.B); ok {
+			// do nothing for benchmark
+			return
+		}
+
 		actual := ret.String()
+
 		if diff := cmp.Diff(expected, actual); diff != "" {
 			t.Errorf("Eval %s mismatch (-want +got):\n%s", label, diff)
 		}
