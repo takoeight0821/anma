@@ -188,6 +188,14 @@ func fetchPrim(name token.Token) func(*Evaluator, ...Value) (Value, error) {
 			}
 			return v0 * v1, nil
 		}
+	case "print":
+		return func(ev *Evaluator, args ...Value) (Value, error) {
+			if len(args) != 1 {
+				return nil, utils.ErrorAt{Where: name, Err: InvalidArgumentCountError{Expected: 1, Actual: len(args)}}
+			}
+			fmt.Println(args[0])
+			return Unit{}, nil
+		}
 	default:
 		return nil
 	}

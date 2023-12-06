@@ -2,6 +2,7 @@ package codata
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/takoeight0821/anma/ast"
@@ -22,20 +23,38 @@ func (Flat) Init([]ast.Node) error {
 
 func (Flat) Run(program []ast.Node) ([]ast.Node, error) {
 	for i, n := range program {
-		program[i] = flat(n)
+		var err error
+		program[i], err = flat(n)
+		if err != nil {
+			return program, err
+		}
 	}
 	return program, nil
 }
 
-func flat(n ast.Node) ast.Node {
-	return ast.Traverse(n, flatEach)
+func flat(n ast.Node) (ast.Node, error) {
+	n, err := ast.Traverse(n, flatEach)
+	if err != nil {
+		return n, fmt.Errorf("flat %v: %w", n, err)
+	}
+	return n, nil
 }
 
-func flatEach(n ast.Node) ast.Node {
-	if n, ok := n.(*ast.Codata); ok {
-		return flatCodata(n)
+// flatEach converts Copatterns ([Access] and [This] in [Pattern]) into [Object] and [Lambda].
+// If error occurred, return the original node and the error. Because ast.Traverse needs it.
+func flatEach(n ast.Node, err error) (ast.Node, error) {
+	// early return if error occurred
+	if err != nil {
+		return n, err
 	}
-	return n
+	if c, ok := n.(*ast.Codata); ok {
+		newNode, err := flatCodata(c)
+		if err != nil {
+			return n, err
+		}
+		return newNode, nil
+	}
+	return n, nil
 }
 
 const (
@@ -55,26 +74,33 @@ func (e ArityError) Error() string {
 	return fmt.Sprintf("arity mismatch: expected %d arguments", e.Expected)
 }
 
-func checkArity(expected, actual int, where token.Token) {
+func checkArity(expected, actual int, where token.Token) error {
 	if expected == notChecked {
-		return
+		return nil
 	}
 	if expected != actual {
-		panic(utils.ErrorAt{Where: where, Err: ArityError{Expected: expected}})
+		return utils.ErrorAt{Where: where, Err: ArityError{Expected: expected}}
 	}
+	return nil
 }
 
-func flatCodata(c *ast.Codata) ast.Node {
+func flatCodata(c *ast.Codata) (ast.Node, error) {
 	// Generate PatternList
 	arity := notChecked
 	clauses := make([]plistClause, len(c.Clauses))
 	for i, cl := range c.Clauses {
-		plist := newPatternList(cl)
+		plist, err := newPatternList(cl)
+		if err != nil {
+			return nil, err
+		}
 		clauses[i] = plistClause{plist, cl.Exprs}
 		if arity == notChecked {
 			arity = arityOf(plist)
 		}
-		checkArity(arity, arityOf(plist), cl.Base())
+		err = checkArity(arity, arityOf(plist), cl.Base())
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return newBuilder().build(arity, clauses)
@@ -89,7 +115,7 @@ func newBuilder() *builder {
 }
 
 // dispatch to Object or Lambda based on arity.
-func (b *builder) build(arity int, clauses []plistClause) ast.Node {
+func (b *builder) build(arity int, clauses []plistClause) (ast.Node, error) {
 	if arity == noArgs {
 		return b.object(clauses)
 	}
@@ -114,7 +140,7 @@ func (c plistClause) String() string {
 }
 
 // Pop the first accessor of each clause and group remaining clauses by the popped accessor.
-func (b builder) groupClausesByAccessor(clauses []plistClause) map[string][]plistClause {
+func (b builder) groupClausesByAccessor(clauses []plistClause) (map[string][]plistClause, error) {
 	next := make(map[string][]plistClause)
 	for _, c := range clauses {
 		plist := c.plist
@@ -123,13 +149,13 @@ func (b builder) groupClausesByAccessor(clauses []plistClause) map[string][]plis
 				next[field.String()],
 				plistClause{plist, c.exprs})
 		} else {
-			panic(utils.ErrorAt{Where: plist.Base(), Err: UnsupportedPatternError{Clause: c}})
+			return nil, utils.ErrorAt{Where: plist.Base(), Err: UnsupportedPatternError{Clause: c}}
 		}
 	}
-	return next
+	return next, nil
 }
 
-func (b builder) fieldBody(cs []plistClause) []*ast.Clause {
+func (b builder) fieldBody(cs []plistClause) ([]*ast.Clause, error) {
 	// if any of cs has no accessors and has guards, generate Case expression
 
 	// new clauses for case expression in a field
@@ -160,32 +186,49 @@ func (b builder) fieldBody(cs []plistClause) []*ast.Clause {
 
 	for _, p := range restPatterns {
 		// for each rest clause, perform pattern matching ahead of time.
-		caseClauses[p.index] = plistToClause(p.plist, b.object(restClauses))
+		obj, err := b.object(restClauses)
+		if err != nil {
+			return nil, err
+		}
+		caseClauses[p.index] = plistToClause(p.plist, obj)
 	}
 
-	return caseClauses
+	return caseClauses, nil
 }
 
-func (b builder) object(clauses []plistClause) ast.Node {
+func (b builder) object(clauses []plistClause) (ast.Node, error) {
 	// Pop the first accessor of each clause and group remaining clauses by the popped accessor.
-	next := b.groupClausesByAccessor(clauses)
+	next, err := b.groupClausesByAccessor(clauses)
+	if err != nil {
+		return nil, err
+	}
+	nextKeys := make([]string, 0, len(next))
+	for k := range next {
+		nextKeys = append(nextKeys, k)
+	}
+	sort.Strings(nextKeys)
 
 	fields := make([]*ast.Field, 0)
 
 	// Generate each field's body expression
 	// Object fields are generated in the dictionary order of field names.
-	utils.OrderedFor(next, func(field string, cs []plistClause) {
+	for _, field := range nextKeys {
+		cs := next[field]
+		body, err := b.fieldBody(cs)
+		if err != nil {
+			return nil, err
+		}
 		fields = append(fields,
 			&ast.Field{
 				Name:  field,
-				Exprs: newCase(b.scrutinees, b.fieldBody(cs)),
+				Exprs: newCase(b.scrutinees, body),
 			})
-	})
-	return &ast.Object{Fields: fields}
+	}
+	return &ast.Object{Fields: fields}, nil
 }
 
 // Generate lambda and dispatch body expression to Object or Case based on existence of accessors.
-func (b *builder) lambda(arity int, clauses []plistClause) ast.Node {
+func (b *builder) lambda(arity int, clauses []plistClause) (ast.Node, error) {
 	baseToken := clauses[0].plist.Base()
 	// Generate Scrutinees
 	b.scrutinees = make([]token.Token, arity)
@@ -196,7 +239,11 @@ func (b *builder) lambda(arity int, clauses []plistClause) ast.Node {
 	// If any of clauses has accessors, body expression is Object.
 	for _, c := range clauses {
 		if len(c.plist.accessors) != 0 {
-			return newLambda(b.scrutinees, b.object(clauses))
+			obj, err := b.object(clauses)
+			if err != nil {
+				return nil, err
+			}
+			return newLambda(b.scrutinees, obj), nil
 		}
 	}
 
@@ -205,16 +252,11 @@ func (b *builder) lambda(arity int, clauses []plistClause) ast.Node {
 	for _, c := range clauses {
 		caseClauses = append(caseClauses, plistToClause(c.plist, c.exprs...))
 	}
-	return newLambda(b.scrutinees, newCase(b.scrutinees, caseClauses)...)
+	return newLambda(b.scrutinees, newCase(b.scrutinees, caseClauses)...), nil
 }
 
 // newLambda creates a new Lambda node with the given parameters and expressions.
-// If there is only one parameter, return it without Paren pattern.
-// Otherwise, parameters are wrapped by Paren pattern.
 func newLambda(params []token.Token, exprs ...ast.Node) *ast.Lambda {
-	if len(params) == 1 {
-		return &ast.Lambda{Params: params, Exprs: exprs}
-	}
 	return &ast.Lambda{Params: params, Exprs: exprs}
 }
 
@@ -263,17 +305,17 @@ func accessors(p ast.Node) []token.Token {
 }
 
 // Get Args of Call{This, ...}.
-func params(p ast.Node) []ast.Node {
+func params(p ast.Node) ([]ast.Node, error) {
 	switch p := p.(type) {
 	case *ast.Access:
 		return params(p.Receiver)
 	case *ast.Call:
 		if _, ok := p.Func.(*ast.This); !ok {
-			panic(utils.ErrorAt{Where: p.Base(), Err: InvalidCallPatternError{Pattern: p}})
+			return nil, utils.ErrorAt{Where: p.Base(), Err: InvalidCallPatternError{Pattern: p}}
 		}
-		return p.Args
+		return p.Args, nil
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
@@ -282,14 +324,17 @@ type patternList struct {
 	params    []ast.Node
 }
 
-func newPatternList(clause *ast.Clause) patternList {
+func newPatternList(clause *ast.Clause) (patternList, error) {
 	if len(clause.Patterns) != 1 {
 		panic("invalid pattern")
 	}
 
 	accessors := accessors(clause.Patterns[0])
-	params := params(clause.Patterns[0])
-	return patternList{accessors: accessors, params: params}
+	params, err := params(clause.Patterns[0])
+	if err != nil {
+		return patternList{}, err
+	}
+	return patternList{accessors: accessors, params: params}, err
 }
 
 func (p patternList) Base() token.Token {
@@ -316,11 +361,11 @@ func (p patternList) String() string {
 	return "[" + strings.Join(accessors, " ") + " | " + strings.Join(params, " ") + "]"
 }
 
-func (p patternList) Plate(f func(ast.Node) ast.Node) ast.Node {
+func (p patternList) Plate(err error, f func(ast.Node, error) (ast.Node, error)) (ast.Node, error) {
 	for i, param := range p.params {
-		p.params[i] = f(param)
+		p.params[i], err = f(param, err)
 	}
-	return p
+	return p, err
 }
 
 var _ ast.Node = patternList{}

@@ -6,3 +6,8 @@
 - Variant, Pattern Matching
 - Copattern
 - Type
+
+```
+#(n).tail.head -> #(n), #.tail, #.head
+#.print(x) -> #.print , #(x)
+```

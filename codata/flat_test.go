@@ -16,20 +16,42 @@ func TestFlatFromTestData(t *testing.T) {
 
 	for _, testcase := range testcases {
 		if expected, ok := testcase.Expected["codata"]; ok {
-			newCompleteFlat(t, testcase.Label, testcase.Input, expected)
+			completeFlat(t, testcase.Label, testcase.Input, expected)
 		} else {
-			newCompleteFlat(t, testcase.Label, testcase.Input, "no expected value")
+			completeFlat(t, testcase.Label, testcase.Input, "no expected value")
 		}
 	}
 }
 
-func newCompleteFlat(t *testing.T, label, input, expected string) {
+func BenchmarkFromTestData(b *testing.B) {
+	testcases := utils.ReadTestData()
+
+	for _, testcase := range testcases {
+		b.Run(testcase.Label, func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				completeFlat(b, testcase.Label, testcase.Input, testcase.Expected["codata"])
+			}
+		})
+	}
+}
+
+type reporter interface {
+	Errorf(format string, args ...interface{})
+}
+
+func completeFlat(t reporter, label, input, expected string) {
 	r := driver.NewPassRunner()
 	r.AddPass(codata.Flat{})
 
 	nodes, err := r.RunSource(input)
 	if err != nil {
 		t.Errorf("Flat %s returned error: %v", label, err)
+		return
+	}
+
+	if _, ok := t.(*testing.B); ok {
+		// do nothing for benchmark
+		return
 	}
 
 	var b strings.Builder

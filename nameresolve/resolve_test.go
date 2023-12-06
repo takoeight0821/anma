@@ -24,7 +24,23 @@ func TestResolve(t *testing.T) {
 	}
 }
 
-func completeResolve(t *testing.T, label, input, expected string) {
+func BenchmarkFromTestData(b *testing.B) {
+	testcases := utils.ReadTestData()
+
+	for _, testcase := range testcases {
+		b.Run(testcase.Label, func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				completeResolve(b, testcase.Label, testcase.Input, testcase.Expected["nameresolve"])
+			}
+		})
+	}
+}
+
+type reporter interface {
+	Errorf(format string, args ...interface{})
+}
+
+func completeResolve(t reporter, label, input, expected string) {
 	runner := driver.NewPassRunner()
 	runner.AddPass(codata.Flat{})
 	runner.AddPass(infix.NewInfixResolver())
@@ -33,6 +49,12 @@ func completeResolve(t *testing.T, label, input, expected string) {
 	nodes, err := runner.RunSource(input)
 	if err != nil {
 		t.Errorf("Resolve %s returned error: %v", label, err)
+		return
+	}
+
+	if _, ok := t.(*testing.B); ok {
+		// do nothing for benchmark
+		return
 	}
 
 	var b strings.Builder

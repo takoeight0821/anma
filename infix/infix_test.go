@@ -24,7 +24,23 @@ func TestInfix(t *testing.T) {
 	}
 }
 
-func completeInfix(t *testing.T, label, input, expected string) {
+func BenchmarkInfix(b *testing.B) {
+	testcases := utils.ReadTestData()
+
+	for _, testcase := range testcases {
+		b.Run(testcase.Label, func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				completeInfix(b, testcase.Label, testcase.Input, testcase.Expected["infix"])
+			}
+		})
+	}
+}
+
+type reporter interface {
+	Errorf(format string, args ...interface{})
+}
+
+func completeInfix(t reporter, label, input, expected string) {
 	runner := driver.NewPassRunner()
 	runner.AddPass(codata.Flat{})
 	runner.AddPass(infix.NewInfixResolver())
@@ -32,6 +48,12 @@ func completeInfix(t *testing.T, label, input, expected string) {
 	nodes, err := runner.RunSource(input)
 	if err != nil {
 		t.Errorf("Infix %s returned error: %v", label, err)
+		return
+	}
+
+	if _, ok := t.(*testing.B); ok {
+		// do nothing for benchmark
+		return
 	}
 
 	var b strings.Builder

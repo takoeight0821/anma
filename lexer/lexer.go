@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"strconv"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/takoeight0821/anma/token"
 )
 
 func Lex(source string) ([]token.Token, error) {
 	l := lexer{
-		source:  []rune(source),
+		source:  source,
 		tokens:  []token.Token{},
 		start:   0,
 		current: 0,
@@ -29,7 +30,7 @@ func Lex(source string) ([]token.Token, error) {
 }
 
 type lexer struct {
-	source []rune
+	source string
 	tokens []token.Token
 
 	start   int // start of current lexeme
@@ -45,16 +46,18 @@ func (l lexer) peek() rune {
 	if l.isAtEnd() {
 		return '\x00'
 	}
-	return l.source[l.current]
+	runeValue, _ := utf8.DecodeRuneInString(l.source[l.current:])
+	return runeValue
 }
 
 func (l *lexer) advance() rune {
-	l.current++
-	return l.source[l.current-1]
+	runeValue, width := utf8.DecodeRuneInString(l.source[l.current:])
+	l.current += width
+	return runeValue
 }
 
 func (l *lexer) addToken(kind token.Kind, literal any) {
-	text := string(l.source[l.start:l.current])
+	text := l.source[l.start:l.current]
 	l.tokens = append(l.tokens, token.Token{Kind: kind, Lexeme: text, Line: l.line, Literal: literal})
 }
 
@@ -129,7 +132,7 @@ func (l *lexer) string() error {
 		return UnterminatedStringError{Line: l.line}
 	}
 
-	value := string(l.source[l.start+1 : l.current-1])
+	value := l.source[l.start+1 : l.current-1]
 	l.addToken(token.STRING, value)
 	return nil
 }
@@ -143,7 +146,7 @@ func (l *lexer) integer() error {
 		l.advance()
 	}
 
-	value, err := strconv.Atoi(string(l.source[l.start:l.current]))
+	value, err := strconv.Atoi(l.source[l.start:l.current])
 	if err != nil {
 		return fmt.Errorf("invalid integer: %w", err)
 	}
@@ -160,7 +163,7 @@ func (l *lexer) identifier() error {
 		l.advance()
 	}
 
-	value := string(l.source[l.start:l.current])
+	value := l.source[l.start:l.current]
 
 	if k, ok := keywords[value]; ok {
 		l.addToken(k, nil)
@@ -210,7 +213,7 @@ func (l *lexer) operator() error {
 		l.advance()
 	}
 
-	value := string(l.source[l.start:l.current])
+	value := l.source[l.start:l.current]
 	if k, ok := keywords[value]; ok {
 		l.addToken(k, nil)
 	} else {

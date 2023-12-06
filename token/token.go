@@ -2,7 +2,7 @@ package token
 
 import "fmt"
 
-//go:generate go run golang.org/x/tools/cmd/stringer@v0.13.0 -type=TokenKind
+//go:generate go run golang.org/x/tools/cmd/stringer@v0.13.0 -type=Kind
 type Kind int
 
 const (

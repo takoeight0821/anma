@@ -26,7 +26,23 @@ func TestEvalFromTestData(t *testing.T) {
 	}
 }
 
-func completeEval(t *testing.T, label string, input string, expected string) {
+func BenchmarkFromTestData(b *testing.B) {
+	testcases := utils.ReadTestData()
+
+	for _, testcase := range testcases {
+		b.Run(testcase.Label, func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				completeEval(b, testcase.Label, testcase.Input, testcase.Expected["eval"])
+			}
+		})
+	}
+}
+
+type reporter interface {
+	Errorf(format string, args ...interface{})
+}
+
+func completeEval(t reporter, label string, input string, expected string) {
 	runner := driver.NewPassRunner()
 	runner.AddPass(codata.Flat{})
 	runner.AddPass(infix.NewInfixResolver())
@@ -57,7 +73,13 @@ func completeEval(t *testing.T, label string, input string, expected string) {
 			return
 		}
 
+		if _, ok := t.(*testing.B); ok {
+			// do nothing for benchmark
+			return
+		}
+
 		actual := ret.String()
+
 		if diff := cmp.Diff(expected, actual); diff != "" {
 			t.Errorf("Eval %s mismatch (-want +got):\n%s", label, diff)
 		}

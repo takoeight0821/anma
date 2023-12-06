@@ -211,3 +211,45 @@
       (def *.1 (lambda (x0.7 x1.8) (case ((var x0.7) (var x1.8)) (clause ((var x.9) (var y.10)) (prim mul (var x.9) (var y.10))))))
       (def main.2 (lambda () (binary (literal 1) *.1 (binary (literal 2) +.0 (literal 3)))))
     eval: 5
+- label: method
+  enable: true
+  input: |
+    def printer = {
+      #.print -> fn (x) { prim(print, x) },
+    }
+    def main = { #() -> printer.print(1) }
+  expected:
+    parser: |
+      (def printer (codata (clause (access (this #) print) (lambda (x) (prim print (var x))))))
+      (def main (codata (clause (call (this #)) (call (access (var printer) print) (literal 1)))))
+    codata: |
+      (def printer (object (field print (lambda (x) (prim print (var x))))))
+      (def main (lambda () (call (access (var printer) print) (literal 1))))
+    infix: |
+      (def printer (object (field print (lambda (x) (prim print (var x))))))
+      (def main (lambda () (call (access (var printer) print) (literal 1))))
+    nameresolve: |
+      (def printer.0 (object (field print (lambda (x.2) (prim print (var x.2))))))
+      (def main.1 (lambda () (call (access (var printer.0) print) (literal 1))))
+    eval: <unit>
+- label: method-copattern
+  enable: false
+  input: |
+    def printer = {
+      #.print(x) -> prim(print, x),
+    }
+    def main = { #() -> printer.print(1) }
+  expected:
+    parser: |
+      (def printer (codata (clause (call (access (this #) print) (var x)) (prim print (var x)))))
+      (def main (codata (clause (call (this #)) (call (access (var printer) print) (literal 1)))))
+    codata: |
+      (def printer (object (field print (lambda (x) (prim print (var x))))))
+      (def main (lambda () (call (access (var printer) print) (literal 1))))
+    infix: |
+      (def printer (object (field print (lambda (x) (prim print (var x))))))
+      (def main (lambda () (call (access (var printer) print) (literal 1))))
+    nameresolve: |
+      (def printer.0 (object (field print (lambda (x.2) (prim print (var x.2))))))
+      (def main.1 (lambda () (call (access (var printer.0) print) (literal 1))))
+    eval: <unit>
