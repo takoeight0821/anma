@@ -256,12 +256,7 @@ func (b *builder) lambda(arity int, clauses []plistClause) (ast.Node, error) {
 }
 
 // newLambda creates a new Lambda node with the given parameters and expressions.
-// If there is only one parameter, return it without Paren pattern.
-// Otherwise, parameters are wrapped by Paren pattern.
 func newLambda(params []token.Token, exprs ...ast.Node) *ast.Lambda {
-	if len(params) == 1 {
-		return &ast.Lambda{Params: params, Exprs: exprs}
-	}
 	return &ast.Lambda{Params: params, Exprs: exprs}
 }
 
