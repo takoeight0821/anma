@@ -3,6 +3,7 @@ package codata
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/takoeight0821/anma/ast"
 	"github.com/takoeight0821/anma/codata/internal"
@@ -282,73 +283,63 @@ func newCase(scrs []token.Token, cs []*ast.Clause) []ast.Node {
 
 // observation is a linked list of patterns including #(this).
 type observation struct {
-	current ast.Node
-	rest    *observation
+	guard    []ast.Node // guard is patterns for branching.
+	sequence []ast.Node // sequence is a sequence of patterns (destructors)
 }
 
 func (o observation) String() string {
-	if o.rest == nil {
-		return o.current.String()
+	var b strings.Builder
+	b.WriteString("[ ")
+	for _, s := range o.sequence {
+		b.WriteString(s.String())
+		b.WriteString(" ")
 	}
-	return o.current.String() + "; " + o.rest.String()
+	b.WriteString("| ")
+	for _, g := range o.guard {
+		b.WriteString(g.String())
+		b.WriteString(" ")
+	}
+	b.WriteString("]")
+	return b.String()
 }
 
-func (o observation) Base() token.Token {
-	return o.current.Base()
-}
-
-func (o *observation) Plate(err error, f func(ast.Node, error) (ast.Node, error)) (ast.Node, error) {
-	o.current, err = f(o.current, err)
-	if err != nil {
-		return o, err
-	}
-	if o.rest != nil {
-		rest, err := o.rest.Plate(err, f)
-		if err != nil {
-			return o, err
-		}
-		o.rest = rest.(*observation)
-	}
-	return o, nil
-}
-
-var _ ast.Node = &observation{}
-
-// newObservation creates a new observation from the given pattern.
+// newObservation creates a new observation node with the given pattern.
 func newObservation(p ast.Node) *observation {
-	o, err := splitPattern(p, nil)
-	if err != nil {
-		panic(fmt.Errorf("newObservation: %w", err))
+	return &observation{
+		guard:    extractGuard(p),
+		sequence: extractSequence(p),
 	}
-	return o
 }
 
-func splitPattern(p ast.Node, rest *observation) (*observation, error) {
+// extractGuard extracts guard from the given pattern.
+func extractGuard(p ast.Node) []ast.Node {
 	switch p := p.(type) {
 	case *ast.Access:
-		current := &ast.Access{Receiver: &ast.This{Token: p.Base()}, Name: p.Name}
-		return splitPattern(p.Receiver, &observation{current: current, rest: rest})
+		return extractGuard(p.Receiver)
 	case *ast.Call:
-		current := &ast.Call{Func: &ast.This{Token: p.Base()}, Args: p.Args}
-		return splitPattern(p.Func, &observation{current: current, rest: rest})
-	case *ast.This:
-		return rest, nil
-	default:
-		return nil, utils.ErrorAt{Where: p.Base(), Err: internal.InvalidCallPatternError{Pattern: p}}
-	}
-}
-
-func (o *observation) arity() int {
-	if current, ok := o.current.(*ast.Call); ok {
-		if _, ok := current.Func.(*ast.This); !ok {
-			panic("unreachable")
+		if _, ok := p.Func.(*ast.This); ok {
+			return p.Args
 		}
-		return len(current.Args)
+	case *ast.This:
+		return []ast.Node{}
 	}
-
-	return internal.NoArgs
+	panic(fmt.Sprintf("invalid pattern %v", p))
 }
 
-func (o *observation) pop() (ast.Node, *observation) {
-	return o.current, o.rest
+// extractSequence extracts sequence from the given pattern.
+func extractSequence(p ast.Node) []ast.Node {
+	switch p := p.(type) {
+	case *ast.Access:
+		current := &ast.Access{Receiver: &ast.This{Token: p.Receiver.Base()}, Name: p.Name}
+		return append(extractSequence(p.Receiver), current)
+	case *ast.Call:
+		if _, ok := p.Func.(*ast.This); !ok {
+			panic(fmt.Sprintf("invalid pattern %v", p))
+		}
+		return []ast.Node{p}
+	case *ast.This:
+		return []ast.Node{}
+	default:
+		panic(fmt.Sprintf("invalid pattern %v", p))
+	}
 }
