@@ -378,11 +378,82 @@ func arityOf(p patternList) int {
 }
 
 // Split PatternList into the first accessor and the rest.
-//
-//exhaustruct:ignore
 func pop(p patternList) (token.Token, patternList, bool) {
 	if len(p.accessors) == 0 {
 		return token.Token{}, p, false
 	}
 	return p.accessors[0], patternList{accessors: p.accessors[1:], params: p.params}, true
+}
+
+// observation is a linked list of patterns including #(this).
+type observation struct {
+	current ast.Node
+	rest    *observation
+}
+
+func (o observation) String() string {
+	if o.rest == nil {
+		return o.current.String()
+	}
+	return o.current.String() + "; " + o.rest.String()
+}
+
+func (o observation) Base() token.Token {
+	return o.current.Base()
+}
+
+func (o *observation) Plate(err error, f func(ast.Node, error) (ast.Node, error)) (ast.Node, error) {
+	o.current, err = f(o.current, err)
+	if err != nil {
+		return o, err
+	}
+	if o.rest != nil {
+		rest, err := o.rest.Plate(err, f)
+		if err != nil {
+			return o, err
+		}
+		o.rest = rest.(*observation)
+	}
+	return o, nil
+}
+
+var _ ast.Node = &observation{}
+
+// newObservation creates a new observation from the given pattern.
+func newObservation(p ast.Node) *observation {
+	o, err := splitPattern(p, nil)
+	if err != nil {
+		panic(fmt.Errorf("newObservation: %w", err))
+	}
+	return o
+}
+
+func splitPattern(p ast.Node, rest *observation) (*observation, error) {
+	switch p := p.(type) {
+	case *ast.Access:
+		current := &ast.Access{Receiver: &ast.This{Token: p.Base()}, Name: p.Name}
+		return splitPattern(p.Receiver, &observation{current: current, rest: rest})
+	case *ast.Call:
+		current := &ast.Call{Func: &ast.This{Token: p.Base()}, Args: p.Args}
+		return splitPattern(p.Func, &observation{current: current, rest: rest})
+	case *ast.This:
+		return rest, nil
+	default:
+		return nil, utils.ErrorAt{Where: p.Base(), Err: InvalidCallPatternError{Pattern: p}}
+	}
+}
+
+func (o *observation) arity() int {
+	if current, ok := o.current.(*ast.Call); ok {
+		if _, ok := current.Func.(*ast.This); !ok {
+			panic("unreachable")
+		}
+		return len(current.Args)
+	}
+
+	return noArgs
+}
+
+func (o *observation) pop() (ast.Node, *observation) {
+	return o.current, o.rest
 }
