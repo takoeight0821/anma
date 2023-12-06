@@ -3,9 +3,9 @@ package codata
 import (
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/takoeight0821/anma/ast"
+	"github.com/takoeight0821/anma/codata/internal"
 	"github.com/takoeight0821/anma/token"
 	"github.com/takoeight0821/anma/utils"
 )
@@ -57,25 +57,19 @@ func flatEach(n ast.Node, err error) (ast.Node, error) {
 	return n, nil
 }
 
-const (
-	notChecked = -2
-	noArgs     = -1
-	zeroArgs   = 0
-)
-
 type ArityError struct {
 	Expected int // expected arity, or notChecked, or noArgs
 }
 
 func (e ArityError) Error() string {
-	if e.Expected == notChecked {
+	if e.Expected == internal.NotChecked {
 		return "unreachable: arity is not checked"
 	}
 	return fmt.Sprintf("arity mismatch: expected %d arguments", e.Expected)
 }
 
 func checkArity(expected, actual int, where token.Token) error {
-	if expected == notChecked {
+	if expected == internal.NotChecked {
 		return nil
 	}
 	if expected != actual {
@@ -86,18 +80,18 @@ func checkArity(expected, actual int, where token.Token) error {
 
 func flatCodata(c *ast.Codata) (ast.Node, error) {
 	// Generate PatternList
-	arity := notChecked
+	arity := internal.NotChecked
 	clauses := make([]plistClause, len(c.Clauses))
 	for i, cl := range c.Clauses {
-		plist, err := newPatternList(cl)
+		plist, err := internal.NewPatternList(cl)
 		if err != nil {
 			return nil, err
 		}
 		clauses[i] = plistClause{plist, cl.Exprs}
-		if arity == notChecked {
-			arity = arityOf(plist)
+		if arity == internal.NotChecked {
+			arity = plist.ArityOf()
 		}
-		err = checkArity(arity, arityOf(plist), cl.Base())
+		err = checkArity(arity, plist.ArityOf(), cl.Base())
 		if err != nil {
 			return nil, err
 		}
@@ -116,7 +110,7 @@ func newBuilder() *builder {
 
 // dispatch to Object or Lambda based on arity.
 func (b *builder) build(arity int, clauses []plistClause) (ast.Node, error) {
-	if arity == noArgs {
+	if arity == internal.NoArgs {
 		return b.object(clauses)
 	}
 	return b.lambda(arity, clauses)
@@ -131,7 +125,7 @@ func (e UnsupportedPatternError) Error() string {
 }
 
 type plistClause struct {
-	plist patternList
+	plist internal.PatternList
 	exprs []ast.Node
 }
 
@@ -144,7 +138,7 @@ func (b builder) groupClausesByAccessor(clauses []plistClause) (map[string][]pli
 	next := make(map[string][]plistClause)
 	for _, c := range clauses {
 		plist := c.plist
-		if field, plist, ok := pop(plist); ok {
+		if field, plist, ok := plist.Pop(); ok {
 			next[field.String()] = append(
 				next[field.String()],
 				plistClause{plist, c.exprs})
@@ -164,20 +158,20 @@ func (b builder) fieldBody(cs []plistClause) ([]*ast.Clause, error) {
 	// restClauses are clauses which have unpopped accessors
 	restPatterns := make([]struct {
 		index int
-		plist patternList
+		plist internal.PatternList
 	}, 0)
 	// for each rest clause, the body expression is sum of expressions of all rest clauses.
 	restClauses := make([]plistClause, 0)
 
 	for i, c := range cs {
 		// if c has no accessors, generate pattern matching clause
-		if len(c.plist.accessors) == 0 {
+		if !c.plist.HasAccess() {
 			caseClauses[i] = plistToClause(c.plist, c.exprs...)
 		} else {
 			// otherwise, add to restPatterns and restClauses
 			restPatterns = append(restPatterns, struct {
 				index int
-				plist patternList
+				plist internal.PatternList
 			}{i, c.plist})
 
 			restClauses = append(restClauses, c)
@@ -238,7 +232,7 @@ func (b *builder) lambda(arity int, clauses []plistClause) (ast.Node, error) {
 
 	// If any of clauses has accessors, body expression is Object.
 	for _, c := range clauses {
-		if len(c.plist.accessors) != 0 {
+		if c.plist.HasAccess() {
 			obj, err := b.object(clauses)
 			if err != nil {
 				return nil, err
@@ -267,8 +261,8 @@ func newVar(name string, base token.Token) token.Token {
 
 // plistToClause creates a new Clause node with the given pattern and expressions.
 // pattern must be a patternList.
-func plistToClause(plist patternList, exprs ...ast.Node) *ast.Clause {
-	return &ast.Clause{Patterns: plist.params, Exprs: exprs}
+func plistToClause(plist internal.PatternList, exprs ...ast.Node) *ast.Clause {
+	return &ast.Clause{Patterns: plist.Params(), Exprs: exprs}
 }
 
 // newCase creates a new Case node with the given scrutinees and clauses.
@@ -284,105 +278,6 @@ func newCase(scrs []token.Token, cs []*ast.Clause) []ast.Node {
 		vars[i] = &ast.Var{Name: s}
 	}
 	return []ast.Node{&ast.Case{Scrutinees: vars, Clauses: cs}}
-}
-
-type InvalidCallPatternError struct {
-	Pattern ast.Node
-}
-
-func (e InvalidCallPatternError) Error() string {
-	return fmt.Sprintf("invalid call pattern %v", e.Pattern)
-}
-
-// Collect all Access patterns recursively.
-func accessors(p ast.Node) []token.Token {
-	switch p := p.(type) {
-	case *ast.Access:
-		return append(accessors(p.Receiver), p.Name)
-	default:
-		return []token.Token{}
-	}
-}
-
-// Get Args of Call{This, ...}.
-func params(p ast.Node) ([]ast.Node, error) {
-	switch p := p.(type) {
-	case *ast.Access:
-		return params(p.Receiver)
-	case *ast.Call:
-		if _, ok := p.Func.(*ast.This); !ok {
-			return nil, utils.ErrorAt{Where: p.Base(), Err: InvalidCallPatternError{Pattern: p}}
-		}
-		return p.Args, nil
-	default:
-		return nil, nil
-	}
-}
-
-type patternList struct {
-	accessors []token.Token
-	params    []ast.Node
-}
-
-func newPatternList(clause *ast.Clause) (patternList, error) {
-	if len(clause.Patterns) != 1 {
-		panic("invalid pattern")
-	}
-
-	accessors := accessors(clause.Patterns[0])
-	params, err := params(clause.Patterns[0])
-	if err != nil {
-		return patternList{}, err
-	}
-	return patternList{accessors: accessors, params: params}, err
-}
-
-func (p patternList) Base() token.Token {
-	if len(p.accessors) != 0 {
-		return p.accessors[0]
-	}
-	if len(p.params) != 0 {
-		return p.params[0].Base()
-	}
-	return token.Token{}
-}
-
-func (p patternList) String() string {
-	accessors := make([]string, len(p.accessors))
-	for i, a := range p.accessors {
-		accessors[i] = a.String()
-	}
-
-	params := make([]string, len(p.params))
-	for i, p := range p.params {
-		params[i] = p.String()
-	}
-
-	return "[" + strings.Join(accessors, " ") + " | " + strings.Join(params, " ") + "]"
-}
-
-func (p patternList) Plate(err error, f func(ast.Node, error) (ast.Node, error)) (ast.Node, error) {
-	for i, param := range p.params {
-		p.params[i], err = f(param, err)
-	}
-	return p, err
-}
-
-var _ ast.Node = patternList{}
-
-func arityOf(p patternList) int {
-	if p.params == nil {
-		return noArgs
-	}
-	return len(p.params)
-}
-
-// Split PatternList into the first accessor and the rest.
-func pop(p patternList) (token.Token, patternList, bool) {
-	if len(p.accessors) == 0 {
-		return token.Token{}, p, false
-	}
-	return p.accessors[0], patternList{accessors: p.accessors[1:], params: p.params}, true
 }
 
 // observation is a linked list of patterns including #(this).
@@ -439,7 +334,7 @@ func splitPattern(p ast.Node, rest *observation) (*observation, error) {
 	case *ast.This:
 		return rest, nil
 	default:
-		return nil, utils.ErrorAt{Where: p.Base(), Err: InvalidCallPatternError{Pattern: p}}
+		return nil, utils.ErrorAt{Where: p.Base(), Err: internal.InvalidCallPatternError{Pattern: p}}
 	}
 }
 
@@ -451,7 +346,7 @@ func (o *observation) arity() int {
 		return len(current.Args)
 	}
 
-	return noArgs
+	return internal.NoArgs
 }
 
 func (o *observation) pop() (ast.Node, *observation) {
