@@ -42,7 +42,7 @@ func params(p ast.Node) ([]ast.Node, error) {
 	}
 }
 
-type PatternList struct {
+type patternList struct {
 	accessors []token.Token
 	params    []ast.Node
 }
@@ -55,12 +55,12 @@ func NewPatternList(clause *ast.Clause) (PatternList, error) {
 	accessors := accessors(clause.Patterns[0])
 	params, err := params(clause.Patterns[0])
 	if err != nil {
-		return PatternList{}, err
+		return patternList{}, err
 	}
-	return PatternList{accessors: accessors, params: params}, err
+	return patternList{accessors: accessors, params: params}, err
 }
 
-func (p PatternList) Base() token.Token {
+func (p patternList) Base() token.Token {
 	if len(p.accessors) != 0 {
 		return p.accessors[0]
 	}
@@ -70,7 +70,7 @@ func (p PatternList) Base() token.Token {
 	return token.Token{}
 }
 
-func (p PatternList) String() string {
+func (p patternList) String() string {
 	accessors := make([]string, len(p.accessors))
 	for i, a := range p.accessors {
 		accessors[i] = a.String()
@@ -84,14 +84,14 @@ func (p PatternList) String() string {
 	return "[" + strings.Join(accessors, " ") + " | " + strings.Join(params, " ") + "]"
 }
 
-func (p PatternList) Plate(err error, f func(ast.Node, error) (ast.Node, error)) (ast.Node, error) {
+func (p patternList) Plate(err error, f func(ast.Node, error) (ast.Node, error)) (ast.Node, error) {
 	for i, param := range p.params {
 		p.params[i], err = f(param, err)
 	}
 	return p, err
 }
 
-var _ ast.Node = PatternList{}
+var _ ast.Node = patternList{}
 
 const (
 	NotChecked = -2
@@ -99,7 +99,7 @@ const (
 	ZeroArgs   = 0
 )
 
-func (p PatternList) ArityOf() int {
+func (p patternList) ArityOf() int {
 	if p.params == nil {
 		return NoArgs
 	}
@@ -107,17 +107,25 @@ func (p PatternList) ArityOf() int {
 }
 
 // Split PatternList into the first accessor and the rest.
-func (p PatternList) Pop() (token.Token, PatternList, bool) {
+func (p patternList) Pop() (token.Token, PatternList, bool) {
 	if len(p.accessors) == 0 {
 		return token.Token{}, p, false
 	}
-	return p.accessors[0], PatternList{accessors: p.accessors[1:], params: p.params}, true
+	return p.accessors[0], patternList{accessors: p.accessors[1:], params: p.params}, true
 }
 
-func (p PatternList) HasAccess() bool {
+func (p patternList) HasAccess() bool {
 	return len(p.accessors) != 0
 }
 
-func (p PatternList) Params() []ast.Node {
+func (p patternList) Params() []ast.Node {
 	return p.params
+}
+
+type PatternList interface {
+	ast.Node
+	ArityOf() int
+	Pop() (token.Token, PatternList, bool)
+	HasAccess() bool
+	Params() []ast.Node
 }
