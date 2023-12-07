@@ -1,6 +1,7 @@
 package codata_test
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -12,7 +13,11 @@ import (
 
 func TestFlatFromTestData(t *testing.T) {
 	t.Parallel()
-	testcases := utils.ReadTestData()
+	s, err := os.ReadFile("../testdata/testcase.yaml")
+	if err != nil {
+		panic(err)
+	}
+	testcases := utils.ReadTestData(s)
 
 	for _, testcase := range testcases {
 		if expected, ok := testcase.Expected["codata"]; ok {
@@ -24,7 +29,11 @@ func TestFlatFromTestData(t *testing.T) {
 }
 
 func BenchmarkFromTestData(b *testing.B) {
-	testcases := utils.ReadTestData()
+	s, err := os.ReadFile("../testdata/testcase.yaml")
+	if err != nil {
+		panic(err)
+	}
+	testcases := utils.ReadTestData(s)
 
 	for _, testcase := range testcases {
 		b.Run(testcase.Label, func(b *testing.B) {

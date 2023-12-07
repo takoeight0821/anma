@@ -1,6 +1,7 @@
 package infix_test
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -13,7 +14,11 @@ import (
 
 func TestInfix(t *testing.T) {
 	t.Parallel()
-	testcases := utils.ReadTestData()
+	s, err := os.ReadFile("../testdata/testcase.yaml")
+	if err != nil {
+		panic(err)
+	}
+	testcases := utils.ReadTestData(s)
 
 	for _, testcase := range testcases {
 		if expected, ok := testcase.Expected["infix"]; ok {
@@ -25,7 +30,11 @@ func TestInfix(t *testing.T) {
 }
 
 func BenchmarkInfix(b *testing.B) {
-	testcases := utils.ReadTestData()
+	s, err := os.ReadFile("../testdata/testcase.yaml")
+	if err != nil {
+		panic(err)
+	}
+	testcases := utils.ReadTestData(s)
 
 	for _, testcase := range testcases {
 		b.Run(testcase.Label, func(b *testing.B) {

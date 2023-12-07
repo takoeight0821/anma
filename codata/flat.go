@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/takoeight0821/anma/ast"
+	"github.com/takoeight0821/anma/codata/rewrite"
 	"github.com/takoeight0821/anma/token"
 	"github.com/takoeight0821/anma/utils"
 )
@@ -84,7 +85,7 @@ func flatCodata(c *ast.Codata) (ast.Node, error) {
 	arity := NotChecked
 	clauses := make([]plistClause, len(c.Clauses))
 	for i, cl := range c.Clauses {
-		ob := NewObservation(cl.Patterns[0])
+		ob := rewrite.NewObservation(cl)
 		log.Printf("observation: %v", ob)
 		plist, err := NewPatternList(cl)
 		if err != nil {
@@ -281,132 +282,6 @@ func newCase(scrs []token.Token, cs []*ast.Clause) []ast.Node {
 		vars[i] = &ast.Var{Name: s}
 	}
 	return []ast.Node{&ast.Case{Scrutinees: vars, Clauses: cs}}
-}
-
-// Observation is a linked list of patterns including #(this).
-type Observation struct {
-	guard    []ast.Node // guard is patterns for branching.
-	sequence []ast.Node // sequence is a sequence of patterns (destructors)
-}
-
-func (o Observation) String() string {
-	var b strings.Builder
-	b.WriteString("[ ")
-	for _, s := range o.sequence {
-		b.WriteString(s.String())
-		b.WriteString(" ")
-	}
-	b.WriteString("| ")
-	for _, g := range o.guard {
-		b.WriteString(g.String())
-		b.WriteString(" ")
-	}
-	b.WriteString("]")
-	return b.String()
-}
-
-func (o Observation) Base() token.Token {
-	if len(o.sequence) != 0 {
-		return o.sequence[0].Base()
-	}
-	if len(o.guard) != 0 {
-		return o.guard[0].Base()
-	}
-	return token.Token{}
-}
-
-func (o *Observation) Plate(err error, f func(ast.Node, error) (ast.Node, error)) (ast.Node, error) {
-	for i, s := range o.sequence {
-		o.sequence[i], err = f(s, err)
-	}
-	for i, g := range o.guard {
-		o.guard[i], err = f(g, err)
-	}
-	return o, err
-}
-
-var _ ast.Node = &Observation{}
-
-// NewObservation creates a new observation node with the given pattern.
-func NewObservation(p ast.Node) *Observation {
-	return &Observation{
-		guard:    extractGuard(p),
-		sequence: extractSequence(p),
-	}
-}
-
-// extractGuard extracts guard from the given pattern.
-func extractGuard(p ast.Node) []ast.Node {
-	switch p := p.(type) {
-	case *ast.Access:
-		return extractGuard(p.Receiver)
-	case *ast.Call:
-		if _, ok := p.Func.(*ast.This); ok {
-			return p.Args
-		}
-	case *ast.This:
-		return []ast.Node{}
-	}
-	panic(fmt.Sprintf("invalid pattern %v", p))
-}
-
-// extractSequence extracts sequence from the given pattern.
-func extractSequence(p ast.Node) []ast.Node {
-	switch p := p.(type) {
-	case *ast.Access:
-		current := &ast.Access{Receiver: &ast.This{Token: p.Receiver.Base()}, Name: p.Name}
-		return append(extractSequence(p.Receiver), current)
-	case *ast.Call:
-		if _, ok := p.Func.(*ast.This); !ok {
-			panic(fmt.Sprintf("invalid pattern %v", p))
-		}
-		return []ast.Node{p}
-	case *ast.This:
-		return []ast.Node{}
-	default:
-		panic(fmt.Sprintf("invalid pattern %v", p))
-	}
-}
-
-func (o *Observation) ArityOf() int {
-	return len(o.guard)
-}
-
-func (o *Observation) Pop() (ast.Node, *Observation, bool) {
-	if len(o.sequence) == 0 {
-		return nil, nil, false
-	}
-	return o.sequence[0], &Observation{guard: o.guard, sequence: o.sequence[1:]}, true
-}
-
-func (o *Observation) HasAccess() bool {
-	if len(o.sequence) == 0 {
-		return false
-	}
-
-	switch o.sequence[0].(type) {
-	case *ast.Access:
-		return true
-	default:
-		return false
-	}
-}
-
-func (o *Observation) HasCall() bool {
-	if len(o.sequence) == 0 {
-		return false
-	}
-
-	switch o.sequence[0].(type) {
-	case *ast.Call:
-		return true
-	default:
-		return false
-	}
-}
-
-func (o *Observation) Guard() []ast.Node {
-	return o.guard
 }
 
 type InvalidCallPatternError struct {

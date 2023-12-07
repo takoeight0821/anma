@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/takoeight0821/anma/token"
 	"golang.org/x/exp/constraints"
@@ -49,12 +48,7 @@ type TestData struct {
 	Expected map[string]string
 }
 
-func ReadTestData() []TestData {
-	s, err := os.ReadFile("../testdata/testcase.yaml")
-	if err != nil {
-		panic(err)
-	}
-
+func ReadTestData(s []byte) []TestData {
 	var data []TestData
 	if err := yaml.Unmarshal(s, &data); err != nil {
 		panic(err)
