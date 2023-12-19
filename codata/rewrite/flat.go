@@ -149,14 +149,46 @@ func (o *Observation) ArityOf() int {
 	return len(o.Guard())
 }
 
-func (o *Observation) Guard() []ast.Node {
-	return extractGuard(o.sequence[0])
+// Scrutinees returns the Scrutinees of the observation.
+// For example: sequence, current -> Scrutinees.
+//
+//	#(x, y) #.f #(z), 0 -> [0, 1]
+//	#(x, y) #.f #(z), 2 -> [0, 1, 2]
+func (o *Observation) Scrutinees() []token.Token {
+	scrutinees := []token.Token{}
+	for i, s := range o.sequence {
+		if i <= o.current {
+			scrName := token.Token{Kind: token.IDENT, Lexeme: fmt.Sprintf("%%scr%d", i), Line: s.Base().Line, Literal: nil}
+			scrutinees = append(scrutinees, scrName)
+		}
+	}
+
+	return scrutinees
 }
 
+// Guard returns the guard of the observation.
+// For example: sequence, current -> Guard.
+//
+//	#(x, y) #.f #(z), 0 -> [x, y]
+//	#(x, y) #.f #(z), 2 -> [x, y, z]
+func (o *Observation) Guard() []ast.Node {
+	guards := []ast.Node{}
+	for i, s := range o.sequence {
+		if i <= o.current {
+			guards = append(guards, extractGuard(s)...)
+		}
+	}
+
+	return guards
+}
+
+// IsEmpty returns true if the observation is empty.
 func (o *Observation) IsEmpty() bool {
 	return len(o.sequence)-o.current <= 0
 }
 
+// Peek returns the current pattern of the observation.
+// If the observation is empty, it returns nil.
 func (o *Observation) Peek() ast.Node {
 	if o.IsEmpty() {
 		return nil
@@ -164,14 +196,18 @@ func (o *Observation) Peek() ast.Node {
 	return o.sequence[o.current]
 }
 
-func (o *Observation) Pop() (ast.Node, *Observation, bool) {
+// Pop returns the current pattern of the observation and the rest of the observation.
+// The rest of the observation is newly allocated and shares the same sequence and body.
+// If the observation is empty, it returns nil and nil.
+func (o *Observation) Pop() (ast.Node, *Observation) {
 	if o.IsEmpty() {
-		return o.Peek(), nil, false
+		return o.Peek(), nil
 	}
-	return o.Peek(), &Observation{sequence: o.sequence, current: o.current + 1, body: o.body}, true
+	return o.Peek(), &Observation{sequence: o.sequence, current: o.current + 1, body: o.body}
 }
 
-func (o *Observation) HasAccess() bool {
+// IsAccess returns true if the current pattern is access.
+func (o *Observation) IsAccess() bool {
 	if o.IsEmpty() {
 		return false
 	}
@@ -184,7 +220,8 @@ func (o *Observation) HasAccess() bool {
 	}
 }
 
-func (o *Observation) HasCall() bool {
+// IsCall returns true if the current pattern is call.
+func (o *Observation) IsCall() bool {
 	if o.IsEmpty() {
 		return false
 	}
