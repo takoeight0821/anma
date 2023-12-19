@@ -4,7 +4,7 @@ decl = typeDecl | varDecl | infixDecl ; (* func decl *)
 
 typeDecl = "type" type "=" type ("|" type)* ; (* func typeDecl *)
 
-varDecl = "def" identifier "=" expr | "def" identifier ":" type | "def" identifier ":" type "=" expr ; (* func varDecl *)
+varDecl = "def" IDENT "=" expr | "def" IDENT ":" type | "def" IDENT ":" type "=" expr ; (* func varDecl *)
 
 infixDecl = ("infix" | "infixl" | "infixr") INTEGER OPERATOR ; (* func infixDecl *)
 
@@ -15,15 +15,19 @@ let = "let" pattern "=" assert ; (* func let *)
 fn = "fn" "(" param_list? ")" "{" expr (";" expr)* ";"? "}" ;
 param_list = param ("," param)* ","? ; (* func fn *)
 
-atom = var | literal | paren | codata | PRIM "(" IDENTIFIER ("," expr)* ","? ")" ; (* func atom *)
+atom = var | literal | paren | codata | PRIM "(" IDENT ("," expr)* ","? ")" ;
+var = IDENT ;
+literal = INTEGER | STRING ;
+paren = "(" expr ")" ;
+codata = "{" clause ("," clause)* ","? "}" ; (* func atom *)
 
-assert = binop (":" type)* ; (* func assert *)
+assert = binary (":" type)* ; (* func assert *)
 
 binary = method (operator method)* ; (* func binary *)
 
 method = atom (accessTail | callTail)* ; (* func method *)
 
-accessTail = "." IDENTIFIER callTail? ; (* func accessTail *)
+accessTail = "." IDENT callTail? ; (* func accessTail *)
 
 callTail = "(" ")" | "(" expr ("," expr)* ","? ")" ; (* func callTail *)
 
@@ -35,7 +39,7 @@ pattern = methodPat ; (* func pattern *)
 
 methodPat = atomPat (accessPatTail | callPatTail)* ; (* func methodPat *)
 
-accessPatTail = "." IDENTIFIER callPatTail? ; (* func accessPatTail *)
+accessPatTail = "." IDENT callPatTail? ; (* func accessPatTail *)
 
 callPatTail = "(" ")" | "(" pattern ("," pattern)* ","? ")" ; (* func callPatTail *)
 
@@ -45,9 +49,9 @@ type = binopType ; (* func typ *)
 
 binopType = callType (operator callType)* ; (* func binopType *)
 
-callType = (PRIM "(" IDENTIFIER ("," type)* ","? ")" | atomType) ("(" ")" | "(" type ("," type)* ","? ")")* ; (* func callType *)
+callType = (PRIM "(" IDENT ("," type)* ","? ")" | atomType) ("(" ")" | "(" type ("," type)* ","? ")")* ; (* func callType *)
 
 atomType = IDENT | "{" fieldType ("," fieldType)* ","? "}" | "(" type ("," type)* ","? ")" ; (* func atomType *)
 
-fieldType = IDENTIFIER ":" type ; (* func fieldType *)
+fieldType = IDENT ":" type ; (* func fieldType *)
 

@@ -59,7 +59,7 @@ func (p *Parser) typeDecl() *ast.TypeDecl {
 	return &ast.TypeDecl{Def: def, Types: types}
 }
 
-// varDecl = "def" identifier "=" expr | "def" identifier ":" type | "def" identifier ":" type "=" expr ;
+// varDecl = "def" IDENT "=" expr | "def" IDENT ":" type | "def" IDENT ":" type "=" expr ;
 func (p *Parser) varDecl() *ast.VarDecl {
 	p.consume(token.DEF)
 	var name token.Token
@@ -152,7 +152,11 @@ func (p *Parser) fn() *ast.Lambda {
 	return &ast.Lambda{Params: params, Exprs: exprs}
 }
 
-// atom = var | literal | paren | codata | PRIM "(" IDENTIFIER ("," expr)* ","? ")" ;
+// atom = var | literal | paren | codata | PRIM "(" IDENT ("," expr)* ","? ")" ;
+// var = IDENT ;
+// literal = INTEGER | STRING ;
+// paren = "(" expr ")" ;
+// codata = "{" clause ("," clause)* ","? "}" ;
 func (p *Parser) atom() ast.Node {
 	//exhaustive:ignore
 	switch t := p.advance(); t.Kind {
@@ -187,7 +191,7 @@ func (p *Parser) atom() ast.Node {
 	}
 }
 
-// assert = binop (":" type)* ;
+// assert = binary (":" type)* ;
 func (p *Parser) assert() ast.Node {
 	expr := p.binary()
 	for p.match(token.COLON) {
@@ -224,7 +228,7 @@ func (p *Parser) method() ast.Node {
 	}
 }
 
-// accessTail = "." IDENTIFIER callTail? ;
+// accessTail = "." IDENT callTail? ;
 func (p *Parser) accessTail(receiver ast.Node) ast.Node {
 	p.consume(token.DOT)
 	name := p.consume(token.IDENT)
@@ -308,7 +312,7 @@ func (p *Parser) methodPat() ast.Node {
 	}
 }
 
-// accessPatTail = "." IDENTIFIER callPatTail? ;
+// accessPatTail = "." IDENT callPatTail? ;
 func (p *Parser) accessPatTail(receiver ast.Node) ast.Node {
 	p.consume(token.DOT)
 	name := p.consume(token.IDENT)
@@ -381,7 +385,7 @@ func (p *Parser) binopType() ast.Node {
 	return typ
 }
 
-// callType = (PRIM "(" IDENTIFIER ("," type)* ","? ")" | atomType) ("(" ")" | "(" type ("," type)* ","? ")")* ;
+// callType = (PRIM "(" IDENT ("," type)* ","? ")" | atomType) ("(" ")" | "(" type ("," type)* ","? ")")* ;
 func (p *Parser) callType() ast.Node {
 	var typ ast.Node
 	if p.match(token.PRIM) {
@@ -454,7 +458,7 @@ func (p *Parser) atomType() ast.Node {
 	}
 }
 
-// fieldType = IDENTIFIER ":" type ;
+// fieldType = IDENT ":" type ;
 func (p *Parser) fieldType() *ast.Field {
 	name := p.consume(token.IDENT)
 	p.consume(token.COLON)
