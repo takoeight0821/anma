@@ -12,7 +12,6 @@ import (
 )
 
 func TestFlatFromTestData(t *testing.T) {
-	t.Skip()
 	t.Parallel()
 	s, err := os.ReadFile("../../testdata/testcase.yaml")
 	if err != nil {
