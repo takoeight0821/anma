@@ -10,9 +10,7 @@ import (
 )
 
 // Flat converts copatterns into object construction, function, and traditional patterns.
-type Flat struct {
-	scrutinees []token.Token
-}
+type Flat struct{}
 
 func (Flat) Name() string {
 	return "codata.flat"
