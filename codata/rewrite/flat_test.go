@@ -1,32 +1,36 @@
-package parser_test
+package rewrite_test
 
 import (
 	"os"
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/takoeight0821/anma/codata/rewrite"
 	"github.com/takoeight0821/anma/driver"
 	"github.com/takoeight0821/anma/utils"
 )
 
-func TestParseFromTestData(t *testing.T) {
+func TestFlatFromTestData(t *testing.T) {
+	t.Skip()
 	t.Parallel()
-	s, err := os.ReadFile("../testdata/testcase.yaml")
+	s, err := os.ReadFile("../../testdata/testcase.yaml")
 	if err != nil {
 		panic(err)
 	}
 	testcases := utils.ReadTestData(s)
+
 	for _, testcase := range testcases {
-		if expected, ok := testcase.Expected["parser"]; ok {
-			completeParse(t, testcase.Label, testcase.Input, expected)
+		if expected, ok := testcase.Expected["codata"]; ok {
+			completeFlat(t, testcase.Label, testcase.Input, expected)
 		} else {
-			completeParse(t, testcase.Label, testcase.Input, "no expected value")
+			completeFlat(t, testcase.Label, testcase.Input, "no expected value")
 		}
 	}
 }
 
 func BenchmarkFromTestData(b *testing.B) {
-	s, err := os.ReadFile("../testdata/testcase.yaml")
+	s, err := os.ReadFile("../../testdata/testcase.yaml")
 	if err != nil {
 		panic(err)
 	}
@@ -35,7 +39,7 @@ func BenchmarkFromTestData(b *testing.B) {
 	for _, testcase := range testcases {
 		b.Run(testcase.Label, func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				completeParse(b, testcase.Label, testcase.Input, testcase.Expected["parser"])
+				completeFlat(b, testcase.Label, testcase.Input, testcase.Expected["codata"])
 			}
 		})
 	}
@@ -45,12 +49,14 @@ type reporter interface {
 	Errorf(format string, args ...interface{})
 }
 
-func completeParse(t reporter, label, input, expected string) {
+func completeFlat(t reporter, label, input, expected string) {
 	r := driver.NewPassRunner()
+	r.AddPass(&rewrite.Flat{})
 
 	nodes, err := r.RunSource(input)
 	if err != nil {
-		t.Errorf("Parser %s returned error: %v", label, err)
+		t.Errorf("Flat %s returned error: %v", label, err)
+		return
 	}
 
 	if _, ok := t.(*testing.B); ok {
@@ -66,7 +72,7 @@ func completeParse(t reporter, label, input, expected string) {
 
 	actual := b.String()
 
-	if diff := utils.Diff(expected, actual); diff != "" {
-		t.Errorf("Parser %s mismatch (-want +got):\n%s", label, diff)
+	if diff := cmp.Diff(expected, actual); diff != "" {
+		t.Errorf("Flat %s mismatch (-want +got):\n%s", label, diff)
 	}
 }

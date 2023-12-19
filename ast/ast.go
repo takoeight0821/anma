@@ -440,7 +440,7 @@ type This struct {
 }
 
 func (t This) String() string {
-	return parenthesize("this", t.Token).String()
+	return "#"
 }
 
 func (t *This) Base() token.Token {
