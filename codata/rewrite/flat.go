@@ -56,7 +56,10 @@ func (f *Flat) flatEach(n ast.Node, err error) (ast.Node, error) {
 
 func (f *Flat) flatCodata(c *ast.Codata) (ast.Node, error) {
 	for _, clause := range c.Clauses {
-		ob := NewObservation(clause)
+		ob, err := NewObservation(clause)
+		if err != nil {
+			return c, err
+		}
 		log.Printf("observation of: %v => %v", clause.Patterns, ob.sequence)
 	}
 	return c, nil
@@ -105,46 +108,81 @@ func (o *Observation) Plate(err error, f func(ast.Node, error) (ast.Node, error)
 
 var _ ast.Node = &Observation{}
 
+type InvalidPatternError struct {
+	Patterns []ast.Node
+}
+
+func (e *InvalidPatternError) Error() string {
+	return fmt.Sprintf("invalid pattern: %v", e.Patterns)
+}
+
+func NewInvalidPatternError(patterns ...ast.Node) *InvalidPatternError {
+	return &InvalidPatternError{Patterns: patterns}
+}
+
 // NewObservation creates a new observation node with the given pattern.
-func NewObservation(clause *ast.Clause) *Observation {
-	return &Observation{
-		sequence: extractSequence(clause.Patterns[0]),
-		body:     clause.Exprs,
+func NewObservation(clause *ast.Clause) (*Observation, error) {
+	if len(clause.Patterns) != 1 {
+		return nil, NewInvalidPatternError(clause.Patterns...)
 	}
+	_, err := extractGuard(clause.Patterns[0])
+	if err != nil {
+		return nil, err
+	}
+	seq, err := extractSequence(clause.Patterns[0])
+	if err != nil {
+		return nil, err
+	}
+
+	return &Observation{
+		sequence: seq,
+		body:     clause.Exprs,
+	}, nil
 }
 
 // extractGuard extracts guard from the given pattern.
-func extractGuard(p ast.Node) []ast.Node {
+// Returns the guard and error if the pattern is valid.
+func extractGuard(p ast.Node) ([]ast.Node, error) {
 	switch p := p.(type) {
 	case *ast.Access:
 		return extractGuard(p.Receiver)
 	case *ast.Call:
 		if _, ok := p.Func.(*ast.This); ok {
-			return p.Args
+			return p.Args, nil
 		}
 	case *ast.This:
-		return []ast.Node{}
+		return []ast.Node{}, nil
 	}
-	panic(fmt.Sprintf("invalid pattern %v", p))
+	return nil, NewInvalidPatternError(p)
 }
 
 // extractSequence extracts sequence from the given pattern.
-func extractSequence(p ast.Node) []ast.Node {
+// Returns the sequence and error if the pattern is valid.
+func extractSequence(p ast.Node) ([]ast.Node, error) {
 	switch p := p.(type) {
 	case *ast.Access:
+		seq, err := extractSequence(p.Receiver)
+		if err != nil {
+			return nil, err
+		}
 		current := &ast.Access{Receiver: &ast.This{Token: p.Receiver.Base()}, Name: p.Name}
-		return append(extractSequence(p.Receiver), current)
+		return append(seq, current), nil
 	case *ast.Call:
+		seq, err := extractSequence(p.Func)
+		if err != nil {
+			return nil, err
+		}
 		current := &ast.Call{Func: &ast.This{Token: p.Func.Base()}, Args: p.Args}
-		return append(extractSequence(p.Func), current)
+		return append(seq, current), nil
 	case *ast.This:
-		return []ast.Node{}
+		return []ast.Node{}, nil
 	default:
-		panic(fmt.Sprintf("invalid pattern %v", p))
+		return nil, NewInvalidPatternError(p)
 	}
 }
 
 // ArityOf returns the number of arguments of the observation.
+// Panics if the observation includes invalid patterns.
 func (o *Observation) ArityOf() int {
 	return len(o.Guard())
 }
@@ -171,11 +209,17 @@ func (o *Observation) Scrutinees() []token.Token {
 //
 //	#(x, y) #.f #(z), 0 -> [x, y]
 //	#(x, y) #.f #(z), 2 -> [x, y, z]
+//
+// Panics if the observation includes invalid patterns.
 func (o *Observation) Guard() []ast.Node {
 	guards := []ast.Node{}
 	for i, s := range o.sequence {
 		if i <= o.current {
-			guards = append(guards, extractGuard(s)...)
+			guard, err := extractGuard(s)
+			if err != nil {
+				panic(err)
+			}
+			guards = append(guards, guard...)
 		}
 	}
 
@@ -234,6 +278,8 @@ func (o *Observation) IsCall() bool {
 	}
 }
 
+// toClause converts the observation to a clause.
+// Panics if the observation includes invalid patterns.
 func (o *Observation) toClause() *ast.Clause {
 	return &ast.Clause{
 		Patterns: o.Guard(),
