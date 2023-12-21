@@ -54,6 +54,7 @@ func (f *Flat) flatEach(n ast.Node, err error) (ast.Node, error) {
 	return n, nil
 }
 
+// flatCodata converts copatterns into object construction, function, and traditional pattern matching.
 func (f *Flat) flatCodata(c *ast.Codata) (ast.Node, error) {
 	for _, clause := range c.Clauses {
 		ob, err := NewObservation(clause)
@@ -125,6 +126,7 @@ func NewObservation(clause *ast.Clause) (*Observation, error) {
 	if len(clause.Patterns) != 1 {
 		return nil, NewInvalidPatternError(clause.Patterns...)
 	}
+	// Pattern must have a valid guard.
 	_, err := extractGuard(clause.Patterns[0])
 	if err != nil {
 		return nil, err
@@ -181,10 +183,33 @@ func extractSequence(p ast.Node) ([]ast.Node, error) {
 	}
 }
 
+// Arity is the arity of the observation.
+// For example: sequence, current -> Arity.
+//
+//	#(x, y) #.f #(z), 0 -> 2
+//	#(x, y) #.f #(z), 1 -> -1
+//	#(x, y) #.f #(z), 2 -> 1
+//	#(x, y) #.f #(), 2 -> 0
+type Arity int
+
+const (
+	// ArityNone is the arity of the observation with no traditional patterns.
+	None Arity = -1
+	// ArityZero is the arity of the observation with zero-arity function.
+	Zero Arity = 0
+)
+
 // ArityOf returns the number of arguments of the observation.
 // Panics if the observation includes invalid patterns.
-func (o *Observation) ArityOf() int {
-	return len(o.Guard())
+func (o *Observation) ArityOf() Arity {
+	switch o.Peek().(type) {
+	case *ast.Access:
+		return None
+	case *ast.Call:
+		return Arity(len(o.Peek().(*ast.Call).Args))
+	default:
+		panic("invalid pattern")
+	}
 }
 
 // Scrutinees returns the Scrutinees of the observation.
