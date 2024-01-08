@@ -85,8 +85,12 @@ func flatCodata(c *ast.Codata) (ast.Node, error) {
 	arity := NotChecked
 	clauses := make([]plistClause, len(c.Clauses))
 	for i, cl := range c.Clauses {
-		ob := rewrite.NewObservation(cl)
-		log.Printf("observation: %v", ob)
+		ob, err := rewrite.NewObservation(cl)
+		if err != nil {
+			log.Printf("observation error: %v", err)
+		} else {
+			log.Printf("observation: %v", ob)
+		}
 		plist, err := NewPatternList(cl)
 		if err != nil {
 			return nil, err
