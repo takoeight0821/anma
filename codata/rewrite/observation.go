@@ -232,12 +232,3 @@ func (o *Observation) IsCall() bool {
 		return false
 	}
 }
-
-// toClause converts the observation to a clause.
-// Panics if the observation includes invalid patterns.
-func (o *Observation) toClause() *ast.Clause {
-	return &ast.Clause{
-		Patterns: o.Guard(),
-		Exprs:    o.body,
-	}
-}

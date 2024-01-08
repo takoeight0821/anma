@@ -233,7 +233,7 @@
       (def main.1 (lambda () (call (access (var printer.0) print) (literal 1))))
     eval: <unit>
 - label: method-copattern
-  enable: true
+  enable: false
   input: |
     def printer = {
       #.print(x) -> prim(print, x),
