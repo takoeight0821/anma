@@ -25,6 +25,7 @@ func NewResolver() *Resolver {
 	}
 }
 
+// env is an linked list of name->id mappings.
 type env struct {
 	parent *env           // Parent environment.
 	table  map[string]int // Variable name -> unique number.
@@ -63,6 +64,7 @@ func (r *Resolver) Run(program []ast.Node) ([]ast.Node, error) {
 	return program, nil
 }
 
+// define a variable in the current scope.
 func (r *Resolver) define(name token.Token) {
 	r.env.table[name.Lexeme] = r.supply
 	r.supply++
