@@ -49,17 +49,17 @@ type reporter interface {
 	Errorf(format string, args ...interface{})
 }
 
-func completeFlat(t reporter, label, input, expected string) {
+func completeFlat(test reporter, label, input, expected string) {
 	r := driver.NewPassRunner()
 	r.AddPass(&rewrite.Flat{})
 
 	nodes, err := r.RunSource(input)
 	if err != nil {
-		t.Errorf("Flat %s returned error: %v", label, err)
+		test.Errorf("Flat %s returned error: %v", label, err)
 		return
 	}
 
-	if _, ok := t.(*testing.B); ok {
+	if _, ok := test.(*testing.B); ok {
 		// do nothing for benchmark
 		return
 	}
@@ -73,6 +73,6 @@ func completeFlat(t reporter, label, input, expected string) {
 	actual := b.String()
 
 	if diff := cmp.Diff(expected, actual); diff != "" {
-		t.Errorf("Flat %s mismatch (-want +got):\n%s", label, diff)
+		test.Errorf("Flat %s mismatch (-want +got):\n%s", label, diff)
 	}
 }

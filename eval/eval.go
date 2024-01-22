@@ -60,6 +60,7 @@ func (ev *Evaluator) evalVar(node *ast.Var) (Value, error) {
 	if v := ev.evEnv.get(name); v != nil {
 		return v, nil
 	}
+
 	return nil, utils.ErrorAt{Where: node.Base(), Err: UndefinedVariableError{Name: node.Name}}
 }
 
@@ -67,9 +68,19 @@ func (ev *Evaluator) evalLiteral(node *ast.Literal) (Value, error) {
 	//exhaustive:ignore
 	switch node.Kind {
 	case token.INTEGER:
-		return Int(node.Literal.(int)), nil
+		v, ok := node.Literal.(int)
+		if !ok {
+			return nil, utils.ErrorAt{Where: node.Base(), Err: InvalidLiteralError{Kind: node.Kind}}
+		}
+
+		return Int(v), nil
 	case token.STRING:
-		return String(node.Literal.(string)), nil
+		v, ok := node.Literal.(string)
+		if !ok {
+			return nil, utils.ErrorAt{Where: node.Base(), Err: InvalidLiteralError{Kind: node.Kind}}
+		}
+
+		return String(v), nil
 	default:
 		return nil, utils.ErrorAt{Where: node.Base(), Err: InvalidLiteralError{Kind: node.Kind}}
 	}
@@ -87,14 +98,16 @@ func (ev *Evaluator) evalAccess(node *ast.Access) (Value, error) {
 
 	switch receiver := receiver.(type) {
 	case Object:
-		if v, ok := receiver.Fields[node.Name.Lexeme]; ok {
-			v, err = runThunk(v)
+		if value, ok := receiver.Fields[node.Name.Lexeme]; ok {
+			value, err = runThunk(value)
 			if err != nil {
 				return nil, err
 			}
-			receiver.Fields[node.Name.Lexeme] = v
-			return v, nil
+			receiver.Fields[node.Name.Lexeme] = value
+
+			return value, nil
 		}
+
 		return nil, utils.ErrorAt{Where: node.Base(), Err: UndefinedFieldError{Receiver: receiver, Name: node.Name.Lexeme}}
 	default:
 		return nil, utils.ErrorAt{Where: node.Base(), Err: NotObjectError{Receiver: receiver}}
@@ -102,11 +115,11 @@ func (ev *Evaluator) evalAccess(node *ast.Access) (Value, error) {
 }
 
 func (ev *Evaluator) evalCall(node *ast.Call) (Value, error) {
-	fn, err := ev.Eval(node.Func)
+	function, err := ev.Eval(node.Func)
 	if err != nil {
 		return nil, err
 	}
-	switch fn := fn.(type) {
+	switch function := function.(type) {
 	case Callable:
 		args := make([]Value, len(node.Args))
 		for i, arg := range node.Args {
@@ -115,13 +128,14 @@ func (ev *Evaluator) evalCall(node *ast.Call) (Value, error) {
 				return nil, err
 			}
 		}
-		v, err := fn.Apply(node.Base(), args...)
+		v, err := function.Apply(node.Base(), args...)
 		if err != nil {
 			return nil, utils.ErrorAt{Where: node.Base(), Err: err}
 		}
+
 		return v, nil
 	default:
-		return nil, utils.ErrorAt{Where: node.Base(), Err: NotCallableError{Func: fn}}
+		return nil, utils.ErrorAt{Where: node.Base(), Err: NotCallableError{Func: function}}
 	}
 }
 
@@ -163,30 +177,32 @@ func fetchPrim(name token.Token) func(*Evaluator, ...Value) (Value, error) {
 			if len(args) != 2 {
 				return nil, utils.ErrorAt{Where: name, Err: InvalidArgumentCountError{Expected: 2, Actual: len(args)}}
 			}
-			v0, ok := asInt(args[0])
+			left, ok := asInt(args[0])
 			if !ok {
 				return nil, utils.ErrorAt{Where: name, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[0]}}
 			}
-			v1, ok := asInt(args[1])
+			right, ok := asInt(args[1])
 			if !ok {
 				return nil, utils.ErrorAt{Where: name, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[1]}}
 			}
-			return v0 + v1, nil
+
+			return left + right, nil
 		}
 	case "mul":
 		return func(ev *Evaluator, args ...Value) (Value, error) {
 			if len(args) != 2 {
 				return nil, utils.ErrorAt{Where: name, Err: InvalidArgumentCountError{Expected: 2, Actual: len(args)}}
 			}
-			v0, ok := asInt(args[0])
+			left, ok := asInt(args[0])
 			if !ok {
 				return nil, utils.ErrorAt{Where: name, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[0]}}
 			}
-			v1, ok := asInt(args[1])
+			right, ok := asInt(args[1])
 			if !ok {
 				return nil, utils.ErrorAt{Where: name, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[1]}}
 			}
-			return v0 * v1, nil
+
+			return left * right, nil
 		}
 	case "print":
 		return func(ev *Evaluator, args ...Value) (Value, error) {
@@ -194,6 +210,7 @@ func fetchPrim(name token.Token) func(*Evaluator, ...Value) (Value, error) {
 				return nil, utils.ErrorAt{Where: name, Err: InvalidArgumentCountError{Expected: 1, Actual: len(args)}}
 			}
 			fmt.Println(args[0])
+
 			return Unit{}, nil
 		}
 	default:
@@ -203,8 +220,8 @@ func fetchPrim(name token.Token) func(*Evaluator, ...Value) (Value, error) {
 
 func (ev *Evaluator) evalBinary(node *ast.Binary) (Value, error) {
 	name := tokenToName(node.Op)
-	if op := ev.evEnv.get(name); op != nil {
-		switch op := op.(type) {
+	if operator := ev.evEnv.get(name); operator != nil {
+		switch operator := operator.(type) {
 		case Callable:
 			left, err := ev.Eval(node.Left)
 			if err != nil {
@@ -214,15 +231,17 @@ func (ev *Evaluator) evalBinary(node *ast.Binary) (Value, error) {
 			if err != nil {
 				return nil, err
 			}
-			v, err := op.Apply(node.Base(), left, right)
+			v, err := operator.Apply(node.Base(), left, right)
 			if err != nil {
 				return nil, utils.ErrorAt{Where: node.Base(), Err: err}
 			}
+
 			return v, nil
 		default:
-			return nil, utils.ErrorAt{Where: node.Base(), Err: NotCallableError{Func: op}}
+			return nil, utils.ErrorAt{Where: node.Base(), Err: NotCallableError{Func: operator}}
 		}
 	}
+
 	return nil, utils.ErrorAt{Where: node.Base(), Err: UndefinedVariableError{Name: node.Op}}
 }
 
@@ -242,9 +261,14 @@ func (ev *Evaluator) evalLet(node *ast.Let) error {
 		for name, v := range env {
 			ev.evEnv.set(name, v)
 		}
+
 		return nil
 	}
-	return utils.ErrorAt{Where: node.Base(), Err: PatternMatchError{Patterns: []ast.Node{node.Bind}, Values: []Value{body}}}
+
+	return utils.ErrorAt{
+		Where: node.Base(),
+		Err:   PatternMatchError{Patterns: []ast.Node{node.Bind}, Values: []Value{body}},
+	}
 }
 
 func (ev *Evaluator) evalLambda(node *ast.Lambda) Function {
@@ -252,6 +276,7 @@ func (ev *Evaluator) evalLambda(node *ast.Lambda) Function {
 	for i, param := range node.Params {
 		params[i] = tokenToName(param)
 	}
+
 	return Function{
 		Evaluator: *ev,
 		Params:    params,
@@ -291,10 +316,12 @@ func (ev *Evaluator) evalCase(node *ast.Case) (Value, error) {
 			}
 
 			ev.evEnv = ev.evEnv.parent
+
 			return ret, nil
 		}
 		err = errors.Join(err, PatternMatchError{Patterns: clause.Patterns, Values: scrs})
 	}
+
 	return nil, utils.ErrorAt{Where: node.Base(), Err: err}
 }
 
@@ -313,6 +340,7 @@ func matchClause(clause *ast.Clause, scrs []Value) (map[Name]Value, bool) {
 			env[k] = v
 		}
 	}
+
 	return env, true
 }
 
@@ -321,6 +349,7 @@ func (ev *Evaluator) evalObject(node *ast.Object) Object {
 	for _, field := range node.Fields {
 		fields[field.Name] = Thunk{Evaluator: *ev, Body: field.Exprs}
 	}
+
 	return Object{Fields: fields}
 }
 
@@ -331,6 +360,7 @@ func (ev *Evaluator) evalTypeDecl(node *ast.TypeDecl) error {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -338,11 +368,13 @@ func (ev *Evaluator) defineConstructor(node ast.Node) error {
 	switch node := node.(type) {
 	case *ast.Var:
 		ev.evEnv.set(tokenToName(node.Name), Data{Tag: tokenToName(node.Name), Elems: nil})
+
 		return nil
 	case *ast.Call:
 		switch fn := node.Func.(type) {
 		case *ast.Var:
 			ev.evEnv.set(tokenToName(fn.Name), Constructor{Evaluator: *ev, Tag: tokenToName(fn.Name), Params: len(node.Args)})
+
 			return nil
 		case *ast.Prim:
 			// For type checking
@@ -354,6 +386,7 @@ func (ev *Evaluator) defineConstructor(node ast.Node) error {
 		// Ignore in evaluation
 		return nil
 	}
+
 	return utils.ErrorAt{Where: node.Base(), Err: NotConstructorError{Node: node}}
 }
 
@@ -365,5 +398,6 @@ func (ev *Evaluator) evalVarDecl(node *ast.VarDecl) error {
 		}
 		ev.evEnv.set(tokenToName(node.Name), v)
 	}
+
 	return nil
 }

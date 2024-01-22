@@ -14,7 +14,7 @@ type Value interface {
 }
 
 type Callable interface {
-	Apply(token.Token, ...Value) (Value, error)
+	Apply(where token.Token, args ...Value) (Value, error)
 }
 
 type Unit struct{}
@@ -49,6 +49,7 @@ func (i Int) match(pattern ast.Node) (map[Name]Value, bool) {
 			return map[Name]Value{}, true
 		}
 	}
+
 	return nil, false
 }
 
@@ -69,6 +70,7 @@ func (s String) match(pattern ast.Node) (map[Name]Value, bool) {
 			return map[Name]Value{}, true
 		}
 	}
+
 	return nil, false
 }
 
@@ -82,14 +84,15 @@ type Function struct {
 }
 
 func (f Function) String() string {
-	var b strings.Builder
-	b.WriteString("<function")
+	var builder strings.Builder
+	builder.WriteString("<function")
 	for _, param := range f.Params {
-		b.WriteString(" ")
-		b.WriteString(string(param))
+		builder.WriteString(" ")
+		builder.WriteString(string(param))
 	}
-	b.WriteString(">")
-	return b.String()
+	builder.WriteString(">")
+
+	return builder.String()
 }
 
 func (f Function) match(pattern ast.Node) (map[Name]Value, bool) {
@@ -119,6 +122,7 @@ func (f Function) Apply(where token.Token, args ...Value) (Value, error) {
 		}
 	}
 	f.evEnv = f.evEnv.parent
+
 	return ret, nil
 }
 
@@ -147,13 +151,13 @@ func (t Thunk) match(pattern ast.Node) (map[Name]Value, bool) {
 	}
 }
 
-func runThunk(v Value) (Value, error) {
-	switch v := v.(type) {
+func runThunk(value Value) (Value, error) {
+	switch value := value.(type) {
 	case Thunk:
 		var ret Value
-		for _, node := range v.Body {
+		for _, node := range value.Body {
 			var err error
-			ret, err = v.Eval(node)
+			ret, err = value.Eval(node)
 			if err != nil {
 				return nil, err
 			}
@@ -161,9 +165,10 @@ func runThunk(v Value) (Value, error) {
 		if _, ok := ret.(Thunk); ok {
 			panic("unreachable: thunk cannot return thunk")
 		}
+
 		return ret, nil
 	default:
-		return v, nil
+		return value, nil
 	}
 }
 
@@ -196,17 +201,18 @@ type Data struct {
 }
 
 func (d Data) String() string {
-	var b strings.Builder
-	b.WriteString(string(d.Tag))
-	b.WriteString("(")
+	var builder strings.Builder
+	builder.WriteString(string(d.Tag))
+	builder.WriteString("(")
 	for i, elem := range d.Elems {
 		if i > 0 {
-			b.WriteString(", ")
+			builder.WriteString(", ")
 		}
-		b.WriteString(elem.String())
+		builder.WriteString(elem.String())
 	}
-	b.WriteString(")")
-	return b.String()
+	builder.WriteString(")")
+
+	return builder.String()
 }
 
 func (d Data) match(pattern ast.Node) (map[Name]Value, bool) {
@@ -232,11 +238,13 @@ func (d Data) match(pattern ast.Node) (map[Name]Value, bool) {
 					matches[k] = v
 				}
 			}
+
 			return matches, true
 		default:
 			panic(fmt.Sprintf("unreachable: %s", pattern.Func))
 		}
 	}
+
 	return nil, false
 }
 
@@ -265,6 +273,7 @@ func (c Constructor) Apply(where token.Token, args ...Value) (Value, error) {
 	if len(args) != c.Params {
 		return nil, errorAt(where, InvalidArgumentCountError{Expected: c.Params, Actual: len(args)})
 	}
+
 	return Data{Tag: c.Tag, Elems: args}, nil
 }
 

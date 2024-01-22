@@ -40,17 +40,18 @@ func newEvEnv(parent *evEnv) *evEnv {
 }
 
 func (env *evEnv) String() string {
-	var b strings.Builder
-	b.WriteString("{")
+	var builder strings.Builder
+	builder.WriteString("{")
 	for name, v := range env.values {
-		b.WriteString(fmt.Sprintf(" %s:%v", name, v))
+		builder.WriteString(fmt.Sprintf(" %s:%v", name, v))
 	}
-	b.WriteString(" }")
+	builder.WriteString(" }")
 	if env.parent != nil {
-		b.WriteString("\n\t&")
-		b.WriteString(env.parent.String())
+		builder.WriteString("\n\t&")
+		builder.WriteString(env.parent.String())
 	}
-	return b.String()
+
+	return builder.String()
 }
 
 func (env *evEnv) get(name Name) Value {
@@ -60,6 +61,7 @@ func (env *evEnv) get(name Name) Value {
 	if env.parent != nil {
 		return env.parent.get(name)
 	}
+
 	return nil
 }
 
@@ -78,6 +80,7 @@ func (env *evEnv) SearchMain() (Function, bool) {
 			if !ok {
 				return Function{}, false
 			}
+
 			return f, true
 		}
 	}

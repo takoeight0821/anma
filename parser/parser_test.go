@@ -45,15 +45,15 @@ type reporter interface {
 	Errorf(format string, args ...interface{})
 }
 
-func completeParse(t reporter, label, input, expected string) {
+func completeParse(test reporter, label, input, expected string) {
 	r := driver.NewPassRunner()
 
 	nodes, err := r.RunSource(input)
 	if err != nil {
-		t.Errorf("Parser %s returned error: %v", label, err)
+		test.Errorf("Parser %s returned error: %v", label, err)
 	}
 
-	if _, ok := t.(*testing.B); ok {
+	if _, ok := test.(*testing.B); ok {
 		// do nothing for benchmark
 		return
 	}
@@ -67,6 +67,6 @@ func completeParse(t reporter, label, input, expected string) {
 	actual := b.String()
 
 	if diff := utils.Diff(expected, actual); diff != "" {
-		t.Errorf("Parser %s mismatch (-want +got):\n%s", label, diff)
+		test.Errorf("Parser %s mismatch (-want +got):\n%s", label, diff)
 	}
 }

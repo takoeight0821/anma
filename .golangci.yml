@@ -8,7 +8,7 @@ linters:
     - metalinter
     - module
     - performance
-    # - style
+    - style
     - test
     - unused
     # Disable
@@ -16,6 +16,7 @@ linters:
     # - complexity
   disable:
     - wsl
+    - gomnd
   enable:
     - gosimple
     - unconvert
@@ -45,3 +46,5 @@ linters-settings:
       - empty
       - stdlib
       - Node
+      - Value
+      - Sexp

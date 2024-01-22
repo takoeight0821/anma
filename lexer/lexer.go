@@ -11,7 +11,7 @@ import (
 )
 
 func Lex(source string) ([]token.Token, error) {
-	l := lexer{
+	lexer := lexer{
 		source:  source,
 		tokens:  []token.Token{},
 		start:   0,
@@ -21,12 +21,13 @@ func Lex(source string) ([]token.Token, error) {
 
 	var err error
 
-	for !l.isAtEnd() {
-		err = errors.Join(err, l.scanToken())
+	for !lexer.isAtEnd() {
+		err = errors.Join(err, lexer.scanToken())
 	}
 
-	l.tokens = append(l.tokens, token.Token{Kind: token.EOF, Lexeme: "", Line: l.line, Literal: nil})
-	return l.tokens, err
+	lexer.tokens = append(lexer.tokens, token.Token{Kind: token.EOF, Lexeme: "", Line: lexer.line, Literal: nil})
+
+	return lexer.tokens, err
 }
 
 type lexer struct {
@@ -47,12 +48,14 @@ func (l lexer) peek() rune {
 		return '\x00'
 	}
 	runeValue, _ := utf8.DecodeRuneInString(l.source[l.current:])
+
 	return runeValue
 }
 
 func (l *lexer) advance() rune {
 	runeValue, width := utf8.DecodeRuneInString(l.source[l.current:])
 	l.current += width
+
 	return runeValue
 }
 
@@ -72,32 +75,35 @@ func (e UnexpectedCharacterError) Error() string {
 
 func (l *lexer) scanToken() error {
 	l.start = l.current
-	c := l.advance()
-	switch c {
+	char := l.advance()
+	switch char {
 	case ' ', '\r', '\t':
 		// ignore whitespace
 		return nil
 	case '\n':
 		l.line++
+
 		return nil
 	case '"':
 		return l.string()
 	default:
-		if k, ok := reservedSymbols[c]; ok {
+		if k, ok := getReservedSymbol(char); ok {
 			l.addToken(k, nil)
+
 			return nil
 		}
-		if isDigit(c) {
+		if isDigit(char) {
 			return l.integer()
 		}
-		if isAlpha(c) {
+		if isAlpha(char) {
 			return l.identifier()
 		}
-		if isSymbol(c) {
+		if isSymbol(char) {
 			return l.operator()
 		}
 	}
-	return UnexpectedCharacterError{Line: l.line, Char: c}
+
+	return UnexpectedCharacterError{Line: l.line, Char: char}
 }
 
 type UnterminatedStringError struct {
@@ -134,6 +140,7 @@ func (l *lexer) string() error {
 
 	value := l.source[l.start+1 : l.current-1]
 	l.addToken(token.STRING, value)
+
 	return nil
 }
 
@@ -151,6 +158,7 @@ func (l *lexer) integer() error {
 		return fmt.Errorf("invalid integer: %w", err)
 	}
 	l.addToken(token.INTEGER, value)
+
 	return nil
 }
 
@@ -165,47 +173,64 @@ func (l *lexer) identifier() error {
 
 	value := l.source[l.start:l.current]
 
-	if k, ok := keywords[value]; ok {
+	if k, ok := getKeyword(value); ok {
 		l.addToken(k, nil)
 	} else {
 		l.addToken(token.IDENT, nil)
 	}
+
 	return nil
 }
 
-var keywords = map[string]token.Kind{
-	"->":     token.ARROW,
-	"|":      token.BAR,
-	"=":      token.EQUAL,
-	"case":   token.CASE,
-	"def":    token.DEF,
-	"fn":     token.FN,
-	"infix":  token.INFIX,
-	"infixl": token.INFIXL,
-	"infixr": token.INFIXR,
-	"let":    token.LET,
-	"type":   token.TYPE,
-	"prim":   token.PRIM,
+func getKeyword(str string) (token.Kind, bool) {
+	keywords := map[string]token.Kind{
+		"->":     token.ARROW,
+		"|":      token.BAR,
+		"=":      token.EQUAL,
+		"case":   token.CASE,
+		"def":    token.DEF,
+		"fn":     token.FN,
+		"infix":  token.INFIX,
+		"infixl": token.INFIXL,
+		"infixr": token.INFIXR,
+		"let":    token.LET,
+		"type":   token.TYPE,
+		"prim":   token.PRIM,
+	}
+
+	if k, ok := keywords[str]; ok {
+		return k, true
+	}
+
+	return token.IDENT, false
 }
 
 func isSymbol(c rune) bool {
-	_, isReserved := reservedSymbols[c]
+	_, isReserved := getReservedSymbol(c)
+
 	return c != '_' && !isReserved && (unicode.IsSymbol(c) || unicode.IsPunct(c))
 }
 
-// These characters are reserved symbols, but they are not included in operator.
-var reservedSymbols = map[rune]token.Kind{
-	'(': token.LEFTPAREN,
-	')': token.RIGHTPAREN,
-	'{': token.LEFTBRACE,
-	'}': token.RIGHTBRACE,
-	'[': token.LEFTBRACKET,
-	']': token.RIGHTBRACKET,
-	':': token.COLON,
-	',': token.COMMA,
-	'.': token.DOT,
-	';': token.SEMICOLON,
-	'#': token.SHARP,
+func getReservedSymbol(char rune) (token.Kind, bool) {
+	// These characters are reserved symbols, but they are not included in operator.
+	reservedSymbols := map[rune]token.Kind{
+		'(': token.LEFTPAREN,
+		')': token.RIGHTPAREN,
+		'{': token.LEFTBRACE,
+		'}': token.RIGHTBRACE,
+		'[': token.LEFTBRACKET,
+		']': token.RIGHTBRACKET,
+		':': token.COLON,
+		',': token.COMMA,
+		'.': token.DOT,
+		';': token.SEMICOLON,
+		'#': token.SHARP,
+	}
+	if k, ok := reservedSymbols[char]; ok {
+		return k, true
+	}
+
+	return token.OPERATOR, false
 }
 
 func (l *lexer) operator() error {
@@ -214,10 +239,11 @@ func (l *lexer) operator() error {
 	}
 
 	value := l.source[l.start:l.current]
-	if k, ok := keywords[value]; ok {
+	if k, ok := getKeyword(value); ok {
 		l.addToken(k, nil)
 	} else {
 		l.addToken(token.OPERATOR, nil)
 	}
+
 	return nil
 }

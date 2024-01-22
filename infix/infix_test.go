@@ -49,18 +49,18 @@ type reporter interface {
 	Errorf(format string, args ...interface{})
 }
 
-func completeInfix(t reporter, label, input, expected string) {
+func completeInfix(test reporter, label, input, expected string) {
 	runner := driver.NewPassRunner()
 	runner.AddPass(codata.Flat{})
 	runner.AddPass(infix.NewInfixResolver())
 
 	nodes, err := runner.RunSource(input)
 	if err != nil {
-		t.Errorf("Infix %s returned error: %v", label, err)
+		test.Errorf("Infix %s returned error: %v", label, err)
 		return
 	}
 
-	if _, ok := t.(*testing.B); ok {
+	if _, ok := test.(*testing.B); ok {
 		// do nothing for benchmark
 		return
 	}
@@ -73,6 +73,6 @@ func completeInfix(t reporter, label, input, expected string) {
 	actual := b.String()
 
 	if diff := cmp.Diff(expected, actual); diff != "" {
-		t.Errorf("Infix %s mismatch (-want +got):\n%s", label, diff)
+		test.Errorf("Infix %s mismatch (-want +got):\n%s", label, diff)
 	}
 }

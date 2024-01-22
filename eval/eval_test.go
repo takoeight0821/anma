@@ -51,7 +51,7 @@ type reporter interface {
 	Errorf(format string, args ...interface{})
 }
 
-func completeEval(t reporter, label string, input string, expected string) {
+func completeEval(test reporter, label string, input string, expected string) {
 	runner := driver.NewPassRunner()
 	runner.AddPass(codata.Flat{})
 	runner.AddPass(infix.NewInfixResolver())
@@ -59,30 +59,33 @@ func completeEval(t reporter, label string, input string, expected string) {
 
 	nodes, err := runner.RunSource(input)
 	if err != nil {
-		t.Errorf("Eval %s returned error: %v", label, err)
+		test.Errorf("Eval %s returned error: %v", label, err)
+
 		return
 	}
 
-	ev := eval.NewEvaluator()
+	evaluator := eval.NewEvaluator()
 	values := make([]eval.Value, len(nodes))
 
 	for i, node := range nodes {
-		values[i], err = ev.Eval(node)
+		values[i], err = evaluator.Eval(node)
 		if err != nil {
-			t.Errorf("Eval %s returned error: %v", label, err)
+			test.Errorf("Eval %s returned error: %v", label, err)
+
 			return
 		}
 	}
 
-	if main, ok := ev.SearchMain(); ok {
+	if main, ok := evaluator.SearchMain(); ok {
 		top := token.Token{Kind: token.IDENT, Lexeme: "toplevel", Line: 0, Literal: -1}
 		ret, err := main.Apply(top)
 		if err != nil {
-			t.Errorf("Eval %s returned error: %v", label, err)
+			test.Errorf("Eval %s returned error: %v", label, err)
+
 			return
 		}
 
-		if _, ok := t.(*testing.B); ok {
+		if _, ok := test.(*testing.B); ok {
 			// do nothing for benchmark
 			return
 		}
@@ -90,9 +93,9 @@ func completeEval(t reporter, label string, input string, expected string) {
 		actual := ret.String()
 
 		if diff := cmp.Diff(expected, actual); diff != "" {
-			t.Errorf("Eval %s mismatch (-want +got):\n%s", label, diff)
+			test.Errorf("Eval %s mismatch (-want +got):\n%s", label, diff)
 		}
 	} else {
-		t.Errorf("Eval %s returned no main function", label)
+		test.Errorf("Eval %s returned no main function", label)
 	}
 }

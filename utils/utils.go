@@ -33,14 +33,14 @@ func ReadTestData(s []byte) []TestData {
 	}
 
 	// Remove disabled test cases.
-	i := 0
+	index := 0
 	for _, d := range data {
 		if d.Enable {
-			data[i] = d
-			i++
+			data[index] = d
+			index++
 		}
 	}
-	data = data[:i]
+	data = data[:index]
 
 	return data
 }
