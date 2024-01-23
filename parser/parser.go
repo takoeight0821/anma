@@ -23,6 +23,7 @@ func NewParser(tokens []token.Token) *Parser {
 func (p *Parser) ParseExpr() (ast.Node, error) {
 	p.err = nil
 	node := p.expr()
+
 	return node, p.err
 }
 
@@ -32,6 +33,7 @@ func (p *Parser) ParseDecl() ([]ast.Node, error) {
 	for !p.IsAtEnd() {
 		nodes = append(nodes, p.decl())
 	}
+
 	return nodes, p.err
 }
 
@@ -43,6 +45,7 @@ func (p *Parser) decl() ast.Node {
 	if p.match(token.DEF) {
 		return p.varDecl()
 	}
+
 	return p.infixDecl()
 }
 
@@ -56,6 +59,7 @@ func (p *Parser) typeDecl() *ast.TypeDecl {
 		p.advance()
 		types = append(types, p.typ())
 	}
+
 	return &ast.TypeDecl{Def: def, Types: types}
 }
 
@@ -70,6 +74,7 @@ func (p *Parser) varDecl() *ast.VarDecl {
 		name = p.advance()
 	default:
 		p.recover(unexpectedToken(p.peek(), "identifier", "operator"))
+
 		return &ast.VarDecl{}
 	}
 	var typ ast.Node
@@ -82,6 +87,7 @@ func (p *Parser) varDecl() *ast.VarDecl {
 		p.advance()
 		expr = p.expr()
 	}
+
 	return &ast.VarDecl{Name: name, Type: typ, Expr: expr}
 }
 
@@ -90,10 +96,12 @@ func (p *Parser) infixDecl() *ast.InfixDecl {
 	kind := p.advance()
 	if kind.Kind != token.INFIX && kind.Kind != token.INFIXL && kind.Kind != token.INFIXR {
 		p.recover(unexpectedToken(p.peek(), "`infix`", "`infixl`", "`infixr`"))
+
 		return nil
 	}
 	precedence := p.consume(token.INTEGER)
 	name := p.consume(token.OPERATOR)
+
 	return &ast.InfixDecl{Assoc: kind, Prec: precedence, Name: name}
 }
 
@@ -101,6 +109,7 @@ func (p *Parser) infixDecl() *ast.InfixDecl {
 func (p *Parser) expr() ast.Node {
 	if p.IsAtEnd() {
 		p.recover(unexpectedToken(p.peek(), "expression"))
+
 		return nil
 	}
 	if p.match(token.LET) {
@@ -109,6 +118,7 @@ func (p *Parser) expr() ast.Node {
 	if p.match(token.FN) {
 		return p.fn()
 	}
+
 	return p.assert()
 }
 
@@ -118,6 +128,7 @@ func (p *Parser) let() *ast.Let {
 	pattern := p.pattern()
 	p.consume(token.EQUAL)
 	expr := p.assert()
+
 	return &ast.Let{Bind: pattern, Body: expr}
 }
 
@@ -149,6 +160,7 @@ func (p *Parser) fn() *ast.Lambda {
 		exprs = append(exprs, p.expr())
 	}
 	p.consume(token.RIGHTBRACE)
+
 	return &ast.Lambda{Params: params, Exprs: exprs}
 }
 
@@ -159,14 +171,15 @@ func (p *Parser) fn() *ast.Lambda {
 // codata = "{" clause ("," clause)* ","? "}" ;
 func (p *Parser) atom() ast.Node {
 	//exhaustive:ignore
-	switch t := p.advance(); t.Kind {
+	switch tok := p.advance(); tok.Kind {
 	case token.IDENT:
-		return &ast.Var{Name: t}
+		return &ast.Var{Name: tok}
 	case token.INTEGER, token.STRING:
-		return &ast.Literal{Token: t}
+		return &ast.Literal{Token: tok}
 	case token.LEFTPAREN:
 		expr := p.expr()
 		p.consume(token.RIGHTPAREN)
+
 		return &ast.Paren{Expr: expr}
 	case token.LEFTBRACE:
 		return p.codata()
@@ -184,9 +197,11 @@ func (p *Parser) atom() ast.Node {
 			}
 		}
 		p.consume(token.RIGHTPAREN)
+
 		return &ast.Prim{Name: name, Args: args}
 	default:
-		p.recover(unexpectedToken(t, "identifier", "integer", "string", "`(`", "`{`"))
+		p.recover(unexpectedToken(tok, "identifier", "integer", "string", "`(`", "`{`"))
+
 		return nil
 	}
 }
@@ -199,6 +214,7 @@ func (p *Parser) assert() ast.Node {
 		typ := p.typ()
 		expr = &ast.Assert{Expr: expr, Type: typ}
 	}
+
 	return expr
 }
 
@@ -210,6 +226,7 @@ func (p *Parser) binary() ast.Node {
 		right := p.method()
 		expr = &ast.Binary{Left: expr, Op: op, Right: right}
 	}
+
 	return expr
 }
 
@@ -256,6 +273,7 @@ func (p *Parser) callTail(fun ast.Node) ast.Node {
 		}
 	}
 	p.consume(token.RIGHTPAREN)
+
 	return &ast.Call{Func: fun, Args: args}
 }
 
@@ -270,6 +288,7 @@ func (p *Parser) codata() *ast.Codata {
 		clauses = append(clauses, p.clause())
 	}
 	p.consume(token.RIGHTBRACE)
+
 	return &ast.Codata{Clauses: clauses}
 }
 
@@ -285,6 +304,7 @@ func (p *Parser) clause() *ast.Clause {
 		}
 		exprs = append(exprs, p.expr())
 	}
+
 	return &ast.Clause{Patterns: []ast.Node{pattern}, Exprs: exprs}
 }
 
@@ -292,8 +312,10 @@ func (p *Parser) clause() *ast.Clause {
 func (p *Parser) pattern() ast.Node {
 	if p.IsAtEnd() {
 		p.recover(unexpectedToken(p.peek(), "pattern"))
+
 		return nil
 	}
+
 	return p.methodPat()
 }
 
@@ -340,25 +362,28 @@ func (p *Parser) callPatTail(fun ast.Node) ast.Node {
 		}
 	}
 	p.consume(token.RIGHTPAREN)
+
 	return &ast.Call{Func: fun, Args: args}
 }
 
 // atomPat = IDENT | INTEGER | STRING | "(" pattern ")" ;
 func (p *Parser) atomPat() ast.Node {
 	//exhaustive:ignore
-	switch t := p.advance(); t.Kind {
+	switch tok := p.advance(); tok.Kind {
 	case token.SHARP:
-		return &ast.This{Token: t}
+		return &ast.This{Token: tok}
 	case token.IDENT:
-		return &ast.Var{Name: t}
+		return &ast.Var{Name: tok}
 	case token.INTEGER, token.STRING:
-		return &ast.Literal{Token: t}
+		return &ast.Literal{Token: tok}
 	case token.LEFTPAREN:
 		pat := p.pattern()
 		p.consume(token.RIGHTPAREN)
+
 		return &ast.Paren{Expr: pat}
 	default:
-		p.recover(unexpectedToken(t, "identifier", "integer", "string", "`(`"))
+		p.recover(unexpectedToken(tok, "identifier", "integer", "string", "`(`"))
+
 		return nil
 	}
 }
@@ -367,6 +392,7 @@ func (p *Parser) atomPat() ast.Node {
 func (p *Parser) typ() ast.Node {
 	if p.IsAtEnd() {
 		p.recover(unexpectedToken(p.peek(), "type"))
+
 		return nil
 	}
 
@@ -411,6 +437,7 @@ func (p *Parser) callType() ast.Node {
 	for p.match(token.LEFTPAREN) {
 		typ = p.callTypeTail(typ)
 	}
+
 	return typ
 }
 
@@ -428,15 +455,16 @@ func (p *Parser) callTypeTail(fun ast.Node) *ast.Call {
 		}
 	}
 	p.consume(token.RIGHTPAREN)
+
 	return &ast.Call{Func: fun, Args: args}
 }
 
 // atomType = IDENT | "{" fieldType ("," fieldType)* ","? "}" | "(" type ("," type)* ","? ")" ;
 func (p *Parser) atomType() ast.Node {
 	//exhaustive:ignore
-	switch t := p.advance(); t.Kind {
+	switch tok := p.advance(); tok.Kind {
 	case token.IDENT:
-		return &ast.Var{Name: t}
+		return &ast.Var{Name: tok}
 	case token.LEFTBRACE:
 		fields := []*ast.Field{p.fieldType()}
 		for p.match(token.COMMA) {
@@ -447,13 +475,16 @@ func (p *Parser) atomType() ast.Node {
 			fields = append(fields, p.fieldType())
 		}
 		p.consume(token.RIGHTBRACE)
+
 		return &ast.Object{Fields: fields}
 	case token.LEFTPAREN:
 		typ := p.typ()
 		p.consume(token.RIGHTPAREN)
+
 		return &ast.Paren{Expr: typ}
 	default:
-		p.recover(unexpectedToken(t, "identifier", "`{`", "`(`"))
+		p.recover(unexpectedToken(tok, "identifier", "`{`", "`(`"))
+
 		return nil
 	}
 }
@@ -463,6 +494,7 @@ func (p *Parser) fieldType() *ast.Field {
 	name := p.consume(token.IDENT)
 	p.consume(token.COLON)
 	typ := p.typ()
+
 	return &ast.Field{Name: name.Lexeme, Exprs: []ast.Node{typ}}
 }
 
@@ -478,6 +510,7 @@ func (p *Parser) advance() token.Token {
 	if !p.IsAtEnd() {
 		p.current++
 	}
+
 	return p.previous()
 }
 
@@ -493,6 +526,7 @@ func (p Parser) match(kind token.Kind) bool {
 	if p.IsAtEnd() {
 		return false
 	}
+
 	return p.peek().Kind == kind
 }
 
@@ -502,6 +536,7 @@ func (p *Parser) consume(kind token.Kind) token.Token {
 	}
 
 	p.err = errors.Join(p.err, unexpectedToken(p.peek(), kind.String()))
+
 	return p.peek()
 }
 
@@ -523,5 +558,5 @@ func (e UnexpectedTokenError) Error() string {
 }
 
 func unexpectedToken(t token.Token, expected ...string) error {
-	return utils.ErrorAt{Where: t, Err: UnexpectedTokenError{Expected: expected}}
+	return utils.PosError{Where: t, Err: UnexpectedTokenError{Expected: expected}}
 }

@@ -62,6 +62,7 @@ func TestLexer(t *testing.T) {
 		for i, token := range tokens {
 			if token != testcase.tokens[i] {
 				t.Errorf("Lex(%q) returned %v, expected %v", testcase.input, tokens, testcase.tokens)
+
 				break
 			}
 		}

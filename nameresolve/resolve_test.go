@@ -58,6 +58,7 @@ func completeResolve(test reporter, label, input, expected string) {
 	nodes, err := runner.RunSource(input)
 	if err != nil {
 		test.Errorf("Resolve %s returned error: %v", label, err)
+
 		return
 	}
 

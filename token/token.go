@@ -53,6 +53,7 @@ func (t Token) String() string {
 	if (t.Kind == IDENT || t.Kind == OPERATOR) && t.Literal != nil {
 		return fmt.Sprintf("%s.%#v", t.Lexeme, t.Literal)
 	}
+
 	return t.Lexeme
 }
 

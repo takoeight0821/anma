@@ -11,8 +11,8 @@ import (
 
 type Pass interface {
 	Name() string
-	Init([]ast.Node) error
-	Run([]ast.Node) ([]ast.Node, error)
+	Init(program []ast.Node) error
+	Run(program []ast.Node) ([]ast.Node, error)
 }
 
 type PassRunner struct {

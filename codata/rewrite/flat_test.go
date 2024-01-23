@@ -56,6 +56,7 @@ func completeFlat(test reporter, label, input, expected string) {
 	nodes, err := r.RunSource(input)
 	if err != nil {
 		test.Errorf("Flat %s returned error: %v", label, err)
+
 		return
 	}
 
@@ -64,13 +65,13 @@ func completeFlat(test reporter, label, input, expected string) {
 		return
 	}
 
-	var b strings.Builder
+	var builder strings.Builder
 	for _, node := range nodes {
-		b.WriteString(node.String())
-		b.WriteString("\n")
+		builder.WriteString(node.String())
+		builder.WriteString("\n")
 	}
 
-	actual := b.String()
+	actual := builder.String()
 
 	if diff := cmp.Diff(expected, actual); diff != "" {
 		test.Errorf("Flat %s mismatch (-want +got):\n%s", label, diff)

@@ -31,15 +31,17 @@ func (Flat) Run(program []ast.Node) ([]ast.Node, error) {
 			return program, err
 		}
 	}
+
 	return program, nil
 }
 
-func flat(n ast.Node) (ast.Node, error) {
-	n, err := ast.Traverse(n, flatEach)
+func flat(node ast.Node) (ast.Node, error) {
+	node, err := ast.Traverse(node, flatEach)
 	if err != nil {
-		return n, fmt.Errorf("flat %v: %w", n, err)
+		return node, fmt.Errorf("flat %v: %w", node, err)
 	}
-	return n, nil
+
+	return node, nil
 }
 
 // flatEach converts Copatterns ([Access] and [This] in [Pattern]) into [Object] and [Lambda].
@@ -54,8 +56,10 @@ func flatEach(node ast.Node, err error) (ast.Node, error) {
 		if err != nil {
 			return node, err
 		}
+
 		return newNode, nil
 	}
+
 	return node, nil
 }
 
@@ -67,6 +71,7 @@ func (e ArityError) Error() string {
 	if e.Expected == NotChecked {
 		return "unreachable: arity is not checked"
 	}
+
 	return fmt.Sprintf("arity mismatch: expected %d arguments", e.Expected)
 }
 
@@ -75,8 +80,9 @@ func checkArity(expected, actual int, where token.Token) error {
 		return nil
 	}
 	if expected != actual {
-		return utils.ErrorAt{Where: where, Err: ArityError{Expected: expected}}
+		return utils.PosError{Where: where, Err: ArityError{Expected: expected}}
 	}
+
 	return nil
 }
 
@@ -121,6 +127,7 @@ func (b *builder) build(arity int, clauses []plistClause) (ast.Node, error) {
 	if arity == NoArgs {
 		return b.object(clauses)
 	}
+
 	return b.lambda(arity, clauses)
 }
 
@@ -151,9 +158,10 @@ func (b builder) groupClausesByAccessor(clauses []plistClause) (map[string][]pli
 				next[field.String()],
 				plistClause{plist, clause.exprs})
 		} else {
-			return nil, utils.ErrorAt{Where: plist.Base(), Err: UnsupportedPatternError{Clause: clause}}
+			return nil, utils.PosError{Where: plist.Base(), Err: UnsupportedPatternError{Clause: clause}}
 		}
 	}
+
 	return next, nil
 }
 
@@ -226,6 +234,7 @@ func (b builder) object(clauses []plistClause) (ast.Node, error) {
 				Exprs: newCase(b.scrutinees, body),
 			})
 	}
+
 	return &ast.Object{Fields: fields}, nil
 }
 
@@ -245,6 +254,7 @@ func (b *builder) lambda(arity int, clauses []plistClause) (ast.Node, error) {
 			if err != nil {
 				return nil, err
 			}
+
 			return newLambda(b.scrutinees, obj), nil
 		}
 	}
@@ -254,6 +264,7 @@ func (b *builder) lambda(arity int, clauses []plistClause) (ast.Node, error) {
 	for _, c := range clauses {
 		caseClauses = append(caseClauses, plistToClause(c.plist, c.exprs...))
 	}
+
 	return newLambda(b.scrutinees, newCase(b.scrutinees, caseClauses)...), nil
 }
 
@@ -285,6 +296,7 @@ func newCase(scrs []token.Token, clauses []*ast.Clause) []ast.Node {
 	for i, s := range scrs {
 		vars[i] = &ast.Var{Name: s}
 	}
+
 	return []ast.Node{&ast.Case{Scrutinees: vars, Clauses: clauses}}
 }
 
@@ -313,8 +325,9 @@ func params(pattern ast.Node) ([]ast.Node, error) {
 		return params(pattern.Receiver)
 	case *ast.Call:
 		if _, ok := pattern.Func.(*ast.This); !ok {
-			return nil, utils.ErrorAt{Where: pattern.Base(), Err: InvalidCallPatternError{Pattern: pattern}}
+			return nil, utils.PosError{Where: pattern.Base(), Err: InvalidCallPatternError{Pattern: pattern}}
 		}
+
 		return pattern.Args, nil
 	default:
 		return nil, nil
@@ -336,6 +349,7 @@ func NewPatternList(clause *ast.Clause) (PatternList, error) {
 	if err != nil {
 		return PatternList{}, err
 	}
+
 	return PatternList{accessors: accessors, params: params}, err
 }
 
@@ -346,6 +360,7 @@ func (p PatternList) Base() token.Token {
 	if len(p.params) != 0 {
 		return p.params[0].Base()
 	}
+
 	return token.Token{}
 }
 
@@ -367,6 +382,7 @@ func (p PatternList) Plate(err error, f func(ast.Node, error) (ast.Node, error))
 	for i, param := range p.params {
 		p.params[i], err = f(param, err)
 	}
+
 	return p, err
 }
 
@@ -382,6 +398,7 @@ func (p PatternList) ArityOf() int {
 	if p.params == nil {
 		return NoArgs
 	}
+
 	return len(p.params)
 }
 
@@ -390,6 +407,7 @@ func (p PatternList) Pop() (token.Token, PatternList, bool) {
 	if len(p.accessors) == 0 {
 		return token.Token{}, p, false
 	}
+
 	return p.accessors[0], PatternList{accessors: p.accessors[1:], params: p.params}, true
 }
 

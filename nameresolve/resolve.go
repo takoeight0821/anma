@@ -89,7 +89,7 @@ func (e *env) lookup(name token.Token) (token.Token, error) {
 		return e.parent.lookup(name)
 	}
 
-	return name, utils.ErrorAt{Where: name, Err: NotDefinedError{Name: name}}
+	return name, utils.PosError{Where: name, Err: NotDefinedError{Name: name}}
 }
 
 // Define all top-level variables in the node.
@@ -108,7 +108,7 @@ func (r *Resolver) registerTopLevel(node ast.Node) error {
 		}
 	case *ast.VarDecl:
 		if _, ok := r.env.table[node.Name.Lexeme]; ok {
-			return utils.ErrorAt{Where: node.Base(), Err: AlreadyDefinedError{Name: node.Name}}
+			return utils.PosError{Where: node.Base(), Err: AlreadyDefinedError{Name: node.Name}}
 		}
 		r.define(node.Name)
 	}
@@ -286,7 +286,7 @@ func (r *Resolver) solve(node ast.Node) (ast.Node, error) {
 			}
 			theClause, ok := clause.(*ast.Clause)
 			if !ok {
-				return node, utils.ErrorAt{Where: clause.Base(), Err: NotClauseError{Node: clause}}
+				return node, utils.PosError{Where: clause.Base(), Err: NotClauseError{Node: clause}}
 			}
 			node.Clauses[i] = theClause
 		}
@@ -300,7 +300,7 @@ func (r *Resolver) solve(node ast.Node) (ast.Node, error) {
 			}
 			theField, ok := field.(*ast.Field)
 			if !ok {
-				return node, utils.ErrorAt{Where: field.Base(), Err: NotFieldError{Node: field}}
+				return node, utils.PosError{Where: field.Base(), Err: NotFieldError{Node: field}}
 			}
 			node.Fields[i] = theField
 		}
@@ -390,7 +390,7 @@ func allVariables(resolver *Resolver, node ast.Node) ([]string, error) {
 		switch node := node.(type) {
 		case *ast.Var:
 			if _, ok := resolver.env.table[node.Name.Lexeme]; ok {
-				return node, utils.ErrorAt{Where: node.Base(), Err: AlreadyDefinedError{Name: node.Name}}
+				return node, utils.PosError{Where: node.Base(), Err: AlreadyDefinedError{Name: node.Name}}
 			}
 			resolver.define(node.Name)
 			defined = append(defined, node.Name.Lexeme)
@@ -466,7 +466,7 @@ func asPattern(resolver *Resolver, pattern ast.Node) ([]string, error) {
 	switch pattern := pattern.(type) {
 	case *ast.Var:
 		if _, ok := resolver.env.table[pattern.Name.Lexeme]; ok {
-			return nil, utils.ErrorAt{Where: pattern.Base(), Err: AlreadyDefinedError{Name: pattern.Name}}
+			return nil, utils.PosError{Where: pattern.Base(), Err: AlreadyDefinedError{Name: pattern.Name}}
 		}
 		resolver.define(pattern.Name)
 
@@ -489,7 +489,7 @@ func asPattern(resolver *Resolver, pattern ast.Node) ([]string, error) {
 
 		return defined, nil
 	default:
-		return nil, utils.ErrorAt{Where: pattern.Base(), Err: InvalidPatternError{Pattern: pattern}}
+		return nil, utils.PosError{Where: pattern.Base(), Err: InvalidPatternError{Pattern: pattern}}
 	}
 }
 

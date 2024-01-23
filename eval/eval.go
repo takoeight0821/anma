@@ -61,7 +61,7 @@ func (ev *Evaluator) evalVar(node *ast.Var) (Value, error) {
 		return v, nil
 	}
 
-	return nil, utils.ErrorAt{Where: node.Base(), Err: UndefinedVariableError{Name: node.Name}}
+	return nil, utils.PosError{Where: node.Base(), Err: UndefinedVariableError{Name: node.Name}}
 }
 
 func (ev *Evaluator) evalLiteral(node *ast.Literal) (Value, error) {
@@ -70,19 +70,19 @@ func (ev *Evaluator) evalLiteral(node *ast.Literal) (Value, error) {
 	case token.INTEGER:
 		v, ok := node.Literal.(int)
 		if !ok {
-			return nil, utils.ErrorAt{Where: node.Base(), Err: InvalidLiteralError{Kind: node.Kind}}
+			return nil, utils.PosError{Where: node.Base(), Err: InvalidLiteralError{Kind: node.Kind}}
 		}
 
 		return Int(v), nil
 	case token.STRING:
 		v, ok := node.Literal.(string)
 		if !ok {
-			return nil, utils.ErrorAt{Where: node.Base(), Err: InvalidLiteralError{Kind: node.Kind}}
+			return nil, utils.PosError{Where: node.Base(), Err: InvalidLiteralError{Kind: node.Kind}}
 		}
 
 		return String(v), nil
 	default:
-		return nil, utils.ErrorAt{Where: node.Base(), Err: InvalidLiteralError{Kind: node.Kind}}
+		return nil, utils.PosError{Where: node.Base(), Err: InvalidLiteralError{Kind: node.Kind}}
 	}
 }
 
@@ -108,9 +108,9 @@ func (ev *Evaluator) evalAccess(node *ast.Access) (Value, error) {
 			return value, nil
 		}
 
-		return nil, utils.ErrorAt{Where: node.Base(), Err: UndefinedFieldError{Receiver: receiver, Name: node.Name.Lexeme}}
+		return nil, utils.PosError{Where: node.Base(), Err: UndefinedFieldError{Receiver: receiver, Name: node.Name.Lexeme}}
 	default:
-		return nil, utils.ErrorAt{Where: node.Base(), Err: NotObjectError{Receiver: receiver}}
+		return nil, utils.PosError{Where: node.Base(), Err: NotObjectError{Receiver: receiver}}
 	}
 }
 
@@ -130,19 +130,19 @@ func (ev *Evaluator) evalCall(node *ast.Call) (Value, error) {
 		}
 		v, err := function.Apply(node.Base(), args...)
 		if err != nil {
-			return nil, utils.ErrorAt{Where: node.Base(), Err: err}
+			return nil, utils.PosError{Where: node.Base(), Err: err}
 		}
 
 		return v, nil
 	default:
-		return nil, utils.ErrorAt{Where: node.Base(), Err: NotCallableError{Func: function}}
+		return nil, utils.PosError{Where: node.Base(), Err: NotCallableError{Func: function}}
 	}
 }
 
 func (ev *Evaluator) evalPrim(node *ast.Prim) (Value, error) {
 	prim := fetchPrim(node.Name)
 	if prim == nil {
-		return nil, utils.ErrorAt{Where: node.Base(), Err: UndefinedPrimError{Name: node.Name}}
+		return nil, utils.PosError{Where: node.Base(), Err: UndefinedPrimError{Name: node.Name}}
 	}
 
 	args := make([]Value, len(node.Args))
@@ -166,8 +166,8 @@ func asInt(v Value) (Int, bool) {
 	}
 }
 
-func errorAt(base token.Token, err error) utils.ErrorAt {
-	return utils.ErrorAt{Where: base, Err: err}
+func errorAt(base token.Token, err error) utils.PosError {
+	return utils.PosError{Where: base, Err: err}
 }
 
 func fetchPrim(name token.Token) func(*Evaluator, ...Value) (Value, error) {
@@ -175,15 +175,15 @@ func fetchPrim(name token.Token) func(*Evaluator, ...Value) (Value, error) {
 	case "add":
 		return func(ev *Evaluator, args ...Value) (Value, error) {
 			if len(args) != 2 {
-				return nil, utils.ErrorAt{Where: name, Err: InvalidArgumentCountError{Expected: 2, Actual: len(args)}}
+				return nil, utils.PosError{Where: name, Err: InvalidArgumentCountError{Expected: 2, Actual: len(args)}}
 			}
 			left, ok := asInt(args[0])
 			if !ok {
-				return nil, utils.ErrorAt{Where: name, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[0]}}
+				return nil, utils.PosError{Where: name, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[0]}}
 			}
 			right, ok := asInt(args[1])
 			if !ok {
-				return nil, utils.ErrorAt{Where: name, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[1]}}
+				return nil, utils.PosError{Where: name, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[1]}}
 			}
 
 			return left + right, nil
@@ -191,15 +191,15 @@ func fetchPrim(name token.Token) func(*Evaluator, ...Value) (Value, error) {
 	case "mul":
 		return func(ev *Evaluator, args ...Value) (Value, error) {
 			if len(args) != 2 {
-				return nil, utils.ErrorAt{Where: name, Err: InvalidArgumentCountError{Expected: 2, Actual: len(args)}}
+				return nil, utils.PosError{Where: name, Err: InvalidArgumentCountError{Expected: 2, Actual: len(args)}}
 			}
 			left, ok := asInt(args[0])
 			if !ok {
-				return nil, utils.ErrorAt{Where: name, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[0]}}
+				return nil, utils.PosError{Where: name, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[0]}}
 			}
 			right, ok := asInt(args[1])
 			if !ok {
-				return nil, utils.ErrorAt{Where: name, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[1]}}
+				return nil, utils.PosError{Where: name, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[1]}}
 			}
 
 			return left * right, nil
@@ -207,7 +207,7 @@ func fetchPrim(name token.Token) func(*Evaluator, ...Value) (Value, error) {
 	case "print":
 		return func(ev *Evaluator, args ...Value) (Value, error) {
 			if len(args) != 1 {
-				return nil, utils.ErrorAt{Where: name, Err: InvalidArgumentCountError{Expected: 1, Actual: len(args)}}
+				return nil, utils.PosError{Where: name, Err: InvalidArgumentCountError{Expected: 1, Actual: len(args)}}
 			}
 			fmt.Println(args[0])
 
@@ -233,16 +233,16 @@ func (ev *Evaluator) evalBinary(node *ast.Binary) (Value, error) {
 			}
 			v, err := operator.Apply(node.Base(), left, right)
 			if err != nil {
-				return nil, utils.ErrorAt{Where: node.Base(), Err: err}
+				return nil, utils.PosError{Where: node.Base(), Err: err}
 			}
 
 			return v, nil
 		default:
-			return nil, utils.ErrorAt{Where: node.Base(), Err: NotCallableError{Func: operator}}
+			return nil, utils.PosError{Where: node.Base(), Err: NotCallableError{Func: operator}}
 		}
 	}
 
-	return nil, utils.ErrorAt{Where: node.Base(), Err: UndefinedVariableError{Name: node.Op}}
+	return nil, utils.PosError{Where: node.Base(), Err: UndefinedVariableError{Name: node.Op}}
 }
 
 func (ev *Evaluator) evalAssert(node *ast.Assert) (Value, error) {
@@ -265,7 +265,7 @@ func (ev *Evaluator) evalLet(node *ast.Let) error {
 		return nil
 	}
 
-	return utils.ErrorAt{
+	return utils.PosError{
 		Where: node.Base(),
 		Err:   PatternMatchError{Patterns: []ast.Node{node.Bind}, Values: []Value{body}},
 	}
@@ -322,7 +322,7 @@ func (ev *Evaluator) evalCase(node *ast.Case) (Value, error) {
 		err = errors.Join(err, PatternMatchError{Patterns: clause.Patterns, Values: scrs})
 	}
 
-	return nil, utils.ErrorAt{Where: node.Base(), Err: err}
+	return nil, utils.PosError{Where: node.Base(), Err: err}
 }
 
 // matchClause matches the given clause's patterns with the given scrutinees.
@@ -387,7 +387,7 @@ func (ev *Evaluator) defineConstructor(node ast.Node) error {
 		return nil
 	}
 
-	return utils.ErrorAt{Where: node.Base(), Err: NotConstructorError{Node: node}}
+	return utils.PosError{Where: node.Base(), Err: NotConstructorError{Node: node}}
 }
 
 func (ev *Evaluator) evalVarDecl(node *ast.VarDecl) error {

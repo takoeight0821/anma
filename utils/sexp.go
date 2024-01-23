@@ -10,15 +10,16 @@ import (
 
 // Diff returns the diff between two s-expressions.
 func Diff(expected, actual string) string {
-	es, err := ParseSexp(expected)
+	expectedSexp, err := ParseSexp(expected)
 	if err != nil {
 		panic(err)
 	}
-	as, err := ParseSexp(actual)
+	actualSexp, err := ParseSexp(actual)
 	if err != nil {
 		panic(err)
 	}
-	return cmp.Diff(es, as)
+
+	return cmp.Diff(expectedSexp, actualSexp)
 }
 
 // Parser for s-expression.
@@ -51,13 +52,14 @@ func (l List) String() string {
 	if len(l) == 0 {
 		return "()"
 	}
-	var b strings.Builder
-	b.WriteString(fmt.Sprintf("(%v", l[0]))
+	var builder strings.Builder
+	builder.WriteString(fmt.Sprintf("(%v", l[0]))
 	for _, e := range l[1:] {
-		b.WriteString(fmt.Sprintf(" %v", e))
+		builder.WriteString(fmt.Sprintf(" %v", e))
 	}
-	b.WriteString(")")
-	return b.String()
+	builder.WriteString(")")
+
+	return builder.String()
 }
 
 type parser struct {
@@ -82,6 +84,7 @@ func (e UnexpectedTokenError) Error() string {
 
 func (p *parser) advance() string {
 	p.current++
+
 	return p.tokens[p.current-1]
 }
 
@@ -96,12 +99,14 @@ func ParseSexp(s string) ([]Sexp, error) {
 		}
 		sexps = append(sexps, sexp)
 	}
+
 	return sexps, nil
 }
 
 func tokenize(s string) []string {
 	s = strings.ReplaceAll(s, "(", " ( ")
 	s = strings.ReplaceAll(s, ")", " ) ")
+
 	return strings.Fields(s)
 }
 
@@ -121,7 +126,7 @@ func (p *parser) parse() (Sexp, error) {
 }
 
 func (p *parser) parseList() (Sexp, error) {
-	var l List
+	var list List
 	for {
 		if p.current >= len(p.tokens) {
 			return nil, UnexpectedEOFError{}
@@ -129,15 +134,17 @@ func (p *parser) parseList() (Sexp, error) {
 		token := p.tokens[p.current]
 		if token == ")" {
 			p.advance()
+
 			break
 		}
 		exp, err := p.parse()
 		if err != nil {
 			return nil, err
 		}
-		l = append(l, exp)
+		list = append(list, exp)
 	}
-	return l, nil
+
+	return list, nil
 }
 
 func (p *parser) parseAtom(token string) (Sexp, error) {
@@ -147,17 +154,20 @@ func (p *parser) parseAtom(token string) (Sexp, error) {
 	if s, err := parseString(token); err == nil {
 		return s, nil
 	}
+
 	return Atom(token), nil
 }
 
 func parseInt(s string) (Int, error) {
 	var i int
 	_, err := fmt.Sscanf(s, "%d", &i)
+
 	return Int(i), err
 }
 
 func parseString(s string) (String, error) {
 	var str string
 	_, err := fmt.Sscanf(s, "%q", &str)
+
 	return String(str), err
 }

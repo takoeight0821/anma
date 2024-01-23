@@ -32,6 +32,7 @@ func (o Observation) String() string {
 		builder.WriteString("; ")
 	}
 	builder.WriteString("}")
+
 	return builder.String()
 }
 
@@ -39,6 +40,7 @@ func (o Observation) Base() token.Token {
 	if len(o.sequence) != 0 {
 		return o.sequence[0].Base()
 	}
+
 	return token.Token{}
 }
 
@@ -46,6 +48,7 @@ func (o *Observation) Plate(err error, f func(ast.Node, error) (ast.Node, error)
 	for i, s := range o.sequence {
 		o.sequence[i], err = f(s, err)
 	}
+
 	return o, err
 }
 
@@ -85,6 +88,7 @@ func extractGuard(pattern ast.Node) ([]ast.Node, error) {
 	case *ast.This:
 		return []ast.Node{}, nil
 	}
+
 	return nil, NewInvalidPatternError(pattern)
 }
 
@@ -98,6 +102,7 @@ func extractSequence(pattern ast.Node) ([]ast.Node, error) {
 			return nil, err
 		}
 		current := &ast.Access{Receiver: &ast.This{Token: pattern.Receiver.Base()}, Name: pattern.Name}
+
 		return append(seq, current), nil
 	case *ast.Call:
 		seq, err := extractSequence(pattern.Func)
@@ -105,6 +110,7 @@ func extractSequence(pattern ast.Node) ([]ast.Node, error) {
 			return nil, err
 		}
 		current := &ast.Call{Func: &ast.This{Token: pattern.Func.Base()}, Args: pattern.Args}
+
 		return append(seq, current), nil
 	case *ast.This:
 		return []ast.Node{}, nil
@@ -197,6 +203,7 @@ func (o *Observation) Peek() ast.Node {
 	if o.IsEmpty() {
 		return nil
 	}
+
 	return o.sequence[o.current]
 }
 
@@ -207,6 +214,7 @@ func (o *Observation) Pop() (ast.Node, *Observation) {
 	if o.IsEmpty() {
 		return o.Peek(), nil
 	}
+
 	return o.Peek(), &Observation{sequence: o.sequence, current: o.current + 1, body: o.body}
 }
 

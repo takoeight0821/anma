@@ -2,6 +2,7 @@ package ast
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/takoeight0821/anma/token"
@@ -16,7 +17,7 @@ type Node interface {
 	// If f returns an error, f also must return the original argument n.
 	// It is similar to Visitor pattern.
 	// FYI: https://hackage.haskell.org/package/lens-5.2.3/docs/Control-Lens-Plated.html
-	Plate(error, func(Node, error) (Node, error)) (Node, error)
+	Plate(err error, fun func(Node, error) (Node, error)) (Node, error)
 }
 
 type Var struct {
@@ -69,6 +70,7 @@ func (p *Paren) Base() token.Token {
 
 func (p *Paren) Plate(err error, f func(Node, error) (Node, error)) (Node, error) {
 	p.Expr, err = f(p.Expr, err)
+
 	return p, err
 }
 
@@ -89,6 +91,7 @@ func (a *Access) Base() token.Token {
 
 func (a *Access) Plate(err error, f func(Node, error) (Node, error)) (Node, error) {
 	a.Receiver, err = f(a.Receiver, err)
+
 	return a, err
 }
 
@@ -112,6 +115,7 @@ func (c *Call) Plate(err error, f func(Node, error) (Node, error)) (Node, error)
 	for i, arg := range c.Args {
 		c.Args[i], err = f(arg, err)
 	}
+
 	return c, err
 }
 
@@ -134,6 +138,7 @@ func (p *Prim) Plate(err error, f func(Node, error) (Node, error)) (Node, error)
 	for i, arg := range p.Args {
 		p.Args[i], err = f(arg, err)
 	}
+
 	return p, err
 }
 
@@ -156,6 +161,7 @@ func (b *Binary) Base() token.Token {
 func (b *Binary) Plate(err error, f func(Node, error) (Node, error)) (Node, error) {
 	b.Left, err = f(b.Left, err)
 	b.Right, err = f(b.Right, err)
+
 	return b, err
 }
 
@@ -177,6 +183,7 @@ func (a *Assert) Base() token.Token {
 func (a *Assert) Plate(err error, f func(Node, error) (Node, error)) (Node, error) {
 	a.Expr, err = f(a.Expr, err)
 	a.Type, err = f(a.Type, err)
+
 	return a, err
 }
 
@@ -198,6 +205,7 @@ func (l *Let) Base() token.Token {
 func (l *Let) Plate(err error, f func(Node, error) (Node, error)) (Node, error) {
 	l.Bind, err = f(l.Bind, err)
 	l.Body, err = f(l.Body, err)
+
 	return l, err
 }
 
@@ -217,6 +225,7 @@ func (c *Codata) Base() token.Token {
 	if len(c.Clauses) == 0 {
 		return token.Token{}
 	}
+
 	return c.Clauses[0].Base()
 }
 
@@ -224,8 +233,14 @@ func (c *Codata) Plate(err error, f func(Node, error) (Node, error)) (Node, erro
 	for i, clause := range c.Clauses {
 		var cl Node
 		cl, err = f(clause, err)
-		c.Clauses[i] = cl.(*Clause)
+		theCl, ok := cl.(*Clause)
+		if !ok {
+			log.Panicf("invalid clause: %v", cl)
+		}
+
+		c.Clauses[i] = theCl
 	}
+
 	return c, err
 }
 
@@ -251,6 +266,7 @@ func (c *Clause) Base() token.Token {
 	if len(c.Patterns) > 0 {
 		return c.Patterns[0].Base()
 	}
+
 	return c.Exprs[0].Base()
 }
 
@@ -261,6 +277,7 @@ func (c *Clause) Plate(err error, f func(Node, error) (Node, error)) (Node, erro
 	for i, expr := range c.Exprs {
 		c.Exprs[i], err = f(expr, err)
 	}
+
 	return c, err
 }
 
@@ -283,6 +300,7 @@ func (l *Lambda) Plate(err error, f func(Node, error) (Node, error)) (Node, erro
 	for i, expr := range l.Exprs {
 		l.Exprs[i], err = f(expr, err)
 	}
+
 	return l, err
 }
 
@@ -301,15 +319,21 @@ func (c *Case) Base() token.Token {
 	return c.Scrutinees[0].Base()
 }
 
-func (c *Case) Plate(err error, f func(Node, error) (Node, error)) (Node, error) {
+func (c *Case) Plate(err error, fun func(Node, error) (Node, error)) (Node, error) {
 	for i, scrutinee := range c.Scrutinees {
-		c.Scrutinees[i], err = f(scrutinee, err)
+		c.Scrutinees[i], err = fun(scrutinee, err)
 	}
 	for i, clause := range c.Clauses {
 		var cl Node
-		cl, err = f(clause, err)
-		c.Clauses[i] = cl.(*Clause)
+		cl, err = fun(clause, err)
+		theCl, ok := cl.(*Clause)
+		if !ok {
+			log.Panicf("invalid clause: %v", cl)
+		}
+
+		c.Clauses[i] = theCl
 	}
+
 	return c, err
 }
 
@@ -331,8 +355,14 @@ func (o *Object) Plate(err error, f func(Node, error) (Node, error)) (Node, erro
 	for i, field := range o.Fields {
 		var fl Node
 		fl, err = f(field, err)
-		o.Fields[i] = fl.(*Field)
+		theFl, ok := fl.(*Field)
+		if !ok {
+			log.Panicf("invalid field: %v", fl)
+		}
+
+		o.Fields[i] = theFl
 	}
+
 	return o, err
 }
 
@@ -355,6 +385,7 @@ func (f *Field) Plate(err error, g func(Node, error) (Node, error)) (Node, error
 	for i, expr := range f.Exprs {
 		f.Exprs[i], err = g(expr, err)
 	}
+
 	return f, err
 }
 
@@ -378,6 +409,7 @@ func (t *TypeDecl) Plate(err error, f func(Node, error) (Node, error)) (Node, er
 	for i, typ := range t.Types {
 		t.Types[i], err = f(typ, err)
 	}
+
 	return t, err
 }
 
@@ -396,6 +428,7 @@ func (v VarDecl) String() string {
 	if v.Expr == nil {
 		return parenthesize("def", v.Name, v.Type).String()
 	}
+
 	return parenthesize("def", v.Name, v.Type, v.Expr).String()
 }
 
@@ -410,6 +443,7 @@ func (v *VarDecl) Plate(err error, f func(Node, error) (Node, error)) (Node, err
 	if v.Expr != nil {
 		v.Expr, err = f(v.Expr, err)
 	}
+
 	return v, err
 }
 
@@ -459,20 +493,21 @@ var _ Node = &This{}
 //
 //tool:ignore
 func parenthesize(head string, elems ...fmt.Stringer) fmt.Stringer {
-	var b strings.Builder
-	b.WriteString("(")
+	var builder strings.Builder
+	builder.WriteString("(")
 	elemsStr := concat(elems).String()
 	if head != "" {
-		b.WriteString(head)
+		builder.WriteString(head)
 	}
 	if elemsStr != "" {
 		if head != "" {
-			b.WriteString(" ")
+			builder.WriteString(" ")
 		}
-		b.WriteString(elemsStr)
+		builder.WriteString(elemsStr)
 	}
-	b.WriteString(")")
-	return &b
+	builder.WriteString(")")
+
+	return &builder
 }
 
 // concat takes a slice of nodes that implement the fmt.Stringer interface.
@@ -480,7 +515,7 @@ func parenthesize(head string, elems ...fmt.Stringer) fmt.Stringer {
 //
 //tool:ignore
 func concat[T fmt.Stringer](elems []T) fmt.Stringer {
-	var b strings.Builder
+	var builder strings.Builder
 	for i, elem := range elems {
 		// ignore empty string
 		// e.g. concat({}) == ""
@@ -489,11 +524,12 @@ func concat[T fmt.Stringer](elems []T) fmt.Stringer {
 			continue
 		}
 		if i != 0 {
-			b.WriteString(" ")
+			builder.WriteString(" ")
 		}
-		b.WriteString(str)
+		builder.WriteString(str)
 	}
-	return &b
+
+	return &builder
 }
 
 // Traverse the [Node] in depth-first order.
@@ -507,6 +543,7 @@ func Traverse(n Node, f func(Node, error) (Node, error)) (Node, error) {
 	n, err := n.Plate(nil, func(n Node, err error) (Node, error) {
 		return Traverse(n, f)
 	})
+
 	return f(n, err)
 }
 
@@ -515,11 +552,13 @@ func Children(n Node) []Node {
 	var children []Node
 	_, err := n.Plate(nil, func(n Node, _ error) (Node, error) {
 		children = append(children, n)
+
 		return n, nil
 	})
 	if err != nil {
 		panic(fmt.Errorf("unexpected error: %w", err))
 	}
+
 	return children
 }
 
@@ -528,10 +567,12 @@ func Universe(n Node) []Node {
 	var nodes []Node
 	_, err := Traverse(n, func(n Node, _ error) (Node, error) {
 		nodes = append(nodes, n)
+
 		return n, nil
 	})
 	if err != nil {
 		panic(fmt.Errorf("unexpected error: %w", err))
 	}
+
 	return nodes
 }

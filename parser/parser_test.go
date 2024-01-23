@@ -58,13 +58,13 @@ func completeParse(test reporter, label, input, expected string) {
 		return
 	}
 
-	var b strings.Builder
+	var builder strings.Builder
 	for _, node := range nodes {
-		b.WriteString(node.String())
-		b.WriteString("\n")
+		builder.WriteString(node.String())
+		builder.WriteString("\n")
 	}
 
-	actual := b.String()
+	actual := builder.String()
 
 	if diff := utils.Diff(expected, actual); diff != "" {
 		test.Errorf("Parser %s mismatch (-want +got):\n%s", label, diff)
