@@ -2,10 +2,8 @@ package nameresolve_test
 
 import (
 	"os"
-	"strings"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/takoeight0821/anma/codata"
 	"github.com/takoeight0821/anma/driver"
 	"github.com/takoeight0821/anma/infix"
@@ -21,10 +19,15 @@ func TestResolve(t *testing.T) {
 	}
 	testcases := utils.ReadTestData(s)
 	for _, testcase := range testcases {
+		runner := driver.NewPassRunner()
+		runner.AddPass(codata.Flat{})
+		runner.AddPass(infix.NewInfixResolver())
+		runner.AddPass(nameresolve.NewResolver())
+
 		if expected, ok := testcase.Expected["nameresolve"]; ok {
-			completeResolve(t, testcase.Label, testcase.Input, expected)
+			utils.RunTest(runner, t, testcase.Label, testcase.Input, expected)
 		} else {
-			completeResolve(t, testcase.Label, testcase.Input, "no expected value")
+			utils.RunTest(runner, t, testcase.Label, testcase.Input, "no expected value")
 		}
 	}
 }
@@ -39,42 +42,13 @@ func BenchmarkFromTestData(b *testing.B) {
 	for _, testcase := range testcases {
 		b.Run(testcase.Label, func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				completeResolve(b, testcase.Label, testcase.Input, testcase.Expected["nameresolve"])
+				runner := driver.NewPassRunner()
+				runner.AddPass(codata.Flat{})
+				runner.AddPass(infix.NewInfixResolver())
+				runner.AddPass(nameresolve.NewResolver())
+
+				utils.RunTest(runner, b, testcase.Label, testcase.Input, testcase.Expected["nameresolve"])
 			}
 		})
-	}
-}
-
-type reporter interface {
-	Errorf(format string, args ...interface{})
-}
-
-func completeResolve(test reporter, label, input, expected string) {
-	runner := driver.NewPassRunner()
-	runner.AddPass(codata.Flat{})
-	runner.AddPass(infix.NewInfixResolver())
-	runner.AddPass(nameresolve.NewResolver())
-
-	nodes, err := runner.RunSource(input)
-	if err != nil {
-		test.Errorf("Resolve %s returned error: %v", label, err)
-
-		return
-	}
-
-	if _, ok := test.(*testing.B); ok {
-		// do nothing for benchmark
-		return
-	}
-
-	var b strings.Builder
-	for _, node := range nodes {
-		b.WriteString(node.String())
-		b.WriteString("\n")
-	}
-	actual := b.String()
-
-	if diff := cmp.Diff(expected, actual); diff != "" {
-		test.Errorf("Resolve %s mismatch (-want +got):\n%s", label, diff)
 	}
 }
