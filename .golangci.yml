@@ -48,3 +48,6 @@ linters-settings:
       - Node
       - Value
       - Sexp
+  varnamelen:
+    ignore-decls:
+      - i int

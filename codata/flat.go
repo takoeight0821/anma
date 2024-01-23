@@ -44,19 +44,19 @@ func flat(n ast.Node) (ast.Node, error) {
 
 // flatEach converts Copatterns ([Access] and [This] in [Pattern]) into [Object] and [Lambda].
 // If error occurred, return the original node and the error. Because ast.Traverse needs it.
-func flatEach(n ast.Node, err error) (ast.Node, error) {
+func flatEach(node ast.Node, err error) (ast.Node, error) {
 	// early return if error occurred
 	if err != nil {
-		return n, err
+		return node, err
 	}
-	if c, ok := n.(*ast.Codata); ok {
+	if c, ok := node.(*ast.Codata); ok {
 		newNode, err := flatCodata(c)
 		if err != nil {
-			return n, err
+			return node, err
 		}
 		return newNode, nil
 	}
-	return n, nil
+	return node, nil
 }
 
 type ArityError struct {
@@ -84,22 +84,22 @@ func flatCodata(c *ast.Codata) (ast.Node, error) {
 	// Generate PatternList
 	arity := NotChecked
 	clauses := make([]plistClause, len(c.Clauses))
-	for i, cl := range c.Clauses {
-		ob, err := rewrite.NewObservation(cl)
+	for i, clause := range c.Clauses {
+		ob, err := rewrite.NewObservation(clause)
 		if err != nil {
 			log.Printf("observation error: %v", err)
 		} else {
 			log.Printf("observation: %v", ob)
 		}
-		plist, err := NewPatternList(cl)
+		plist, err := NewPatternList(clause)
 		if err != nil {
 			return nil, err
 		}
-		clauses[i] = plistClause{plist, cl.Exprs}
+		clauses[i] = plistClause{plist, clause.Exprs}
 		if arity == NotChecked {
 			arity = plist.ArityOf()
 		}
-		err = checkArity(arity, plist.ArityOf(), cl.Base())
+		err = checkArity(arity, plist.ArityOf(), clause.Base())
 		if err != nil {
 			return nil, err
 		}
@@ -144,24 +144,24 @@ func (c plistClause) String() string {
 // Pop the first accessor of each clause and group remaining clauses by the popped accessor.
 func (b builder) groupClausesByAccessor(clauses []plistClause) (map[string][]plistClause, error) {
 	next := make(map[string][]plistClause)
-	for _, c := range clauses {
-		plist := c.plist
+	for _, clause := range clauses {
+		plist := clause.plist
 		if field, plist, ok := plist.Pop(); ok {
 			next[field.String()] = append(
 				next[field.String()],
-				plistClause{plist, c.exprs})
+				plistClause{plist, clause.exprs})
 		} else {
-			return nil, utils.ErrorAt{Where: plist.Base(), Err: UnsupportedPatternError{Clause: c}}
+			return nil, utils.ErrorAt{Where: plist.Base(), Err: UnsupportedPatternError{Clause: clause}}
 		}
 	}
 	return next, nil
 }
 
-func (b builder) fieldBody(cs []plistClause) ([]*ast.Clause, error) {
+func (b builder) fieldBody(clauses []plistClause) ([]*ast.Clause, error) {
 	// if any of cs has no accessors and has guards, generate Case expression
 
 	// new clauses for case expression in a field
-	caseClauses := make([]*ast.Clause, len(cs))
+	caseClauses := make([]*ast.Clause, len(clauses))
 
 	// restClauses are clauses which have unpopped accessors
 	restPatterns := make([]struct {
@@ -171,28 +171,28 @@ func (b builder) fieldBody(cs []plistClause) ([]*ast.Clause, error) {
 	// for each rest clause, the body expression is sum of expressions of all rest clauses.
 	restClauses := make([]plistClause, 0)
 
-	for i, c := range cs {
+	for i, clause := range clauses {
 		// if c has no accessors, generate pattern matching clause
-		if !c.plist.HasAccess() {
-			caseClauses[i] = plistToClause(c.plist, c.exprs...)
+		if !clause.plist.HasAccess() {
+			caseClauses[i] = plistToClause(clause.plist, clause.exprs...)
 		} else {
 			// otherwise, add to restPatterns and restClauses
 			restPatterns = append(restPatterns, struct {
 				index int
 				plist PatternList
-			}{i, c.plist})
+			}{i, clause.plist})
 
-			restClauses = append(restClauses, c)
+			restClauses = append(restClauses, clause)
 		}
 	}
 
-	for _, p := range restPatterns {
+	for _, pattern := range restPatterns {
 		// for each rest clause, perform pattern matching ahead of time.
 		obj, err := b.object(restClauses)
 		if err != nil {
 			return nil, err
 		}
-		caseClauses[p.index] = plistToClause(p.plist, obj)
+		caseClauses[pattern.index] = plistToClause(pattern.plist, obj)
 	}
 
 	return caseClauses, nil
@@ -275,17 +275,17 @@ func plistToClause(plist PatternList, exprs ...ast.Node) *ast.Clause {
 
 // newCase creates a new Case node with the given scrutinees and clauses.
 // If there is no scrutinee, return Exprs of the first clause.
-func newCase(scrs []token.Token, cs []*ast.Clause) []ast.Node {
+func newCase(scrs []token.Token, clauses []*ast.Clause) []ast.Node {
 	// if there is no scrutinee, return Exprs of the first clause
 	// because case expression always matches the first clause.
 	if len(scrs) == 0 {
-		return cs[0].Exprs
+		return clauses[0].Exprs
 	}
 	vars := make([]ast.Node, len(scrs))
 	for i, s := range scrs {
 		vars[i] = &ast.Var{Name: s}
 	}
-	return []ast.Node{&ast.Case{Scrutinees: vars, Clauses: cs}}
+	return []ast.Node{&ast.Case{Scrutinees: vars, Clauses: clauses}}
 }
 
 type InvalidCallPatternError struct {
@@ -307,15 +307,15 @@ func accessors(p ast.Node) []token.Token {
 }
 
 // Get Args of Call{This, ...}.
-func params(p ast.Node) ([]ast.Node, error) {
-	switch p := p.(type) {
+func params(pattern ast.Node) ([]ast.Node, error) {
+	switch pattern := pattern.(type) {
 	case *ast.Access:
-		return params(p.Receiver)
+		return params(pattern.Receiver)
 	case *ast.Call:
-		if _, ok := p.Func.(*ast.This); !ok {
-			return nil, utils.ErrorAt{Where: p.Base(), Err: InvalidCallPatternError{Pattern: p}}
+		if _, ok := pattern.Func.(*ast.This); !ok {
+			return nil, utils.ErrorAt{Where: pattern.Base(), Err: InvalidCallPatternError{Pattern: pattern}}
 		}
-		return p.Args, nil
+		return pattern.Args, nil
 	default:
 		return nil, nil
 	}

@@ -41,18 +41,20 @@ func main() {
 	}
 }
 
-var HISTORY = filepath.Join(xdg.DataHome, "anma", ".anma_history")
+func historyPath() string {
+	return filepath.Join(xdg.DataHome, "anma", ".anma_history")
+}
 
 // writeHistory writes the history of the REPL to a file.
 func writeHistory(line *liner.State) {
 	// Create the directory for the history file if it does not exist.
-	if err := os.MkdirAll(filepath.Dir(HISTORY), os.ModePerm); err != nil {
+	if err := os.MkdirAll(filepath.Dir(historyPath()), os.ModePerm); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
 	// Write the history file.
 	// If the file does not exist, it will be created automatically.
 	// If the file exists, it will be overwritten.
-	if f, err := os.Create(HISTORY); err == nil {
+	if f, err := os.Create(historyPath()); err == nil {
 		defer f.Close()
 		if _, err := line.WriteHistory(f); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -63,7 +65,7 @@ func writeHistory(line *liner.State) {
 
 // readHistory reads the history of the REPL from a file.
 func readHistory(line *liner.State) {
-	if f, err := os.Open(HISTORY); err == nil {
+	if f, err := os.Open(historyPath()); err == nil {
 		defer f.Close()
 		if _, err := line.ReadHistory(f); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -77,12 +79,12 @@ func RunPrompt() error {
 	defer writeHistory(line)
 	readHistory(line)
 
-	r := driver.NewPassRunner()
-	r.AddPass(codata.Flat{})
-	r.AddPass(infix.NewInfixResolver())
-	r.AddPass(nameresolve.NewResolver())
+	runner := driver.NewPassRunner()
+	runner.AddPass(codata.Flat{})
+	runner.AddPass(infix.NewInfixResolver())
+	runner.AddPass(nameresolve.NewResolver())
 
-	ev := eval.NewEvaluator()
+	evaluator := eval.NewEvaluator()
 
 	for {
 		input, err := line.Prompt("> ")
@@ -91,17 +93,19 @@ func RunPrompt() error {
 		}
 		line.AppendHistory(input)
 
-		nodes, err := r.RunSource(input)
+		nodes, err := runner.RunSource(input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+
 			continue
 		}
 
 		// Evaluate all nodes.
 		for _, node := range nodes {
-			value, err := ev.Eval(node)
+			value, err := evaluator.Eval(node)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+
 				continue
 			}
 			fmt.Println(value)
@@ -111,10 +115,10 @@ func RunPrompt() error {
 
 // RunFile runs the specified file.
 func RunFile(path string) error {
-	r := driver.NewPassRunner()
-	r.AddPass(codata.Flat{})
-	r.AddPass(infix.NewInfixResolver())
-	r.AddPass(nameresolve.NewResolver())
+	runner := driver.NewPassRunner()
+	runner.AddPass(codata.Flat{})
+	runner.AddPass(infix.NewInfixResolver())
+	runner.AddPass(nameresolve.NewResolver())
 
 	// Read the source code from the file.
 	bytes, err := os.ReadFile(path)
@@ -122,21 +126,21 @@ func RunFile(path string) error {
 		return fmt.Errorf("read file: %w", err)
 	}
 
-	nodes, err := r.RunSource(string(bytes))
+	nodes, err := runner.RunSource(string(bytes))
 	if err != nil {
 		return fmt.Errorf("run file: %w", err)
 	}
 
-	ev := eval.NewEvaluator()
+	evaluator := eval.NewEvaluator()
 	// Evaluate all nodes for loading definitions.
 	for _, node := range nodes {
-		_, err := ev.Eval(node)
+		_, err := evaluator.Eval(node)
 		if err != nil {
 			return fmt.Errorf("run file: %w", err)
 		}
 	}
 
-	main, ok := ev.SearchMain()
+	main, ok := evaluator.SearchMain()
 	if !ok {
 		return noMainError{}
 	}

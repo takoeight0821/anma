@@ -15,24 +15,24 @@ type Observation struct {
 }
 
 func (o Observation) String() string {
-	var b strings.Builder
-	b.WriteString("[ ")
+	var builder strings.Builder
+	builder.WriteString("[ ")
 	for _, s := range o.sequence {
-		b.WriteString(s.String())
-		b.WriteString(" ")
+		builder.WriteString(s.String())
+		builder.WriteString(" ")
 	}
-	b.WriteString("| ")
+	builder.WriteString("| ")
 	for _, g := range o.Guard() {
-		b.WriteString(g.String())
-		b.WriteString(" ")
+		builder.WriteString(g.String())
+		builder.WriteString(" ")
 	}
-	b.WriteString("] -> { ")
+	builder.WriteString("] -> { ")
 	for _, e := range o.body {
-		b.WriteString(e.String())
-		b.WriteString("; ")
+		builder.WriteString(e.String())
+		builder.WriteString("; ")
 	}
-	b.WriteString("}")
-	return b.String()
+	builder.WriteString("}")
+	return builder.String()
 }
 
 func (o Observation) Base() token.Token {
@@ -74,42 +74,42 @@ func NewObservation(clause *ast.Clause) (*Observation, error) {
 
 // extractGuard extracts guard from the given pattern.
 // Returns the guard and error if the pattern is valid.
-func extractGuard(p ast.Node) ([]ast.Node, error) {
-	switch p := p.(type) {
+func extractGuard(pattern ast.Node) ([]ast.Node, error) {
+	switch pattern := pattern.(type) {
 	case *ast.Access:
-		return extractGuard(p.Receiver)
+		return extractGuard(pattern.Receiver)
 	case *ast.Call:
-		if _, ok := p.Func.(*ast.This); ok {
-			return p.Args, nil
+		if _, ok := pattern.Func.(*ast.This); ok {
+			return pattern.Args, nil
 		}
 	case *ast.This:
 		return []ast.Node{}, nil
 	}
-	return nil, NewInvalidPatternError(p)
+	return nil, NewInvalidPatternError(pattern)
 }
 
 // extractSequence extracts sequence from the given pattern.
 // Returns the sequence and error if the pattern is valid.
-func extractSequence(p ast.Node) ([]ast.Node, error) {
-	switch p := p.(type) {
+func extractSequence(pattern ast.Node) ([]ast.Node, error) {
+	switch pattern := pattern.(type) {
 	case *ast.Access:
-		seq, err := extractSequence(p.Receiver)
+		seq, err := extractSequence(pattern.Receiver)
 		if err != nil {
 			return nil, err
 		}
-		current := &ast.Access{Receiver: &ast.This{Token: p.Receiver.Base()}, Name: p.Name}
+		current := &ast.Access{Receiver: &ast.This{Token: pattern.Receiver.Base()}, Name: pattern.Name}
 		return append(seq, current), nil
 	case *ast.Call:
-		seq, err := extractSequence(p.Func)
+		seq, err := extractSequence(pattern.Func)
 		if err != nil {
 			return nil, err
 		}
-		current := &ast.Call{Func: &ast.This{Token: p.Func.Base()}, Args: p.Args}
+		current := &ast.Call{Func: &ast.This{Token: pattern.Func.Base()}, Args: pattern.Args}
 		return append(seq, current), nil
 	case *ast.This:
 		return []ast.Node{}, nil
 	default:
-		return nil, NewInvalidPatternError(p)
+		return nil, NewInvalidPatternError(pattern)
 	}
 }
 
@@ -136,7 +136,12 @@ func (o *Observation) ArityOf() Arity {
 	case *ast.Access:
 		return None
 	case *ast.Call:
-		return Arity(len(o.Peek().(*ast.Call).Args))
+		callNode, ok := o.Peek().(*ast.Call)
+		if !ok {
+			panic("invalid pattern: not a call")
+		}
+
+		return Arity(len(callNode.Args))
 	default:
 		panic("invalid pattern")
 	}

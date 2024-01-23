@@ -26,40 +26,45 @@ func (f *Flat) Run(program []ast.Node) ([]ast.Node, error) {
 			return program, err
 		}
 	}
+
 	return program, nil
 }
 
-func (f *Flat) flat(n ast.Node) (ast.Node, error) {
-	n, err := ast.Traverse(n, f.flatEach)
+func (f *Flat) flat(node ast.Node) (ast.Node, error) {
+	node, err := ast.Traverse(node, f.flatEach)
 	if err != nil {
-		return n, fmt.Errorf("flat %v: %w", n, err)
+		return node, fmt.Errorf("flat %v: %w", node, err)
 	}
-	return n, nil
+
+	return node, nil
 }
 
-func (f *Flat) flatEach(n ast.Node, err error) (ast.Node, error) {
+func (f *Flat) flatEach(node ast.Node, err error) (ast.Node, error) {
 	// early return if error occurred.
 	if err != nil {
-		return n, err
+		return node, err
 	}
-	if c, ok := n.(*ast.Codata); ok {
-		n2, err := f.flatCodata(c)
+	if c, ok := node.(*ast.Codata); ok {
+		flattened, err := f.flatCodata(c)
 		if err != nil {
-			return n, err
+			return node, err
 		}
-		return n2, nil
+
+		return flattened, nil
 	}
-	return n, nil
+
+	return node, nil
 }
 
 // flatCodata converts copatterns into object construction, function, and traditional pattern matching.
-func (f *Flat) flatCodata(c *ast.Codata) (ast.Node, error) {
-	for _, clause := range c.Clauses {
+func (f *Flat) flatCodata(codata *ast.Codata) (ast.Node, error) {
+	for _, clause := range codata.Clauses {
 		ob, err := NewObservation(clause)
 		if err != nil {
-			return c, err
+			return codata, err
 		}
 		log.Printf("observation of: %v => %v", clause.Patterns, ob.sequence)
 	}
-	return c, nil
+
+	return codata, nil
 }
