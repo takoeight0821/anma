@@ -70,7 +70,7 @@ func completeEval(test reporter, label string, input string, expected string) {
 	for i, node := range nodes {
 		values[i], err = evaluator.Eval(node)
 		if err != nil {
-			test.Errorf("Eval %s returned error: %v", label, err)
+			test.Errorf("%s returned error: %v", label, err)
 
 			return
 		}
@@ -80,7 +80,7 @@ func completeEval(test reporter, label string, input string, expected string) {
 		top := token.Token{Kind: token.IDENT, Lexeme: "toplevel", Line: 0, Literal: -1}
 		ret, err := main.Apply(top)
 		if err != nil {
-			test.Errorf("Eval %s returned error: %v", label, err)
+			test.Errorf("%s returned error: %v", label, err)
 
 			return
 		}
@@ -93,9 +93,9 @@ func completeEval(test reporter, label string, input string, expected string) {
 		actual := ret.String()
 
 		if diff := cmp.Diff(expected, actual); diff != "" {
-			test.Errorf("Eval %s mismatch (-want +got):\n%s", label, diff)
+			test.Errorf("%s mismatch (-want +got):\n%s", label, diff)
 		}
 	} else {
-		test.Errorf("Eval %s returned no main function", label)
+		test.Errorf("%s does not have a main function", label)
 	}
 }
