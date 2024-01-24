@@ -55,7 +55,7 @@ func (o *Observation) Plate(err error, f func(ast.Node, error) (ast.Node, error)
 var _ ast.Node = &Observation{}
 
 // NewObservation creates a new observation node with the given pattern.
-func NewObservation(clause *ast.Clause) (*Observation, error) {
+func NewObservation(clause *ast.CodataClause) (*Observation, error) {
 	if len(clause.Patterns) != 1 {
 		return nil, NewInvalidPatternError(clause.Patterns...)
 	}

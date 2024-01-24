@@ -279,7 +279,7 @@ func (p *Parser) callTail(fun ast.Node) ast.Node {
 
 // codata = "{" clause ("," clause)* ","? "}" ;
 func (p *Parser) codata() *ast.Codata {
-	clauses := []*ast.Clause{p.clause()}
+	clauses := []*ast.CodataClause{p.clause()}
 	for p.match(token.COMMA) {
 		p.advance()
 		if p.match(token.RIGHTBRACE) {
@@ -293,7 +293,7 @@ func (p *Parser) codata() *ast.Codata {
 }
 
 // clause = pattern "->" expr (";" expr)* ";"? ;
-func (p *Parser) clause() *ast.Clause {
+func (p *Parser) clause() *ast.CodataClause {
 	pattern := p.pattern()
 	p.consume(token.ARROW)
 	exprs := []ast.Node{p.expr()}
@@ -305,7 +305,7 @@ func (p *Parser) clause() *ast.Clause {
 		exprs = append(exprs, p.expr())
 	}
 
-	return &ast.Clause{Patterns: []ast.Node{pattern}, Exprs: exprs}
+	return &ast.CodataClause{Patterns: []ast.Node{pattern}, Exprs: exprs}
 }
 
 // pattern = methodPat ;

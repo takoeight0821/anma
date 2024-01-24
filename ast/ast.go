@@ -214,7 +214,7 @@ var _ Node = &Let{}
 type Codata struct {
 	// len(Clauses) > 0
 	// for each clause, len(Patterns) == 1
-	Clauses []*Clause
+	Clauses []*CodataClause
 }
 
 func (c Codata) String() string {
@@ -233,7 +233,7 @@ func (c *Codata) Plate(err error, f func(Node, error) (Node, error)) (Node, erro
 	for i, clause := range c.Clauses {
 		var cl Node
 		cl, err = f(clause, err)
-		theCl, ok := cl.(*Clause)
+		theCl, ok := cl.(*CodataClause)
 		if !ok {
 			log.Panicf("invalid clause: %v", cl)
 		}
@@ -246,12 +246,12 @@ func (c *Codata) Plate(err error, f func(Node, error) (Node, error)) (Node, erro
 
 var _ Node = &Codata{}
 
-type Clause struct {
+type CodataClause struct {
 	Patterns []Node
 	Exprs    []Node // len(Exprs) > 0
 }
 
-func (c Clause) String() string {
+func (c CodataClause) String() string {
 	var pat fmt.Stringer
 	if len(c.Patterns) > 1 {
 		pat = parenthesize("", concat(c.Patterns))
@@ -262,7 +262,7 @@ func (c Clause) String() string {
 	return parenthesize("clause", pat, concat(c.Exprs)).String()
 }
 
-func (c *Clause) Base() token.Token {
+func (c *CodataClause) Base() token.Token {
 	if len(c.Patterns) > 0 {
 		return c.Patterns[0].Base()
 	}
@@ -270,7 +270,7 @@ func (c *Clause) Base() token.Token {
 	return c.Exprs[0].Base()
 }
 
-func (c *Clause) Plate(err error, f func(Node, error) (Node, error)) (Node, error) {
+func (c *CodataClause) Plate(err error, f func(Node, error) (Node, error)) (Node, error) {
 	for i, pattern := range c.Patterns {
 		c.Patterns[i], err = f(pattern, err)
 	}
@@ -281,7 +281,7 @@ func (c *Clause) Plate(err error, f func(Node, error) (Node, error)) (Node, erro
 	return c, err
 }
 
-var _ Node = &Clause{}
+var _ Node = &CodataClause{}
 
 type Lambda struct {
 	Params []token.Token
@@ -308,7 +308,7 @@ var _ Node = &Lambda{}
 
 type Case struct {
 	Scrutinees []Node
-	Clauses    []*Clause // len(Clauses) > 0
+	Clauses    []*CodataClause // len(Clauses) > 0
 }
 
 func (c Case) String() string {
@@ -326,7 +326,7 @@ func (c *Case) Plate(err error, fun func(Node, error) (Node, error)) (Node, erro
 	for i, clause := range c.Clauses {
 		var cl Node
 		cl, err = fun(clause, err)
-		theCl, ok := cl.(*Clause)
+		theCl, ok := cl.(*CodataClause)
 		if !ok {
 			log.Panicf("invalid clause: %v", cl)
 		}

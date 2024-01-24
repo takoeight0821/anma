@@ -227,7 +227,7 @@ func (r *Resolver) solve(node ast.Node) (ast.Node, error) {
 		log.Panicf("codata must be desugared before name resolution:\n%v", node)
 
 		return node, nil
-	case *ast.Clause:
+	case *ast.CodataClause:
 		r.env = newEnv(r.env)
 		defer func() { r.env = r.env.parent }()
 		for i, pattern := range node.Patterns {
@@ -284,7 +284,7 @@ func (r *Resolver) solve(node ast.Node) (ast.Node, error) {
 			if err != nil {
 				return node, err
 			}
-			theClause, ok := clause.(*ast.Clause)
+			theClause, ok := clause.(*ast.CodataClause)
 			if !ok {
 				return node, utils.PosError{Where: clause.Base(), Err: NotClauseError{Node: clause}}
 			}
