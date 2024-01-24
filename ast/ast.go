@@ -308,7 +308,7 @@ var _ Node = &Lambda{}
 
 type Case struct {
 	Scrutinees []Node
-	Clauses    []*CodataClause // len(Clauses) > 0
+	Clauses    []*CaseClause // len(Clauses) > 0
 }
 
 func (c Case) String() string {
@@ -326,7 +326,7 @@ func (c *Case) Plate(err error, fun func(Node, error) (Node, error)) (Node, erro
 	for i, clause := range c.Clauses {
 		var cl Node
 		cl, err = fun(clause, err)
-		theCl, ok := cl.(*CodataClause)
+		theCl, ok := cl.(*CaseClause)
 		if !ok {
 			log.Panicf("invalid clause: %v", cl)
 		}
@@ -338,6 +338,43 @@ func (c *Case) Plate(err error, fun func(Node, error) (Node, error)) (Node, erro
 }
 
 var _ Node = &Case{}
+
+type CaseClause struct {
+	Patterns []Node
+	Exprs    []Node // len(Exprs) > 0
+}
+
+func (c CaseClause) String() string {
+	var pat fmt.Stringer
+	if len(c.Patterns) > 1 {
+		pat = parenthesize("", concat(c.Patterns))
+	} else {
+		pat = c.Patterns[0]
+	}
+
+	return parenthesize("clause", pat, concat(c.Exprs)).String()
+}
+
+func (c *CaseClause) Base() token.Token {
+	if len(c.Patterns) > 0 {
+		return c.Patterns[0].Base()
+	}
+
+	return c.Exprs[0].Base()
+}
+
+func (c *CaseClause) Plate(err error, f func(Node, error) (Node, error)) (Node, error) {
+	for i, pattern := range c.Patterns {
+		c.Patterns[i], err = f(pattern, err)
+	}
+	for i, expr := range c.Exprs {
+		c.Exprs[i], err = f(expr, err)
+	}
+
+	return c, err
+}
+
+var _ Node = &CaseClause{}
 
 type Object struct {
 	Fields []*Field // len(Fields) > 0

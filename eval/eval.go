@@ -326,7 +326,7 @@ func (ev *Evaluator) evalCase(node *ast.Case) (Value, error) {
 }
 
 // matchClause matches the given clause's patterns with the given scrutinees.
-func matchClause(clause *ast.CodataClause, scrs []Value) (map[Name]Value, bool) {
+func matchClause(clause *ast.CaseClause, scrs []Value) (map[Name]Value, bool) {
 	if len(clause.Patterns) != len(scrs) {
 		return nil, false
 	}

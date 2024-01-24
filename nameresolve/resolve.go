@@ -284,11 +284,33 @@ func (r *Resolver) solve(node ast.Node) (ast.Node, error) {
 			if err != nil {
 				return node, err
 			}
-			theClause, ok := clause.(*ast.CodataClause)
+			theClause, ok := clause.(*ast.CaseClause)
 			if !ok {
 				return node, utils.PosError{Where: clause.Base(), Err: NotClauseError{Node: clause}}
 			}
 			node.Clauses[i] = theClause
+		}
+
+		return node, nil
+	case *ast.CaseClause:
+		r.env = newEnv(r.env)
+		defer func() { r.env = r.env.parent }()
+		for i, pattern := range node.Patterns {
+			_, err := r.assign(pattern, asPattern)
+			if err != nil {
+				return node, err
+			}
+			node.Patterns[i], err = r.solve(pattern)
+			if err != nil {
+				return node, err
+			}
+		}
+		for i, expr := range node.Exprs {
+			var err error
+			node.Exprs[i], err = r.solve(expr)
+			if err != nil {
+				return node, err
+			}
 		}
 
 		return node, nil

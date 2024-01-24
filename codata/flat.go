@@ -165,11 +165,11 @@ func (b builder) groupClausesByAccessor(clauses []plistClause) (map[string][]pli
 	return next, nil
 }
 
-func (b builder) fieldBody(clauses []plistClause) ([]*ast.CodataClause, error) {
+func (b builder) fieldBody(clauses []plistClause) ([]*ast.CaseClause, error) {
 	// if any of cs has no accessors and has guards, generate Case expression
 
 	// new clauses for case expression in a field
-	caseClauses := make([]*ast.CodataClause, len(clauses))
+	caseClauses := make([]*ast.CaseClause, len(clauses))
 
 	// restClauses are clauses which have unpopped accessors
 	restPatterns := make([]struct {
@@ -260,7 +260,7 @@ func (b *builder) lambda(arity int, clauses []plistClause) (ast.Node, error) {
 	}
 
 	// otherwise, body expression is Case.
-	caseClauses := make([]*ast.CodataClause, 0)
+	caseClauses := make([]*ast.CaseClause, 0)
 	for _, c := range clauses {
 		caseClauses = append(caseClauses, plistToClause(c.plist, c.exprs...))
 	}
@@ -280,13 +280,13 @@ func newVar(name string, base token.Token) token.Token {
 
 // plistToClause creates a new Clause node with the given pattern and expressions.
 // pattern must be a patternList.
-func plistToClause(plist PatternList, exprs ...ast.Node) *ast.CodataClause {
-	return &ast.CodataClause{Patterns: plist.Params(), Exprs: exprs}
+func plistToClause(plist PatternList, exprs ...ast.Node) *ast.CaseClause {
+	return &ast.CaseClause{Patterns: plist.Params(), Exprs: exprs}
 }
 
 // newCase creates a new Case node with the given scrutinees and clauses.
 // If there is no scrutinee, return Exprs of the first clause.
-func newCase(scrs []token.Token, clauses []*ast.CodataClause) []ast.Node {
+func newCase(scrs []token.Token, clauses []*ast.CaseClause) []ast.Node {
 	// if there is no scrutinee, return Exprs of the first clause
 	// because case expression always matches the first clause.
 	if len(scrs) == 0 {
