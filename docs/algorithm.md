@@ -95,7 +95,7 @@ buildLambda(arity, clauses):
             return newLambda(scrutinees, obj)
     
     // そうでなければ，bodyはCase
-    caseClauses = []Clause
+    caseClauses = []CaseClause
     for clause in clauses:
         caseClauses = append(caseClauses, toCaseClause(clause))
     
@@ -120,11 +120,13 @@ Node:
     Call(func Node, args []Node)
     Let(name string, value Node)
     Seq(nodes []Node)
-    Codata(clauses []Clause)
-    Clause(pattern Pattern, body Node)
+    Codata(clauses []CodataClause)
+    CodataClause(pattern Pattern, body Node)
     Object(fields []Field)
     Field(name string, value Node)
     Function(params []string, body Node)
+    Case(clauses []CaseClause)
+    CaseClause(patterns []Pattern, body Node)
 
 Pattern:
     This
@@ -142,20 +144,7 @@ Plate(Access(receiver, name), f):
     return Access(f(receiver), name)
 Plate(Call(func, args), f):
     return Call(f(func), map(f, args))
-Plate(Let(name, value), f):
-    return Let(name, f(value))
-Plate(Seq(nodes), f):
-    return Seq(map(f, nodes))
-Plate(Codata(clauses), f):
-    return Codata(map(f, clauses))
-Plate(Clause(pattern, body), f):
-    return Clause(f(pattern), f(body))
-Plate(Object(fields), f):
-    return Object(map(f, fields))
-Plate(Field(name, value), f):
-    return Field(name, f(value))
-Plate(Function(params, body), f):
-    return Function(params, f(body))
+Plate(other): ...
 
 Traverse(node, f):
     return f(Plate(node, fn(child): Traverse(child, f)))
