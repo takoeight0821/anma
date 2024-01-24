@@ -247,33 +247,24 @@ func (c *Codata) Plate(err error, f func(Node, error) (Node, error)) (Node, erro
 var _ Node = &Codata{}
 
 type CodataClause struct {
-	Patterns []Node
-	Exprs    []Node // len(Exprs) > 0
+	Pattern Node
+	Exprs   []Node // len(Exprs) > 0
 }
 
 func (c CodataClause) String() string {
-	var pat fmt.Stringer
-	if len(c.Patterns) > 1 {
-		pat = parenthesize("", concat(c.Patterns))
-	} else {
-		pat = c.Patterns[0]
-	}
-
-	return parenthesize("clause", pat, concat(c.Exprs)).String()
+	return parenthesize("clause", c.Pattern, concat(c.Exprs)).String()
 }
 
 func (c *CodataClause) Base() token.Token {
-	if len(c.Patterns) > 0 {
-		return c.Patterns[0].Base()
+	if c.Pattern != nil {
+		return c.Pattern.Base()
 	}
 
 	return c.Exprs[0].Base()
 }
 
 func (c *CodataClause) Plate(err error, f func(Node, error) (Node, error)) (Node, error) {
-	for i, pattern := range c.Patterns {
-		c.Patterns[i], err = f(pattern, err)
-	}
+	c.Pattern, err = f(c.Pattern, err)
 	for i, expr := range c.Exprs {
 		c.Exprs[i], err = f(expr, err)
 	}

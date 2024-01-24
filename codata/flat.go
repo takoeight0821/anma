@@ -340,12 +340,8 @@ type PatternList struct {
 }
 
 func NewPatternList(clause *ast.CodataClause) (PatternList, error) {
-	if len(clause.Patterns) != 1 {
-		panic("invalid pattern")
-	}
-
-	accessors := accessors(clause.Patterns[0])
-	params, err := params(clause.Patterns[0])
+	accessors := accessors(clause.Pattern)
+	params, err := params(clause.Pattern)
 	if err != nil {
 		return PatternList{}, err
 	}

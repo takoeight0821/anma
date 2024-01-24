@@ -56,15 +56,12 @@ var _ ast.Node = &Observation{}
 
 // NewObservation creates a new observation node with the given pattern.
 func NewObservation(clause *ast.CodataClause) (*Observation, error) {
-	if len(clause.Patterns) != 1 {
-		return nil, NewInvalidPatternError(clause.Patterns...)
-	}
 	// Pattern must have a valid guard.
-	_, err := extractGuard(clause.Patterns[0])
+	_, err := extractGuard(clause.Pattern)
 	if err != nil {
 		return nil, err
 	}
-	seq, err := extractSequence(clause.Patterns[0])
+	seq, err := extractSequence(clause.Pattern)
 	if err != nil {
 		return nil, err
 	}

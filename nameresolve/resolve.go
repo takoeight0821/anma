@@ -230,15 +230,13 @@ func (r *Resolver) solve(node ast.Node) (ast.Node, error) {
 	case *ast.CodataClause:
 		r.env = newEnv(r.env)
 		defer func() { r.env = r.env.parent }()
-		for i, pattern := range node.Patterns {
-			_, err := r.assign(pattern, asPattern)
-			if err != nil {
-				return node, err
-			}
-			node.Patterns[i], err = r.solve(pattern)
-			if err != nil {
-				return node, err
-			}
+		_, err := r.assign(node.Pattern, asPattern)
+		if err != nil {
+			return node, err
+		}
+		node.Pattern, err = r.solve(node.Pattern)
+		if err != nil {
+			return node, err
 		}
 		for i, expr := range node.Exprs {
 			var err error

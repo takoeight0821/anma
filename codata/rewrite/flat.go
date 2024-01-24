@@ -63,7 +63,7 @@ func (f *Flat) flatCodata(codata *ast.Codata) (ast.Node, error) {
 		if err != nil {
 			return codata, err
 		}
-		log.Printf("observation of: %v => %v", clause.Patterns, ob.sequence)
+		log.Printf("observation of: %v => %v", clause.Pattern, ob.sequence)
 	}
 
 	return codata, nil

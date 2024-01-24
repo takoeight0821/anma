@@ -305,7 +305,7 @@ func (p *Parser) clause() *ast.CodataClause {
 		exprs = append(exprs, p.expr())
 	}
 
-	return &ast.CodataClause{Patterns: []ast.Node{pattern}, Exprs: exprs}
+	return &ast.CodataClause{Pattern: pattern, Exprs: exprs}
 }
 
 // pattern = methodPat ;
