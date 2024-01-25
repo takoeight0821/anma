@@ -42,12 +42,21 @@ flatCodata(codata Codata) -> Node:
 plistClause(plist PatternList, body Node) 
 PatternList(fields []string, guards []Node)
 
+// 余パターンから，フィールドアクセスの列を取り出す
+// 例：
+// #.first.second -> [first, second]
+// #(Cons(x, xs)).tail.head -> [tail, head]
 accessors(pattern) -> []string:
     if pattern is Access:
         return append(accessors(pattern.receiver), pattern.name)
 
     return []
 
+// 余パターンから，ガードを取り出す
+// 例：
+// #.first.second -> []
+// #(Cons(x, xs)).tail.head -> [Cons(x, xs)]
+// #(a, b, c) -> [a, b, c]
 guard(pattern) -> []Node:
     if pattern is Access:
         return guard(pattern)
@@ -74,13 +83,50 @@ buildObject(scrutinees []string, clauses) -> Node:
     next = groupClausesByHeadField(clauses)
     fields = [] as []Field
     for field, clauses in next:
-        body = fieldBody(clauses)
+        body = fieldBody(scrutinees, clauses)
         fields = append(fields, Field(field, newCase(scrutinees, body)))
     
     return Object(fields)
 
-groupClausesByHeadField: TODO
-newCase: TODO
+groupClausesByHeadField(clauses []plistClause) -> map[string][]plistClause:
+    next = new map[string][]plistClause
+    for clause in clauses:
+        // 先頭のフィールドを取り出す
+        field = clause.plist.fields[0]
+        plist = PatternList(
+            clause.plist.fields[1:],
+            clause.plist.guards)
+        next[field] = append(next[field], plistClause(plist, clause.body))
+    
+    retrn next
+
+fieldBody(scrutinees, clauses) -> []CaseClause:
+    caseClauses = []
+
+    restPatterns = [] as (int, PatternList)
+    restClauses = []
+    
+    for i, clause in clauses:
+        if not hasAccess(clause):
+            caseClauses[i] = CaseClause(clause.plist.guards, clause.body)
+        else:
+            restPatterns = append(restPatterns,
+                (i, clause.plist))
+            restClauses = append(restClauses, clause)
+    
+    for (index, plist) in restPatterns:
+        obj = buildObject(scrutinees, restClauses)
+        caseClauses[index] = CaseClause(plist, obj)
+    
+    return caseClauses
+
+
+newCase(scrutinees, clauses):
+    if len(scrutinees) == 0:
+        return clauses[0].body
+    
+    return Case(scrutinees, clauses)
+
 
 buildLambda(arity, clauses):
     scrutinees = [] as []string
@@ -92,20 +138,20 @@ buildLambda(arity, clauses):
         if hasAccess(clause):
             obj = buildObject(scrutinees, clauses)
             
-            return newLambda(scrutinees, obj)
+            return Lambda(scrutinees, obj)
     
     // そうでなければ，bodyはCase
     caseClauses = []CaseClause
     for clause in clauses:
-        caseClauses = append(caseClauses, toCaseClause(clause))
+        caseClauses = append(caseClauses, CaseClause(clause.plist.guards, clause.body))
     
-    return newLambda(scrutinees, newCase(scrutinees, caseClauses))
+    return Lambda(scrutinees, newCase(scrutinees, caseClauses))
 
-internVar: TODO
-hasAccess: TODO
+internVar(name string) -> string:
+    return name + ユニークな整数
 
-newLambda: TODO
-toCaseClause: TODO
+hasAccess(clause):
+    return len(clause.plist.fields) != 0
 ```
 
 
