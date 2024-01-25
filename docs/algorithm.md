@@ -26,7 +26,7 @@ flatCodata(codata Codata) -> Node:
     arity = NotChecked
     clauses = [] as []plistClause
     for i, clause in codata.clauses:
-        plist = PatternList(
+        plist = patternList(
             accessors(clause.pattern),
             guard(clause.pattern))
         clauses[i] = plistClause(plist, clause.body)
@@ -39,8 +39,8 @@ flatCodata(codata Codata) -> Node:
 
     return build(arity, clauses)
 
-plistClause(plist PatternList, body Node) 
-PatternList(fields []string, guards []Node)
+plistClause(plist patternList, body Node) 
+patternList(fields []string, guards []Node)
 
 // 余パターンから，フィールドアクセスの列を取り出す
 // 例：
