@@ -188,7 +188,6 @@ func getKeyword(str string) (token.Kind, bool) {
 		"|":      token.BAR,
 		"=":      token.EQUAL,
 		"case":   token.CASE,
-		"def":    token.DEF,
 		"fn":     token.FN,
 		"infix":  token.INFIX,
 		"infixl": token.INFIXL,

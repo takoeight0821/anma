@@ -42,7 +42,7 @@ func (p *Parser) decl() ast.Node {
 	if p.match(token.TYPE) {
 		return p.typeDecl()
 	}
-	if p.match(token.DEF) {
+	if p.match(token.LET) {
 		return p.varDecl()
 	}
 
@@ -63,9 +63,9 @@ func (p *Parser) typeDecl() *ast.TypeDecl {
 	return &ast.TypeDecl{Def: def, Types: types}
 }
 
-// varDecl = "def" IDENT "=" expr | "def" IDENT ":" type | "def" IDENT ":" type "=" expr ;
+// varDecl = "let" IDENT "=" expr | "let" IDENT ":" type | "let" IDENT ":" type "=" expr ;
 func (p *Parser) varDecl() *ast.VarDecl {
-	p.consume(token.DEF)
+	p.consume(token.LET)
 	var name token.Token
 	switch {
 	case p.match(token.IDENT):

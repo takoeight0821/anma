@@ -31,7 +31,6 @@ const (
 	ARROW
 	BAR
 	CASE
-	DEF
 	EQUAL
 	FN
 	INFIX
