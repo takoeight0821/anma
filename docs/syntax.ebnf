@@ -4,7 +4,7 @@ decl = typeDecl | varDecl | infixDecl ; (* func decl *)
 
 typeDecl = "type" type "=" type ("|" type)* ; (* func typeDecl *)
 
-varDecl = "let" IDENT "=" expr | "let" IDENT ":" type | "let" IDENT ":" type "=" expr ; (* func varDecl *)
+varDecl = "def" IDENT "=" expr | "def" IDENT ":" type | "def" IDENT ":" type "=" expr ; (* func varDecl *)
 
 infixDecl = ("infix" | "infixl" | "infixr") INTEGER OPERATOR ; (* func infixDecl *)
 

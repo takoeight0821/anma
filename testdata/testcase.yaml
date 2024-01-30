@@ -1,17 +1,17 @@
 - label: fib
   enable: true
   input: |
-    let + = { #(x, y,) -> prim(add, x, y) }
-    let zipWith = {
+    def + = { #(x, y,) -> prim(add, x, y) }
+    def zipWith = {
       #(f, xs, ys).head -> f(xs.head, ys.head),
       #(f, xs, ys).tail -> zipWith(f, xs.tail, ys.tail),
     }
-    let fib = {
+    def fib = {
       #.head -> 1,
       #.tail.head -> 1,
       #.tail.tail -> zipWith({#(x, y) -> x + y}, fib, fib.tail),
     }
-    let main = { #() -> fib.tail.tail.tail.head }
+    def main = { #() -> fib.tail.tail.tail.head }
   expected:
     parser: |
       (def + (codata (clause (call # (var x) (var y)) (prim add (var x) (var y)))))
@@ -40,29 +40,29 @@
     type Int     = prim(int)
     type List(a) = Nil | Cons(a, List)
     infixl 6 -
-    let - = { #(x, y) -> prim(sub, x, y) }
-    let map = {
+    def - = { #(x, y) -> prim(sub, x, y) }
+    def map = {
       #(f, Nil) -> Nil,
       #(f, Cons(x, xs)) -> Cons(f(x), map(f, xs)),
     }
-    let prune = {
+    def prune = {
       #(x,t).node -> t.node,
       #(0,t).children -> Nil,
       #(x,t).children -> map(prune(x-1), t.children),
     }
-    let tree = {
+    def tree = {
       #.node -> 1,
       #.children -> Cons(tree1, Cons(tree2, Nil)),
     }
-    let tree1 = {
+    def tree1 = {
       #.node -> 2,
       #.children -> Nil,
     }
-    let tree2 = {
+    def tree2 = {
       #.node -> 3,
       #.children -> Cons(tree, Nil),
     }
-    let main = { #() -> prune(2, tree) }
+    def main = { #() -> prune(2, tree) }
   expected:
     parser: |
       (type (var Int) (prim int))
@@ -114,9 +114,9 @@
   input: |
     infixl 6 +
     infixl 8 *
-    let + = { #(x, y) -> prim(add, x, y) }
-    let * = { #(x, y) -> prim(mul, x, y) }
-    let main = { #() -> 1 + 2 * 3 }
+    def + = { #(x, y) -> prim(add, x, y) }
+    def * = { #(x, y) -> prim(mul, x, y) }
+    def main = { #() -> 1 + 2 * 3 }
   expected:
     parser: |
       (infix infixl 6 +)
@@ -148,9 +148,9 @@
   input: |
     infixl 6 +
     infixl 8 *
-    let + = { #(x, y) -> prim(add, x, y) }
-    let * = { #(x, y) -> prim(mul, x, y) }
-    let main = { #() -> 1 * 2 + 3 }
+    def + = { #(x, y) -> prim(add, x, y) }
+    def * = { #(x, y) -> prim(mul, x, y) }
+    def main = { #() -> 1 * 2 + 3 }
   expected:
     parser: |
       (infix infixl 6 +)
@@ -182,9 +182,9 @@
   input: |
     infixl 6 +
     infixl 8 *
-    let + = { #(x, y) -> prim(add, x, y) }
-    let * = { #(x, y) -> prim(mul, x, y) }
-    let main = { #() -> 1 * (2 + 3) }
+    def + = { #(x, y) -> prim(add, x, y) }
+    def * = { #(x, y) -> prim(mul, x, y) }
+    def main = { #() -> 1 * (2 + 3) }
   expected:
     parser: |
       (infix infixl 6 +)
@@ -214,10 +214,10 @@
 - label: method
   enable: true
   input: |
-    let printer = {
+    def printer = {
       #.print -> fn (x) { prim(print, x) },
     }
-    let main = { #() -> printer.print(1) }
+    def main = { #() -> printer.print(1) }
   expected:
     parser: |
       (def printer (codata (clause (access # print) (lambda (x) (prim print (var x))))))
@@ -235,10 +235,10 @@
 - label: method-copattern
   enable: false
   input: |
-    let printer = {
+    def printer = {
       #.print(x) -> prim(print, x),
     }
-    let main = { #() -> printer.print(1) }
+    def main = { #() -> printer.print(1) }
   expected:
     parser: |
       (def printer (codata (clause (call (access # print) (var x)) (prim print (var x)))))
