@@ -2,12 +2,10 @@ package codata
 
 import (
 	"fmt"
-	"log"
 	"sort"
 	"strings"
 
 	"github.com/takoeight0821/anma/ast"
-	"github.com/takoeight0821/anma/codata/rewrite"
 	"github.com/takoeight0821/anma/token"
 	"github.com/takoeight0821/anma/utils"
 )
@@ -91,12 +89,6 @@ func flatCodata(c *ast.Codata) (ast.Node, error) {
 	arity := NotChecked
 	clauses := make([]plistClause, len(c.Clauses))
 	for i, clause := range c.Clauses {
-		ob, err := rewrite.NewObservation(clause)
-		if err != nil {
-			log.Printf("observation error: %v", err)
-		} else {
-			log.Printf("observation: %v", ob)
-		}
 		plist, err := newPatternList(clause)
 		if err != nil {
 			return nil, err
