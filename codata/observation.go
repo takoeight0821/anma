@@ -11,7 +11,9 @@ import (
 // Observation is abstruction of copattern.
 // It is like Space in the swift compiler.
 
-type Observation interface{}
+type Observation interface {
+	fmt.Stringer
+}
 
 // Field means field access.
 // e.g. `.foo`
@@ -37,17 +39,8 @@ func (a Apply) String() string {
 
 var _ Observation = Apply{}
 
-// This means `#` keyword.
-type This struct{}
-
-func (t This) String() string {
-	return "#"
-}
-
-var _ Observation = This{}
-
 // Sequence means sequence of observations.
-// e.g. `#(x, y, z).foo` is `Sequence{This{}, Apply{3}, Field{"foo"}}`
+// e.g. `#(x, y, z).foo` is `Sequence{Apply{3}, Field{"foo"}}`
 type Sequence struct {
 	Observations []Observation
 }
@@ -63,18 +56,20 @@ func (s Sequence) String() string {
 var _ Observation = Sequence{}
 
 // Union means union of observations.
-// e.g. `#(x, y, z).foo | #(x, y, z).bar` is `Union{Sequence{This{}, Apply{3}, Field{"foo"}}, Sequence{This{}, Apply{3}, Field{"bar"}}}`
+// e.g. `#(x, y, z).foo | #(x, y, z).bar` is `Union{Sequence{ Apply{3}, Field{"foo"}}, Sequence{ Apply{3}, Field{"bar"}}}`
 type Union struct {
-	Observations []Observation
+	Observations map[string]Observation
 }
 
 func (u Union) String() string {
 	var result string
-	for i, o := range u.Observations {
-		if i != 0 {
+	isFirst := true
+	for s := range u.Observations {
+		if !isFirst {
 			result += " | "
 		}
-		result += o.(fmt.Stringer).String()
+		result += s
+		isFirst = false
 	}
 	return result
 }
@@ -86,16 +81,21 @@ func merge(x, y Observation) Observation {
 	case Union:
 		switch y := y.(type) {
 		case Union:
-			return Union{append(x.Observations, y.Observations...)}
+			for k, v := range y.Observations {
+				x.Observations[k] = v
+			}
+			return x
 		default:
-			return Union{append(x.Observations, y)}
+			x.Observations[y.String()] = y
+			return x
 		}
 	default:
 		switch y := y.(type) {
 		case Union:
-			return Union{append(y.Observations, x)}
+			y.Observations[x.String()] = x
+			return y
 		default:
-			return Union{[]Observation{x, y}}
+			return Union{map[string]Observation{x.String(): x, y.String(): y}}
 		}
 	}
 }
@@ -106,7 +106,7 @@ var _ Observation = Union{}
 func ToObservation(copattern ast.Node) Observation {
 	switch c := copattern.(type) {
 	case *ast.This:
-		return This{}
+		return nil
 	case *ast.Call:
 		f := ToObservation(c.Func)
 		return push(f, Apply{Count: len(c.Args)})
@@ -121,6 +121,8 @@ func ToObservation(copattern ast.Node) Observation {
 
 func push(o Observation, x Observation) Observation {
 	switch o := o.(type) {
+	case nil:
+		return Sequence{[]Observation{x}}
 	case Sequence:
 		return Sequence{append(o.Observations, x)}
 	default:
