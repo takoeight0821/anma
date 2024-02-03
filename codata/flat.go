@@ -2,6 +2,7 @@ package codata
 
 import (
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 
@@ -88,7 +89,9 @@ func flatCodata(c *ast.Codata) (ast.Node, error) {
 	// Generate PatternList
 	arity := NotChecked
 	clauses := make([]plistClause, len(c.Clauses))
+	var observation Observation
 	for i, clause := range c.Clauses {
+		observation = merge(observation, ToObservation(clause.Pattern))
 		plist, err := newPatternList(clause)
 		if err != nil {
 			return nil, err
@@ -102,6 +105,7 @@ func flatCodata(c *ast.Codata) (ast.Node, error) {
 			return nil, err
 		}
 	}
+	log.Printf("observation: %v", observation)
 
 	return build(arity, clauses)
 }
