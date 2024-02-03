@@ -9,7 +9,7 @@ import (
 )
 
 // Observation is abstruction of copattern.
-// It is like Space in the swift compiler.
+// This is an extension of function arity.
 
 type Observation interface {
 	fmt.Stringer
@@ -56,7 +56,7 @@ func (s Sequence) String() string {
 var _ Observation = Sequence{}
 
 // Union means union of observations.
-// e.g. `#(x, y, z).foo | #(x, y, z).bar` is `Union{Sequence{ Apply{3}, Field{"foo"}}, Sequence{ Apply{3}, Field{"bar"}}}`
+// e.g. `#(x, y, z).foo | #(x, y, z).bar` is `Union{Sequence{Apply{3}, Field{"foo"}}, Sequence{Apply{3}, Field{"bar"}}}`
 type Union struct {
 	Observations map[string]Observation
 }
