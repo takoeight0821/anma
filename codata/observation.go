@@ -8,9 +8,25 @@ import (
 	"github.com/takoeight0821/anma/token"
 )
 
+// ToObservation converts ast.Node to Observation.
+func ToObservation(copattern ast.Node) Observation {
+	switch c := copattern.(type) {
+	case *ast.This:
+		return nil
+	case *ast.Call:
+		f := ToObservation(c.Func)
+		return push(f, Apply{Count: len(c.Args)})
+	case *ast.Access:
+		r := ToObservation(c.Receiver)
+		return push(r, Field{Name: c.Name})
+	default:
+		log.Panicf("unexpected node %v", c)
+		return nil
+	}
+}
+
 // Observation is abstruction of copattern.
 // This is an extension of function arity.
-
 type Observation interface {
 	fmt.Stringer
 }
@@ -51,6 +67,17 @@ func (s Sequence) String() string {
 		result += o.(fmt.Stringer).String()
 	}
 	return result
+}
+
+func push(o Observation, x Observation) Observation {
+	switch o := o.(type) {
+	case nil:
+		return Sequence{[]Observation{x}}
+	case Sequence:
+		return Sequence{append(o.Observations, x)}
+	default:
+		return Sequence{[]Observation{o, x}}
+	}
 }
 
 var _ Observation = Sequence{}
@@ -101,31 +128,3 @@ func merge(x, y Observation) Observation {
 }
 
 var _ Observation = Union{}
-
-// ToObservation converts ast.Node to Observation.
-func ToObservation(copattern ast.Node) Observation {
-	switch c := copattern.(type) {
-	case *ast.This:
-		return nil
-	case *ast.Call:
-		f := ToObservation(c.Func)
-		return push(f, Apply{Count: len(c.Args)})
-	case *ast.Access:
-		r := ToObservation(c.Receiver)
-		return push(r, Field{Name: c.Name})
-	default:
-		log.Panicf("unexpected node %v", c)
-		return nil
-	}
-}
-
-func push(o Observation, x Observation) Observation {
-	switch o := o.(type) {
-	case nil:
-		return Sequence{[]Observation{x}}
-	case Sequence:
-		return Sequence{append(o.Observations, x)}
-	default:
-		return Sequence{[]Observation{o, x}}
-	}
-}
