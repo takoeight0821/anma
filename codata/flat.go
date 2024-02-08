@@ -2,7 +2,6 @@ package codata
 
 import (
 	"fmt"
-	"log"
 	"sort"
 	"strings"
 
@@ -105,7 +104,6 @@ func flatCodata(c *ast.Codata) (ast.Node, error) {
 			return nil, err
 		}
 	}
-	log.Printf("observation: %v", observation)
 
 	return build(arity, clauses)
 }
@@ -212,15 +210,36 @@ func object(scrutinees []token.Token, clauses []plistClause) (ast.Node, error) {
 	// Object fields are generated in the dictionary order of field names.
 	for _, field := range nextKeys {
 		cs := next[field]
-		body, err := fieldBody(scrutinees, cs)
-		if err != nil {
-			return nil, err
+
+		hasAccess := false
+		for _, c := range cs {
+			if c.plist.HasAccess() {
+				hasAccess = true
+				break
+			}
 		}
-		fields = append(fields,
-			&ast.Field{
-				Name:  field,
-				Exprs: newCase(scrutinees, body),
-			})
+
+		if !hasAccess {
+			body, err := fieldBody(scrutinees, cs)
+			if err != nil {
+				return nil, err
+			}
+			fields = append(fields,
+				&ast.Field{
+					Name:  field,
+					Exprs: newCase(scrutinees, body),
+				})
+		} else {
+			obj, err := object(scrutinees, cs)
+			if err != nil {
+				return nil, err
+			}
+			fields = append(fields,
+				&ast.Field{
+					Name:  field,
+					Exprs: []ast.Node{obj},
+				})
+		}
 	}
 
 	return &ast.Object{Fields: fields}, nil
