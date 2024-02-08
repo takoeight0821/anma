@@ -51,6 +51,7 @@ func ReadTestData(s []byte) []TestData {
 }
 
 type reporter interface {
+	Logf(format string, args ...interface{})
 	Errorf(format string, args ...interface{})
 }
 
@@ -80,5 +81,6 @@ func RunTest(runner runner, test reporter, label, input, expected string) {
 
 	if diff := cmp.Diff(expected, actual); diff != "" {
 		test.Errorf("%s mismatch (-want +got):\n%s", label, diff)
+		test.Logf("actual:\n%s", actual)
 	}
 }

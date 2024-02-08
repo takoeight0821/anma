@@ -253,3 +253,48 @@
       (def printer.0 (object (field print (lambda (x.2) (prim print (var x.2))))))
       (def main.1 (lambda () (call (access (var printer.0) print) (literal 1))))
     eval: <unit>
+- label: vendor-statemachine
+  enable: true
+  input: |
+    type Option(c) = None | Some(c)
+    type List(d) = Nil | Cons(d, List(d))
+    
+    def vendor = {
+        #(items).get -> None,
+        #(Nil).put.get ->
+            prim(print, "Nil case");
+            prim(print, Nil);
+            None,
+        #(Cons(x, xs)).put.get ->
+            prim(print, "Cons case");
+            prim(print, Cons(x, xs));
+            Some(x),
+        #(items).put.put ->
+            vendor(items).put,
+    }
+    
+    def main = {
+        #() -> vendor(Cons(0, Nil)).put.get
+    }
+  expected:
+    parser: |
+      (type (call (var Option) (var c)) (var None) (call (var Some) (var c)))
+      (type (call (var List) (var d)) (var Nil) (call (var Cons) (var d) (call (var List) (var d))))
+      (def vendor (codata (clause (access (call # (var items)) get) (var None)) (clause (access (access (call # (var Nil)) put) get) (prim print (literal "Nil case")) (prim print (var Nil)) (var None)) (clause (access (access (call # (call (var Cons) (var x) (var xs))) put) get) (prim print (literal "Cons case")) (prim print (call (var Cons) (var x) (var xs))) (call (var Some) (var x))) (clause (access (access (call # (var items)) put) put) (access (call (var vendor) (var items)) put))))
+      (def main (codata (clause (call #) (access (access (call (var vendor) (call (var Cons) (literal 0) (var Nil))) put) get))))
+    codata: |
+      (type (call (var Option) (var c)) (var None) (call (var Some) (var c)))
+      (type (call (var List) (var d)) (var Nil) (call (var Cons) (var d) (call (var List) (var d))))
+      (def vendor (lambda (x0) (object (field get (case ((var x0)) (clause (var items) (var None)))) (field put (object (field get (case ((var x0)) (clause (var Nil) (prim print (literal "Nil case")) (prim print (var Nil)) (var None)) (clause (call (var Cons) (var x) (var xs)) (prim print (literal "Cons case")) (prim print (call (var Cons) (var x) (var xs))) (call (var Some) (var x))))) (field put (case ((var x0)) (clause (var items) (access (call (var vendor) (var items)) put)))))))))
+      (def main (lambda () (access (access (call (var vendor) (call (var Cons) (literal 0) (var Nil))) put) get)))
+    infix: |
+      (type (call (var Option) (var c)) (var None) (call (var Some) (var c)))
+      (type (call (var List) (var d)) (var Nil) (call (var Cons) (var d) (call (var List) (var d))))
+      (def vendor (lambda (x0) (object (field get (case ((var x0)) (clause (var items) (var None)))) (field put (object (field get (case ((var x0)) (clause (var Nil) (prim print (literal "Nil case")) (prim print (var Nil)) (var None)) (clause (call (var Cons) (var x) (var xs)) (prim print (literal "Cons case")) (prim print (call (var Cons) (var x) (var xs))) (call (var Some) (var x))))) (field put (case ((var x0)) (clause (var items) (access (call (var vendor) (var items)) put)))))))))
+      (def main (lambda () (access (access (call (var vendor) (call (var Cons) (literal 0) (var Nil))) put) get)))
+    nameresolve: |
+      (type (call (var Option.0) (var c.1)) (var None.2) (call (var Some.3) (var c.1)))
+      (type (call (var List.4) (var d.5)) (var Nil.6) (call (var Cons.7) (var d.5) (call (var List.4) (var d.5))))
+      (def vendor.8 (lambda (x0.10) (object (field get (case ((var x0.10)) (clause (var items.11) (var None.2)))) (field put (object (field get (case ((var x0.10)) (clause (var Nil.12) (prim print (literal "Nil case")) (prim print (var Nil.12)) (var None.2)) (clause (call (var Cons.7) (var x.13) (var xs.14)) (prim print (literal "Cons case")) (prim print (call (var Cons.7) (var x.13) (var xs.14))) (call (var Some.3) (var x.13))))) (field put (case ((var x0.10)) (clause (var items.15) (access (call (var vendor.8) (var items.15)) put)))))))))
+      (def main.9 (lambda () (access (access (call (var vendor.8) (call (var Cons.7) (literal 0) (var Nil.6))) put) get)))
+    eval: Some.3(0)
