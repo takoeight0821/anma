@@ -1,12 +1,12 @@
-type Option(c) = None | Some(c)
-type List(d) = Nil | Cons(d, List(d))
+type Option(c) = None() | Some(c)
+type List(d) = Nil() | Cons(d, List(d))
 
 def vendor = {
-    #(items).get -> None,
-    #(Nil).put.get ->
+    #(items).get -> None(),
+    #(Nil()).put.get ->
         prim(print, "Nil case");
-        prim(print, Nil);
-        None,
+        prim(print, Nil());
+        None(),
     #(Cons(x, xs)).put.get ->
         prim(print, "Cons case");
         prim(print, Cons(x, xs));
@@ -16,5 +16,5 @@ def vendor = {
 }
 
 def main = {
-    #() -> prim(print, vendor(Cons(0, Nil)).put.get)
+    #() -> prim(print, vendor(Cons(0, Nil())).put.get)
 }

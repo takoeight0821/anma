@@ -3,6 +3,7 @@ package eval
 import (
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/takoeight0821/anma/ast"
 	"github.com/takoeight0821/anma/token"
@@ -258,6 +259,8 @@ func (ev *Evaluator) evalLet(node *ast.Let) error {
 		return err
 	}
 	if env, ok := body.match(node.Bind); ok {
+		log.Printf("DEBUG: match %v with %v", node.Bind, body)
+		log.Printf("DEBUG: %v", env)
 		for name, v := range env {
 			ev.evEnv.set(name, v)
 		}
@@ -333,6 +336,8 @@ func matchClause(clause *ast.CaseClause, scrs []Value) (map[Name]Value, bool) {
 	env := make(map[Name]Value)
 	for i, pattern := range clause.Patterns {
 		m, ok := scrs[i].match(pattern)
+		log.Printf("DEBUG: match %v with %v", pattern, scrs[i])
+		log.Printf("DEBUG: %v", m)
 		if !ok {
 			return nil, false
 		}

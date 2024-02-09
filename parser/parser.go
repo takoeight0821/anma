@@ -60,6 +60,15 @@ func (p *Parser) typeDecl() *ast.TypeDecl {
 		types = append(types, p.typ())
 	}
 
+	// all types must be a Call or Prim node
+	for _, t := range types {
+		if _, ok := t.(*ast.Call); !ok {
+			if _, ok := t.(*ast.Prim); !ok {
+				p.recover(errors.New("type must be a Call or Prim node"))
+			}
+		}
+	}
+
 	return &ast.TypeDecl{Def: def, Types: types}
 }
 
