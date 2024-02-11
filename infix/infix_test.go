@@ -40,7 +40,7 @@ func BenchmarkInfix(b *testing.B) {
 
 	for _, testcase := range testcases {
 		b.Run(testcase.Label, func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				runner := driver.NewPassRunner()
 				runner.AddPass(codata.Flat{})
 				runner.AddPass(infix.NewInfixResolver())

@@ -40,7 +40,7 @@ func BenchmarkFromTestData(b *testing.B) {
 
 	for _, testcase := range testcases {
 		b.Run(testcase.Label, func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				completeEval(b, testcase.Label, testcase.Input, testcase.Expected["eval"])
 			}
 		})
