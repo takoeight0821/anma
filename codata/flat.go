@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/samber/lo"
+
 	"github.com/takoeight0821/anma/ast"
 	"github.com/takoeight0821/anma/token"
 	"github.com/takoeight0821/anma/utils"
@@ -211,15 +213,9 @@ func object(scrutinees []token.Token, clauses []plistClause) (ast.Node, error) {
 	for _, field := range nextKeys {
 		cs := next[field]
 
-		hasAccess := false
-		for _, c := range cs {
-			if c.plist.HasAccess() {
-				hasAccess = true
-				break
-			}
-		}
-
-		if !hasAccess {
+		if !lo.EveryBy(cs, func(c plistClause) bool {
+			return c.plist.HasAccess()
+		}) {
 			body, err := fieldBody(scrutinees, cs)
 			if err != nil {
 				return nil, err
@@ -250,7 +246,7 @@ func lambda(arity int, clauses []plistClause) (ast.Node, error) {
 	baseToken := clauses[0].plist.Base()
 	// Generate Scrutinees
 	scrutinees := make([]token.Token, arity)
-	for i := 0; i < arity; i++ {
+	for i := range arity {
 		scrutinees[i] = newVar(fmt.Sprintf("x%d", i), baseToken)
 	}
 
