@@ -213,8 +213,9 @@ func object(scrutinees []token.Token, clauses []plistClause) (ast.Node, error) {
 	for _, field := range nextKeys {
 		cs := next[field]
 
-		if !lo.EveryBy(cs, func(c plistClause) bool {
-			return c.plist.HasAccess()
+		// if any of cs has no accessors and has guards, generate Case expression
+		if lo.SomeBy(cs, func(c plistClause) bool {
+			return !c.plist.HasAccess()
 		}) {
 			body, err := fieldBody(scrutinees, cs)
 			if err != nil {
