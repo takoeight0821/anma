@@ -11,9 +11,21 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Some returns true if at least one element in the collection satisfies the predicate.
+func Some[T any](collection []T, predicate func(T) bool) bool {
+	for _, item := range collection {
+		if predicate(item) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// PosError represents an error that occurred at a specific position in the code.
 type PosError struct {
-	Where token.Token
-	Err   error
+	Where token.Token // The token indicating the position of the error.
+	Err   error       // The underlying error.
 }
 
 func (e PosError) Error() string {
