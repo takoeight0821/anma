@@ -5,8 +5,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/samber/lo"
-
 	"github.com/takoeight0821/anma/ast"
 	"github.com/takoeight0821/anma/token"
 	"github.com/takoeight0821/anma/utils"
@@ -90,9 +88,7 @@ func flatCodata(c *ast.Codata) (ast.Node, error) {
 	// Generate PatternList
 	arity := NotChecked
 	clauses := make([]plistClause, len(c.Clauses))
-	var observation Observation
 	for i, clause := range c.Clauses {
-		observation = merge(observation, ToObservation(clause.Pattern))
 		plist, err := newPatternList(clause)
 		if err != nil {
 			return nil, err
@@ -214,7 +210,7 @@ func object(scrutinees []token.Token, clauses []plistClause) (ast.Node, error) {
 		cs := next[field]
 
 		// if any of cs has no accessors and has guards, generate Case expression
-		if lo.SomeBy(cs, func(c plistClause) bool {
+		if utils.Some(cs, func(c plistClause) bool {
 			return !c.plist.HasAccess()
 		}) {
 			body, err := fieldBody(scrutinees, cs)
