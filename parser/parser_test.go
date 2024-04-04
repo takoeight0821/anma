@@ -1,11 +1,16 @@
 package parser_test
 
 import (
+	"io/fs"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/takoeight0821/anma/driver"
 	"github.com/takoeight0821/anma/utils"
+
+	"github.com/sebdah/goldie/v2"
 )
 
 func TestParseFromTestData(t *testing.T) {
@@ -39,5 +44,45 @@ func BenchmarkFromTestData(b *testing.B) {
 				utils.RunTest(runner, b, testcase.Label, testcase.Input, testcase.Expected["parser"])
 			}
 		})
+	}
+}
+
+func TestGolden(t *testing.T) {
+	t.Parallel()
+
+	var testfiles []string
+	filepath.WalkDir("../testdata", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if filepath.Ext(path) == ".anma" {
+			testfiles = append(testfiles, path)
+		}
+		return nil
+	})
+
+	runner := driver.NewPassRunner()
+
+	for _, testfile := range testfiles {
+		source, err := os.ReadFile(testfile)
+		if err != nil {
+			t.Errorf("failed to read %s: %v", testfile, err)
+			return
+		}
+
+		nodes, err := runner.RunSource(string(source))
+		if err != nil {
+			t.Errorf("%s returned error: %v", testfile, err)
+			return
+		}
+
+		var builder strings.Builder
+		for _, node := range nodes {
+			builder.WriteString(node.String())
+			builder.WriteString("\n")
+		}
+
+		g := goldie.New(t)
+		g.Assert(t, filepath.Base(testfile), []byte(builder.String()))
 	}
 }
