@@ -44,3 +44,6 @@ go.work
 # direnv
 .direnv/
 .envrc
+
+# nix
+result/
