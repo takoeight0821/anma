@@ -1,18 +1,19 @@
 name: Anma CI
 
-on: push
+on:
+  push:
+  pull_request:
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  check:
+    runs-on: ubuntu-22.04
+    permissions:
+      id-token: "write"
+      contents: "read"
     steps:
       - uses: actions/checkout@v3
-
-      - name: Install devbox
-        uses: jetpack-io/devbox-install-action@v0.6.0
-        with:
-          enable-cache: true
-
-      - name: Run tests
-        run: |
-          devbox run -- go test ./...
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - uses: DeterminateSystems/flake-checker-action@main
+      - name: Run `nix build`
+        run: nix build .

@@ -38,5 +38,9 @@ go.work
 *.vsix
 
 
-### devbox
+# devbox
 .devbox/
+
+# direnv
+.direnv/
+.envrc
