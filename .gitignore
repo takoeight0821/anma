@@ -46,4 +46,4 @@ go.work
 .envrc
 
 # nix
-result/
+result
