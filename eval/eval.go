@@ -210,7 +210,7 @@ func fetchPrim(name token.Token) func(*Evaluator, ...Value) (Value, error) {
 			if len(args) != 1 {
 				return nil, utils.PosError{Where: name, Err: InvalidArgumentCountError{Expected: 1, Actual: len(args)}}
 			}
-			fmt.Println(args[0])
+			fmt.Fprintln(ev.Stdout, args[0])
 
 			return Unit{}, nil
 		}

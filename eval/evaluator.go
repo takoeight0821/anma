@@ -2,6 +2,8 @@ package eval
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	"github.com/takoeight0821/anma/token"
@@ -9,11 +11,13 @@ import (
 
 type Evaluator struct {
 	*evEnv
+	Stdout io.Writer
 }
 
 func NewEvaluator() *Evaluator {
 	return &Evaluator{
-		evEnv: newEvEnv(nil),
+		evEnv:  newEvEnv(nil),
+		Stdout: os.Stdout,
 	}
 }
 

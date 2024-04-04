@@ -1,7 +1,6 @@
 package parser_test
 
 import (
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -50,18 +49,11 @@ func BenchmarkFromTestData(b *testing.B) {
 func TestGolden(t *testing.T) {
 	t.Parallel()
 
-	var testfiles []string
-	filepath.WalkDir("../testdata", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if filepath.Ext(path) == ".anma" {
-			testfiles = append(testfiles, path)
-		}
-		return nil
-	})
-
-	runner := driver.NewPassRunner()
+	testfiles, err := utils.FindSourceFiles("../testdata")
+	if err != nil {
+		t.Errorf("failed to find test files: %v", err)
+		return
+	}
 
 	for _, testfile := range testfiles {
 		source, err := os.ReadFile(testfile)
@@ -69,6 +61,8 @@ func TestGolden(t *testing.T) {
 			t.Errorf("failed to read %s: %v", testfile, err)
 			return
 		}
+
+		runner := driver.NewPassRunner()
 
 		nodes, err := runner.RunSource(string(source))
 		if err != nil {

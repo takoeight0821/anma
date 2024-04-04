@@ -2,6 +2,8 @@ package utils
 
 import (
 	"fmt"
+	"io/fs"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -34,6 +36,22 @@ func (e PosError) Error() string {
 	}
 
 	return fmt.Sprintf("at %d: `%s`, %s", e.Where.Line, e.Where.Lexeme, e.Err.Error())
+}
+
+func FindSourceFiles(path string) ([]string, error) {
+	var files []string
+	err := filepath.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if filepath.Ext(path) == ".anma" {
+			files = append(files, path)
+		}
+
+		return nil
+	})
+
+	return files, err
 }
 
 type TestData struct {
