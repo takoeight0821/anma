@@ -32,7 +32,7 @@
         in
         {
           go-hello = pkgs.buildGoModule {
-            pname = "go-hello";
+            pname = "anma";
             inherit version;
             # In 'nix develop', we don't need a copy of the source tree
             # in the Nix store.
@@ -48,7 +48,7 @@
             # remember to bump this hash when your dependencies change.
             # vendorHash = pkgs.lib.fakeHash;
 
-            vendorHash = "sha256-pQpattmS9VmO3ZIQUFn66az8GSmB4IvYhTTCFn6SUmo=";
+            vendorHash = "sha256-IfUmK7DKF7jj4BbnHH9LrTqSmXYoXvfF085NYwmfM8o=";
           };
         });
 
