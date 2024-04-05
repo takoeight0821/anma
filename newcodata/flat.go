@@ -288,11 +288,14 @@ func (f *Flat) buildLambda(plists map[int][]ast.Node, bodys map[int]ast.Node) (a
 			return nil, fmt.Errorf("mismatched arity: %v", guards)
 		}
 	}
+	if arity == -1 {
+		return nil, fmt.Errorf("arity is not defined: %v", guards)
+	}
 
-	scrutinees := make([]token.Token, 0, arity)
+	scrutinees := make([]token.Token, arity)
 	for i := range scrutinees {
 		// TODO: add line number from the original pattern
-		scrutinees[i] = token.Token{Kind: token.IDENT, Lexeme: fmt.Sprintf("arg%d", i), Line: 0, Literal: nil}
+		scrutinees[i] = token.Token{Kind: token.IDENT, Lexeme: fmt.Sprintf("x%d", i), Line: 0, Literal: nil}
 	}
 
 	innerF := &Flat{scrutinees: append(f.scrutinees, scrutinees...), guards: guards}
