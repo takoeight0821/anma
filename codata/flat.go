@@ -10,6 +10,13 @@ import (
 	"github.com/takoeight0821/anma/token"
 )
 
+var uniq int = 0
+
+func genUniq(hint string) string {
+	uniq++
+	return fmt.Sprintf(":%s%d", hint, uniq)
+}
+
 // Flat converts [Codata] to [Object], [Case], and [Lambda].
 type Flat struct {
 	scrutinees []token.Token
@@ -291,7 +298,7 @@ func (f *Flat) buildLambda(plists map[int][]ast.Node, bodys map[int]ast.Node) (a
 	scrutinees := make([]token.Token, arity)
 	for i := range scrutinees {
 		// TODO: add line number from the original pattern
-		scrutinees[i] = token.Token{Kind: token.IDENT, Lexeme: fmt.Sprintf("x%d", i), Line: 0, Literal: nil}
+		scrutinees[i] = token.Token{Kind: token.IDENT, Lexeme: genUniq("p"), Line: 0, Literal: nil}
 	}
 
 	for i, ps := range guards {
