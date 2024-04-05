@@ -1,0 +1,4 @@
+(def + (lambda () (seq (prim add (var x) (var y)))))
+(def zipWith (lambda () (object (field head (seq (call (var f) (access (var xs) head) (access (var ys) head)))) (field tail (seq (call (var zipWith) (var f) (access (var xs) tail) (access (var ys) tail)))))))
+(def fib (object (field head (seq (literal 1))) (field tail (object (field head (seq (literal 1))) (field tail (seq (call (var zipWith) (lambda () (seq (binary (var x) + (var y)))) (var fib) (access (var fib) tail))))))))
+(def main (lambda () (seq (prim print (access (access (access (access (var fib) tail) tail) tail) head)))))
