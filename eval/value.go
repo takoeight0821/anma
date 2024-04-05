@@ -80,7 +80,7 @@ var _ Value = String("")
 type Function struct {
 	Evaluator
 	Params []Name
-	Body   []ast.Node
+	Body   ast.Node
 }
 
 func (f Function) String() string {
@@ -114,12 +114,9 @@ func (f Function) Apply(where token.Token, args ...Value) (Value, error) {
 	}
 
 	var ret Value
-	for _, node := range f.Body {
-		var err error
-		ret, err = f.Eval(node)
-		if err != nil {
-			return nil, err
-		}
+	ret, err := f.Eval(f.Body)
+	if err != nil {
+		return nil, err
 	}
 	f.evEnv = f.evEnv.parent
 
@@ -135,7 +132,7 @@ var (
 // It is used to delay the evaluation of object fields.
 type Thunk struct {
 	Evaluator
-	Body []ast.Node
+	Body ast.Node
 }
 
 func (t Thunk) String() string {
@@ -154,13 +151,9 @@ func (t Thunk) match(pattern ast.Node) (map[Name]Value, bool) {
 func runThunk(value Value) (Value, error) {
 	switch value := value.(type) {
 	case Thunk:
-		var ret Value
-		for _, node := range value.Body {
-			var err error
-			ret, err = value.Eval(node)
-			if err != nil {
-				return nil, err
-			}
+		ret, err := value.Eval(value.Body)
+		if err != nil {
+			return nil, err
 		}
 		if _, ok := ret.(Thunk); ok {
 			panic("unreachable: thunk cannot return thunk")

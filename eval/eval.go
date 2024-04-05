@@ -31,6 +31,16 @@ func (ev *Evaluator) Eval(node ast.Node) (Value, error) {
 		return ev.evalAssert(node)
 	case *ast.Let:
 		return Unit{}, ev.evalLet(node)
+	case *ast.Seq:
+		var v Value
+		for _, expr := range node.Exprs {
+			var err error
+			v, err = ev.Eval(expr)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return v, nil
 	case *ast.Codata:
 		panic("unreachable: codata must be desugared")
 	case *ast.CodataClause:
@@ -283,7 +293,7 @@ func (ev *Evaluator) evalLambda(node *ast.Lambda) Function {
 	return Function{
 		Evaluator: *ev,
 		Params:    params,
-		Body:      node.Exprs,
+		Body:      node.Expr,
 	}
 }
 
@@ -309,13 +319,9 @@ func (ev *Evaluator) evalCase(node *ast.Case) (Value, error) {
 			for name, v := range env {
 				ev.evEnv.set(name, v)
 			}
-			var ret Value
-			for _, expr := range clause.Exprs {
-				var err error
-				ret, err = ev.Eval(expr)
-				if err != nil {
-					return nil, err
-				}
+			ret, err := ev.Eval(clause.Expr)
+			if err != nil {
+				return nil, err
 			}
 
 			ev.evEnv = ev.evEnv.parent
@@ -352,7 +358,7 @@ func matchClause(clause *ast.CaseClause, scrs []Value) (map[Name]Value, bool) {
 func (ev *Evaluator) evalObject(node *ast.Object) Object {
 	fields := make(map[string]Value)
 	for _, field := range node.Fields {
-		fields[field.Name] = Thunk{Evaluator: *ev, Body: field.Exprs}
+		fields[field.Name] = Thunk{Evaluator: *ev, Body: field.Expr}
 	}
 
 	return Object{Fields: fields}

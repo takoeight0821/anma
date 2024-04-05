@@ -211,6 +211,31 @@ func (l *Let) Plate(err error, f func(Node, error) (Node, error)) (Node, error) 
 
 var _ Node = &Let{}
 
+type Seq struct {
+	Exprs []Node
+}
+
+func (s Seq) String() string {
+	return parenthesize("seq", concat(s.Exprs)).String()
+}
+
+func (s *Seq) Base() token.Token {
+	if len(s.Exprs) == 0 {
+		return token.Token{}
+	}
+	return s.Exprs[0].Base()
+}
+
+func (s *Seq) Plate(err error, f func(Node, error) (Node, error)) (Node, error) {
+	for i, expr := range s.Exprs {
+		s.Exprs[i], err = f(expr, err)
+	}
+
+	return s, err
+}
+
+var _ Node = &Seq{}
+
 type Codata struct {
 	// len(Clauses) > 0
 	// for each clause, len(Patterns) == 1
@@ -248,11 +273,11 @@ var _ Node = &Codata{}
 
 type CodataClause struct {
 	Pattern Node
-	Exprs   []Node // len(Exprs) > 0
+	Expr    Node
 }
 
 func (c CodataClause) String() string {
-	return parenthesize("clause", c.Pattern, concat(c.Exprs)).String()
+	return parenthesize("clause", c.Pattern, c.Expr).String()
 }
 
 func (c *CodataClause) Base() token.Token {
@@ -260,14 +285,12 @@ func (c *CodataClause) Base() token.Token {
 		return c.Pattern.Base()
 	}
 
-	return c.Exprs[0].Base()
+	return c.Expr.Base()
 }
 
 func (c *CodataClause) Plate(err error, f func(Node, error) (Node, error)) (Node, error) {
 	c.Pattern, err = f(c.Pattern, err)
-	for i, expr := range c.Exprs {
-		c.Exprs[i], err = f(expr, err)
-	}
+	c.Expr, err = f(c.Expr, err)
 
 	return c, err
 }
@@ -276,11 +299,11 @@ var _ Node = &CodataClause{}
 
 type Lambda struct {
 	Params []token.Token
-	Exprs  []Node // len(Exprs) > 0
+	Expr   Node
 }
 
 func (l Lambda) String() string {
-	return parenthesize("lambda", parenthesize("", concat(l.Params)), concat(l.Exprs)).String()
+	return parenthesize("lambda", parenthesize("", concat(l.Params)), l.Expr).String()
 }
 
 func (l *Lambda) Base() token.Token {
@@ -288,9 +311,7 @@ func (l *Lambda) Base() token.Token {
 }
 
 func (l *Lambda) Plate(err error, f func(Node, error) (Node, error)) (Node, error) {
-	for i, expr := range l.Exprs {
-		l.Exprs[i], err = f(expr, err)
-	}
+	l.Expr, err = f(l.Expr, err)
 
 	return l, err
 }
@@ -332,7 +353,7 @@ var _ Node = &Case{}
 
 type CaseClause struct {
 	Patterns []Node
-	Exprs    []Node // len(Exprs) > 0
+	Expr     Node
 }
 
 func (c CaseClause) String() string {
@@ -343,7 +364,7 @@ func (c CaseClause) String() string {
 		pat = c.Patterns[0]
 	}
 
-	return parenthesize("clause", pat, concat(c.Exprs)).String()
+	return parenthesize("clause", pat, c.Expr).String()
 }
 
 func (c *CaseClause) Base() token.Token {
@@ -351,16 +372,14 @@ func (c *CaseClause) Base() token.Token {
 		return c.Patterns[0].Base()
 	}
 
-	return c.Exprs[0].Base()
+	return c.Expr.Base()
 }
 
 func (c *CaseClause) Plate(err error, f func(Node, error) (Node, error)) (Node, error) {
 	for i, pattern := range c.Patterns {
 		c.Patterns[i], err = f(pattern, err)
 	}
-	for i, expr := range c.Exprs {
-		c.Exprs[i], err = f(expr, err)
-	}
+	c.Expr, err = f(c.Expr, err)
 
 	return c, err
 }
@@ -397,22 +416,20 @@ func (o *Object) Plate(err error, f func(Node, error) (Node, error)) (Node, erro
 var _ Node = &Object{}
 
 type Field struct {
-	Name  string
-	Exprs []Node
+	Name string
+	Expr Node
 }
 
 func (f Field) String() string {
-	return parenthesize("field "+f.Name, concat(f.Exprs)).String()
+	return parenthesize("field "+f.Name, f.Expr).String()
 }
 
 func (f *Field) Base() token.Token {
-	return f.Exprs[0].Base()
+	return f.Expr.Base()
 }
 
 func (f *Field) Plate(err error, g func(Node, error) (Node, error)) (Node, error) {
-	for i, expr := range f.Exprs {
-		f.Exprs[i], err = g(expr, err)
-	}
+	f.Expr, err = g(f.Expr, err)
 
 	return f, err
 }

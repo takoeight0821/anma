@@ -223,6 +223,16 @@ func (r *Resolver) solve(node ast.Node) (ast.Node, error) {
 		}
 
 		return node, nil
+	case *ast.Seq:
+		for i, expr := range node.Exprs {
+			var err error
+			node.Exprs[i], err = r.solve(expr)
+			if err != nil {
+				return node, err
+			}
+		}
+
+		return node, nil
 	case *ast.Codata:
 		log.Panicf("codata must be desugared before name resolution:\n%v", node)
 
@@ -238,12 +248,9 @@ func (r *Resolver) solve(node ast.Node) (ast.Node, error) {
 		if err != nil {
 			return node, err
 		}
-		for i, expr := range node.Exprs {
-			var err error
-			node.Exprs[i], err = r.solve(expr)
-			if err != nil {
-				return node, err
-			}
+		node.Expr, err = r.solve(node.Expr)
+		if err != nil {
+			return node, err
 		}
 
 		return node, nil
@@ -260,12 +267,10 @@ func (r *Resolver) solve(node ast.Node) (ast.Node, error) {
 				return node, err
 			}
 		}
-		for i, expr := range node.Exprs {
-			var err error
-			node.Exprs[i], err = r.solve(expr)
-			if err != nil {
-				return node, err
-			}
+		var err error
+		node.Expr, err = r.solve(node.Expr)
+		if err != nil {
+			return node, err
 		}
 
 		return node, nil
@@ -303,12 +308,10 @@ func (r *Resolver) solve(node ast.Node) (ast.Node, error) {
 				return node, err
 			}
 		}
-		for i, expr := range node.Exprs {
-			var err error
-			node.Exprs[i], err = r.solve(expr)
-			if err != nil {
-				return node, err
-			}
+		var err error
+		node.Expr, err = r.solve(node.Expr)
+		if err != nil {
+			return node, err
 		}
 
 		return node, nil
@@ -329,12 +332,10 @@ func (r *Resolver) solve(node ast.Node) (ast.Node, error) {
 	case *ast.Field:
 		r.env = newEnv(r.env)
 		defer func() { r.env = r.env.parent }()
-		for i, expr := range node.Exprs {
-			var err error
-			node.Exprs[i], err = r.solve(expr)
-			if err != nil {
-				return node, err
-			}
+		var err error
+		node.Expr, err = r.solve(node.Expr)
+		if err != nil {
+			return node, err
 		}
 
 		return node, nil

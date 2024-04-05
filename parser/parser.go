@@ -170,7 +170,7 @@ func (p *Parser) fn() *ast.Lambda {
 	}
 	p.consume(token.RIGHTBRACE)
 
-	return &ast.Lambda{Params: params, Exprs: exprs}
+	return &ast.Lambda{Params: params, Expr: &ast.Seq{Exprs: exprs}}
 }
 
 // atom = var | literal | paren | codata | PRIM "(" IDENT ("," expr)* ","? ")" ;
@@ -314,7 +314,7 @@ func (p *Parser) clause() *ast.CodataClause {
 		exprs = append(exprs, p.expr())
 	}
 
-	return &ast.CodataClause{Pattern: pattern, Exprs: exprs}
+	return &ast.CodataClause{Pattern: pattern, Expr: &ast.Seq{Exprs: exprs}}
 }
 
 // pattern = methodPat ;
@@ -504,7 +504,7 @@ func (p *Parser) fieldType() *ast.Field {
 	p.consume(token.COLON)
 	typ := p.typ()
 
-	return &ast.Field{Name: name.Lexeme, Exprs: []ast.Node{typ}}
+	return &ast.Field{Name: name.Lexeme, Expr: typ}
 }
 
 func (p *Parser) recover(err error) {

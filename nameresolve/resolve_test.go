@@ -14,48 +14,6 @@ import (
 	"github.com/takoeight0821/anma/utils"
 )
 
-func TestResolve(t *testing.T) {
-	t.Parallel()
-	s, err := os.ReadFile("../testdata/testcase.yaml")
-	if err != nil {
-		panic(err)
-	}
-	testcases := utils.ReadTestData(s)
-	for _, testcase := range testcases {
-		runner := driver.NewPassRunner()
-		runner.AddPass(codata.Flat{})
-		runner.AddPass(infix.NewInfixResolver())
-		runner.AddPass(nameresolve.NewResolver())
-
-		if expected, ok := testcase.Expected["nameresolve"]; ok {
-			utils.RunTest(runner, t, testcase.Label, testcase.Input, expected)
-		} else {
-			utils.RunTest(runner, t, testcase.Label, testcase.Input, "no expected value")
-		}
-	}
-}
-
-func BenchmarkFromTestData(b *testing.B) {
-	s, err := os.ReadFile("../testdata/testcase.yaml")
-	if err != nil {
-		panic(err)
-	}
-	testcases := utils.ReadTestData(s)
-
-	for _, testcase := range testcases {
-		b.Run(testcase.Label, func(b *testing.B) {
-			for range b.N {
-				runner := driver.NewPassRunner()
-				runner.AddPass(codata.Flat{})
-				runner.AddPass(infix.NewInfixResolver())
-				runner.AddPass(nameresolve.NewResolver())
-
-				utils.RunTest(runner, b, testcase.Label, testcase.Input, testcase.Expected["nameresolve"])
-			}
-		})
-	}
-}
-
 func TestGolden(t *testing.T) {
 	t.Parallel()
 

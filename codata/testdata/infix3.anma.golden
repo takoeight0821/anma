@@ -1,5 +1,5 @@
 (infix infixl 6 +)
 (infix infixl 8 *)
-(def + (lambda (x0 x1) (case ((var x0) (var x1)) (clause ((var x) (var y)) (prim add (var x) (var y))))))
-(def * (lambda (x0 x1) (case ((var x0) (var x1)) (clause ((var x) (var y)) (prim mul (var x) (var y))))))
-(def main (lambda () (binary (literal 1) * (paren (binary (literal 2) + (literal 3))))))
+(def + (lambda (x0 x1) (case ((var x0) (var x1)) (clause ((var x) (var y)) (seq (prim add (var x) (var y)))))))
+(def * (lambda (x0 x1) (case ((var x0) (var x1)) (clause ((var x) (var y)) (seq (prim mul (var x) (var y)))))))
+(def main (lambda () (seq (binary (literal 1) * (paren (binary (literal 2) + (literal 3)))))))

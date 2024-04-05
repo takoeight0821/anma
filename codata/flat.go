@@ -93,7 +93,7 @@ func flatCodata(c *ast.Codata) (ast.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		clauses[i] = plistClause{plist, clause.Exprs}
+		clauses[i] = plistClause{plist, clause.Expr}
 		if arity == NotChecked {
 			arity = plist.ArityOf()
 		}
@@ -125,11 +125,11 @@ func (e UnsupportedPatternError) Error() string {
 
 type plistClause struct {
 	plist patternList
-	exprs []ast.Node
+	expr  ast.Node
 }
 
 func (c plistClause) String() string {
-	return fmt.Sprintf("%v -> %v", c.plist, c.exprs)
+	return fmt.Sprintf("%v -> %v", c.plist, c.expr)
 }
 
 // Pop the first accessor of each clause and group remaining clauses by the popped accessor.
@@ -140,7 +140,7 @@ func groupClausesByAccessor(clauses []plistClause) (map[string][]plistClause, er
 		if field, plist, ok := plist.Pop(); ok {
 			next[field.String()] = append(
 				next[field.String()],
-				plistClause{plist, clause.exprs})
+				plistClause{plist, clause.expr})
 		} else {
 			return nil, utils.PosError{Where: plist.Base(), Err: UnsupportedPatternError{Clause: clause}}
 		}
@@ -166,7 +166,7 @@ func fieldBody(scrutinees []token.Token, clauses []plistClause) ([]*ast.CaseClau
 	for i, clause := range clauses {
 		// if c has no accessors, generate pattern matching clause
 		if !clause.plist.HasAccess() {
-			caseClauses[i] = plistToClause(clause.plist, clause.exprs...)
+			caseClauses[i] = plistToClause(clause.plist, clause.expr)
 		} else {
 			// otherwise, add to restPatterns and restClauses
 			restPatterns = append(restPatterns, struct {
@@ -219,8 +219,8 @@ func object(scrutinees []token.Token, clauses []plistClause) (ast.Node, error) {
 			}
 			fields = append(fields,
 				&ast.Field{
-					Name:  field,
-					Exprs: newCase(scrutinees, body),
+					Name: field,
+					Expr: newCase(scrutinees, body),
 				})
 		} else {
 			obj, err := object(scrutinees, cs)
@@ -229,8 +229,8 @@ func object(scrutinees []token.Token, clauses []plistClause) (ast.Node, error) {
 			}
 			fields = append(fields,
 				&ast.Field{
-					Name:  field,
-					Exprs: []ast.Node{obj},
+					Name: field,
+					Expr: obj,
 				})
 		}
 	}
@@ -262,15 +262,15 @@ func lambda(arity int, clauses []plistClause) (ast.Node, error) {
 	// otherwise, body expression is Case.
 	caseClauses := make([]*ast.CaseClause, 0)
 	for _, c := range clauses {
-		caseClauses = append(caseClauses, plistToClause(c.plist, c.exprs...))
+		caseClauses = append(caseClauses, plistToClause(c.plist, c.expr))
 	}
 
-	return newLambda(scrutinees, newCase(scrutinees, caseClauses)...), nil
+	return newLambda(scrutinees, newCase(scrutinees, caseClauses)), nil
 }
 
 // newLambda creates a new Lambda node with the given parameters and expressions.
-func newLambda(params []token.Token, exprs ...ast.Node) *ast.Lambda {
-	return &ast.Lambda{Params: params, Exprs: exprs}
+func newLambda(params []token.Token, expr ast.Node) *ast.Lambda {
+	return &ast.Lambda{Params: params, Expr: expr}
 }
 
 // newVar creates a new Var node with the given name and a token.
@@ -280,24 +280,24 @@ func newVar(name string, base token.Token) token.Token {
 
 // plistToClause creates a new Clause node with the given pattern and expressions.
 // pattern must be a patternList.
-func plistToClause(plist patternList, exprs ...ast.Node) *ast.CaseClause {
-	return &ast.CaseClause{Patterns: plist.Params(), Exprs: exprs}
+func plistToClause(plist patternList, expr ast.Node) *ast.CaseClause {
+	return &ast.CaseClause{Patterns: plist.Params(), Expr: expr}
 }
 
 // newCase creates a new Case node with the given scrutinees and clauses.
-// If there is no scrutinee, return Exprs of the first clause.
-func newCase(scrs []token.Token, clauses []*ast.CaseClause) []ast.Node {
-	// if there is no scrutinee, return Exprs of the first clause
+// If there is no scrutinee, return Expr of the first clause.
+func newCase(scrs []token.Token, clauses []*ast.CaseClause) ast.Node {
+	// if there is no scrutinee, return Expr of the first clause
 	// because case expression always matches the first clause.
 	if len(scrs) == 0 {
-		return clauses[0].Exprs
+		return clauses[0].Expr
 	}
 	vars := make([]ast.Node, len(scrs))
 	for i, s := range scrs {
 		vars[i] = &ast.Var{Name: s}
 	}
 
-	return []ast.Node{&ast.Case{Scrutinees: vars, Clauses: clauses}}
+	return &ast.Case{Scrutinees: vars, Clauses: clauses}
 }
 
 type InvalidCallPatternError struct {
