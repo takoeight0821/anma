@@ -197,6 +197,8 @@ func fetchPrim(name token.Token) func(*Evaluator, ...Value) (Value, error) {
 				return nil, utils.PosError{Where: name, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[1]}}
 			}
 
+			log.Printf("DEBUG: add [%v] %v %v", args, left, right)
+
 			return left + right, nil
 		}
 	case "mul":
@@ -212,6 +214,8 @@ func fetchPrim(name token.Token) func(*Evaluator, ...Value) (Value, error) {
 			if !ok {
 				return nil, utils.PosError{Where: name, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[1]}}
 			}
+
+			log.Printf("DEBUG: mul [%v] %v %v", args, left, right)
 
 			return left * right, nil
 		}
@@ -269,8 +273,6 @@ func (ev *Evaluator) evalLet(node *ast.Let) error {
 		return err
 	}
 	if env, ok := body.match(node.Bind); ok {
-		log.Printf("DEBUG: match %v with %v", node.Bind, body)
-		log.Printf("DEBUG: %v", env)
 		for name, v := range env {
 			ev.evEnv.set(name, v)
 		}
@@ -342,8 +344,6 @@ func matchClause(clause *ast.CaseClause, scrs []Value) (map[Name]Value, bool) {
 	env := make(map[Name]Value)
 	for i, pattern := range clause.Patterns {
 		m, ok := scrs[i].match(pattern)
-		log.Printf("DEBUG: match %v with %v", pattern, scrs[i])
-		log.Printf("DEBUG: %v", m)
 		if !ok {
 			return nil, false
 		}

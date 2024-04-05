@@ -275,10 +275,6 @@ func (f *Flat) buildLambda(plists map[int][]ast.Node, bodys map[int]ast.Node) (a
 		return nil, err
 	}
 
-	for i, ps := range guards {
-		guards[i] = append(f.guards[i], ps...)
-	}
-
 	arity := -1
 	for _, ps := range guards {
 		if arity == -1 {
@@ -296,6 +292,10 @@ func (f *Flat) buildLambda(plists map[int][]ast.Node, bodys map[int]ast.Node) (a
 	for i := range scrutinees {
 		// TODO: add line number from the original pattern
 		scrutinees[i] = token.Token{Kind: token.IDENT, Lexeme: fmt.Sprintf("x%d", i), Line: 0, Literal: nil}
+	}
+
+	for i, ps := range guards {
+		guards[i] = append(f.guards[i], ps...)
 	}
 
 	innerF := &Flat{scrutinees: append(f.scrutinees, scrutinees...), guards: guards}
