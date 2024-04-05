@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"github.com/sebdah/goldie/v2"
+	"github.com/takoeight0821/anma/codata"
 	"github.com/takoeight0821/anma/driver"
 	"github.com/takoeight0821/anma/infix"
-	"github.com/takoeight0821/anma/newcodata"
 	"github.com/takoeight0821/anma/utils"
 )
 
@@ -29,7 +29,7 @@ func TestGolden(t *testing.T) {
 		}
 
 		runner := driver.NewPassRunner()
-		runner.AddPass(&newcodata.Flat{})
+		runner.AddPass(&codata.Flat{})
 		runner.AddPass(infix.NewInfixResolver())
 
 		nodes, err := runner.RunSource(string(source))
