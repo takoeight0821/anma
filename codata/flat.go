@@ -10,17 +10,16 @@ import (
 	"github.com/takoeight0821/anma/token"
 )
 
-var uniq int = 0
-
-func genUniq(hint string) string {
-	uniq++
-	return fmt.Sprintf(":%s%d", hint, uniq)
-}
-
 // Flat converts [Codata] to [Object], [Case], and [Lambda].
 type Flat struct {
+	uniq       int
 	scrutinees []token.Token
 	guards     map[int][]ast.Node
+}
+
+func (f *Flat) genUniq(hint string) string {
+	f.uniq++
+	return fmt.Sprintf(":%s%d", hint, f.uniq)
 }
 
 func (*Flat) Name() string {
@@ -73,6 +72,7 @@ func (f *Flat) flatEach(node ast.Node, err error) (ast.Node, error) {
 }
 
 func (f *Flat) flatCodata(c *ast.Codata) (ast.Node, error) {
+	f.uniq = 0
 	f.scrutinees = make([]token.Token, 0)
 	f.guards = make(map[int][]ast.Node)
 
@@ -236,7 +236,7 @@ func (f *Flat) buildObject(plists map[int][]ast.Node, bodys map[int]ast.Node) (a
 
 	objectFields := make([]*ast.Field, 0)
 	for _, name := range fieldsKeys {
-		innerF := &Flat{scrutinees: f.scrutinees, guards: selectIndicies(fields[name], f.guards)}
+		innerF := &Flat{uniq: f.uniq, scrutinees: f.scrutinees, guards: selectIndicies(fields[name], f.guards)}
 		expr, err := innerF.build(selectIndicies(fields[name], rest), bodys)
 		if err != nil {
 			return nil, err
@@ -298,14 +298,14 @@ func (f *Flat) buildLambda(plists map[int][]ast.Node, bodys map[int]ast.Node) (a
 	scrutinees := make([]token.Token, arity)
 	for i := range scrutinees {
 		// TODO: add line number from the original pattern
-		scrutinees[i] = token.Token{Kind: token.IDENT, Lexeme: genUniq("p"), Line: 0, Literal: nil}
+		scrutinees[i] = token.Token{Kind: token.IDENT, Lexeme: f.genUniq("p"), Line: 0, Literal: nil}
 	}
 
 	for i, ps := range guards {
 		guards[i] = append(f.guards[i], ps...)
 	}
 
-	innerF := &Flat{scrutinees: append(f.scrutinees, scrutinees...), guards: guards}
+	innerF := &Flat{uniq: f.uniq, scrutinees: append(f.scrutinees, scrutinees...), guards: guards}
 	body, err := innerF.build(rest, bodys)
 	if err != nil {
 		return nil, err
