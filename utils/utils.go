@@ -40,7 +40,7 @@ func (e PosError) Error() string {
 
 func FindSourceFiles(path string) ([]string, error) {
 	var files []string
-	err := filepath.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(path, func(path string, _ fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}

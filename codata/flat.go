@@ -8,6 +8,7 @@ import (
 
 	"github.com/takoeight0821/anma/ast"
 	"github.com/takoeight0821/anma/token"
+	"github.com/takoeight0821/anma/utils"
 )
 
 // Flat converts [Codata] to [Object], [Case], and [Lambda].
@@ -119,7 +120,14 @@ func (f *Flat) build(plists map[int][]ast.Node, bodys map[int]ast.Node) (ast.Nod
 	case Function:
 		return f.buildLambda(plists, bodys)
 	default:
-		return nil, mismatchError(plists)
+		var where token.Token
+		for _, ps := range plists {
+			if len(ps) != 0 {
+				where = ps[0].Base()
+				break
+			}
+		}
+		return nil, utils.PosError{Where: where, Err: MismatchError{Plists: plists}}
 	}
 }
 
@@ -169,13 +177,17 @@ func kindOf(plists map[int][]ast.Node) Kind {
 	return kind
 }
 
-func mismatchError(plists map[int][]ast.Node) error {
+type MismatchError struct {
+	Plists map[int][]ast.Node
+}
+
+func (e MismatchError) Error() string {
 	var builder strings.Builder
 	fmt.Fprintf(&builder, "mismatched patterns:\n")
-	for _, ps := range plists {
+	for _, ps := range e.Plists {
 		fmt.Fprintf(&builder, "\t%v\n", ps[0])
 	}
-	return fmt.Errorf(builder.String())
+	return builder.String()
 }
 
 func (f *Flat) buildCase(plists map[int][]ast.Node, bodys map[int]ast.Node) ast.Node {
@@ -269,7 +281,7 @@ func popField(plists map[int][]ast.Node) (map[string][]int, map[int][]ast.Node, 
 		case *ast.Access:
 			fields[p.Name.Lexeme] = append(fields[p.Name.Lexeme], i)
 		default:
-			return nil, nil, fmt.Errorf("unexpected pattern: %v", p)
+			return nil, nil, utils.PosError{Where: p.Base(), Err: UnexpectedPatternError{Pattern: p}}
 		}
 		rest[i] = ps[1:]
 	}
@@ -288,11 +300,16 @@ func (f *Flat) buildLambda(plists map[int][]ast.Node, bodys map[int]ast.Node) (a
 			arity = len(ps)
 		}
 		if len(ps) != arity {
-			return nil, fmt.Errorf("mismatched arity: %v", guards)
+			var where token.Token
+			for _, p := range ps {
+				where = p.Base()
+				break
+			}
+			return nil, utils.PosError{Where: where, Err: InvalidArityError{Guards: guards}}
 		}
 	}
 	if arity == -1 {
-		return nil, fmt.Errorf("arity is not defined: %v", guards)
+		panic("arity must be positive")
 	}
 
 	scrutinees := make([]token.Token, arity)
@@ -316,6 +333,14 @@ func (f *Flat) buildLambda(plists map[int][]ast.Node, bodys map[int]ast.Node) (a
 		Expr:   body}, nil
 }
 
+type InvalidArityError struct {
+	Guards map[int][]ast.Node
+}
+
+func (e InvalidArityError) Error() string {
+	return fmt.Sprintf("invalid arity: %v", e.Guards)
+}
+
 func popGuard(plists map[int][]ast.Node) (map[int][]ast.Node, map[int][]ast.Node, error) {
 	guards := make(map[int][]ast.Node)
 	rest := make(map[int][]ast.Node)
@@ -324,9 +349,17 @@ func popGuard(plists map[int][]ast.Node) (map[int][]ast.Node, map[int][]ast.Node
 		case *ast.Call:
 			guards[i] = p.Args
 		default:
-			return nil, nil, fmt.Errorf("unexpected pattern: %v", p)
+			return nil, nil, utils.PosError{Where: p.Base(), Err: UnexpectedPatternError{Pattern: p}}
 		}
 		rest[i] = ps[1:]
 	}
 	return guards, rest, nil
+}
+
+type UnexpectedPatternError struct {
+	Pattern ast.Node
+}
+
+func (e UnexpectedPatternError) Error() string {
+	return fmt.Sprintf("unexpected pattern: %v", e.Pattern)
 }
