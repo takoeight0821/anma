@@ -1,0 +1,1 @@
+(def f (codata (clause (access (call # (literal 0)) h) (seq (literal 1))) (clause (access (access (call # (var x)) h) h) (seq (var x)))))
