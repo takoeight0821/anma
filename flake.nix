@@ -36,7 +36,7 @@
           # remember to bump this hash when your dependencies change.
           # vendorHash = pkgs.lib.fakeHash;
 
-          vendorHash = "sha256-VCO5P1RblEalnZ00xFmYx5wWG2MpdJHOCIYUjVGFCic=";
+          vendorHash = "sha256-SJ71q2OCDxbsDOneSZFe6CrKnmFHbOB4QRYwlBaU1dU=";
         };
       in {
         packages.default = anma;
