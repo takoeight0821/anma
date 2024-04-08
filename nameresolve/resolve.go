@@ -96,12 +96,12 @@ func (e *env) lookup(name token.Token) (token.Token, error) {
 func (r *Resolver) registerTopLevel(node ast.Node) error {
 	switch node := node.(type) {
 	case *ast.TypeDecl:
-		_, err := r.assign(node.Def, allVariables)
+		_, err := r.assign(node.Def, asTypeConstructor)
 		if err != nil {
 			return err
 		}
 		for _, typ := range node.Types {
-			_, err := r.assign(typ, ifNotDefined)
+			_, err := r.assign(typ, asConstructor)
 			if err != nil {
 				return err
 			}
@@ -340,7 +340,15 @@ func (r *Resolver) solve(node ast.Node) (ast.Node, error) {
 
 		return node, nil
 	case *ast.TypeDecl:
-		var err error
+		r.env = newEnv(r.env)
+		defer func() { r.env = r.env.parent }()
+
+		// Define type parameters.
+		_, err := r.assign(node.Def, ifNotDefined)
+		if err != nil {
+			return node, err
+		}
+
 		node.Def, err = r.solve(node.Def)
 		if err != nil {
 			return node, err
@@ -512,6 +520,46 @@ func asPattern(resolver *Resolver, pattern ast.Node) ([]string, error) {
 	default:
 		return nil, utils.PosError{Where: pattern.Base(), Err: InvalidPatternError{Pattern: pattern}}
 	}
+}
+
+// Define variables in the node as type constructor.
+// If the given node is a variable, define it.
+// Otherwise, pass the node to asConstructor.
+func asTypeConstructor(resolver *Resolver, typ ast.Node) ([]string, error) {
+	switch typ := typ.(type) {
+	case *ast.Var:
+		return resolver.assign(typ, allVariables)
+	default:
+		return resolver.assign(typ, asConstructor)
+	}
+}
+
+// Define variables in the node as constructor.
+// If a variable appears as a function, define it.
+func asConstructor(resolver *Resolver, typ ast.Node) ([]string, error) {
+	switch typ := typ.(type) {
+	case *ast.Var:
+		return nil, nil
+	case *ast.Paren:
+		return resolver.assign(typ.Expr, asConstructor)
+	case *ast.Call:
+		// typ.Func is a constructor.
+		return resolver.assign(typ.Func, allVariables)
+	case *ast.Prim:
+		return nil, nil
+	case *ast.Object:
+		return nil, nil
+	default:
+		return nil, utils.PosError{Where: typ.Base(), Err: InvalidTypeError{Type: typ}}
+	}
+}
+
+type InvalidTypeError struct {
+	Type ast.Node
+}
+
+func (e InvalidTypeError) Error() string {
+	return fmt.Sprintf("invalid type %v", e.Type)
 }
 
 // assign defines variables in the node.

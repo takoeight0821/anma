@@ -1,4 +1,4 @@
 "Cons case"
-Cons.7(0, Nil.6())
-Some.3(0)
+Cons.5(0, Nil.4())
+Some.2(0)
 result => <unit>
