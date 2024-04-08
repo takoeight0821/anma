@@ -348,9 +348,31 @@ func (p *Parser) codata() *ast.Codata {
 	return &ast.Codata{Clauses: clauses}
 }
 
-// clause = pattern "->" expr (";" expr)* ";"? ;
+// clause = clauseHead "->" expr (";" expr)* ";"? ;
+// clauseHead = "(" ")" | "(" pattern ("," pattern)* ","? ")" | pattern ;
 func (p *Parser) clause() *ast.CodataClause {
-	pattern := p.pattern()
+	var pattern ast.Node
+	if p.match(token.SHARP) {
+		// if the first token is `#`, then it is a pattern.
+		pattern = p.pattern()
+	} else {
+		// otherwise, it is a pattern list as parameters.
+		tok := p.consume(token.LEFTPAREN)
+		params := []ast.Node{}
+		if !p.match(token.RIGHTPAREN) {
+			params = append(params, p.pattern())
+			for p.match(token.COMMA) {
+				p.advance()
+				if p.match(token.RIGHTPAREN) {
+					break
+				}
+				params = append(params, p.pattern())
+			}
+		}
+		p.consume(token.RIGHTPAREN)
+		pattern = &ast.Call{Func: &ast.This{Token: tok}, Args: params}
+	}
+
 	p.consume(token.ARROW)
 	exprs := []ast.Node{p.expr()}
 	for p.match(token.SEMICOLON) {
