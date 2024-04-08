@@ -161,7 +161,7 @@ func (p *Parser) infixDecl() *ast.InfixDecl {
 	return &ast.InfixDecl{Assoc: kind, Prec: precedence, Name: name}
 }
 
-// expr = let | fn | assert ;
+// expr = let | assert ;
 func (p *Parser) expr() ast.Node {
 	if p.IsAtEnd() {
 		p.recover(unexpectedToken(p.peek(), "expression"))
@@ -170,9 +170,6 @@ func (p *Parser) expr() ast.Node {
 	}
 	if p.match(token.LET) {
 		return p.let()
-	}
-	if p.match(token.FN) {
-		return p.fn()
 	}
 
 	return p.assert()
@@ -186,38 +183,6 @@ func (p *Parser) let() *ast.Let {
 	expr := p.assert()
 
 	return &ast.Let{Bind: pattern, Body: expr}
-}
-
-// fn = "fn" "(" param_list? ")" "{" expr (";" expr)* ";"? "}" ;
-// param_list = param ("," param)* ","? ;
-func (p *Parser) fn() *ast.Lambda {
-	p.advance()
-	p.consume(token.LEFTPAREN)
-	params := []token.Token{}
-	if p.match(token.IDENT) {
-		params = append(params, p.advance())
-		for p.match(token.COMMA) {
-			p.advance()
-			if p.match(token.RIGHTPAREN) {
-				break
-			}
-			params = append(params, p.consume(token.IDENT))
-		}
-	}
-	p.consume(token.RIGHTPAREN)
-
-	p.consume(token.LEFTBRACE)
-	exprs := []ast.Node{p.expr()}
-	for p.match(token.SEMICOLON) {
-		p.advance()
-		if p.match(token.RIGHTBRACE) {
-			break
-		}
-		exprs = append(exprs, p.expr())
-	}
-	p.consume(token.RIGHTBRACE)
-
-	return &ast.Lambda{Params: params, Expr: &ast.Seq{Exprs: exprs}}
 }
 
 // atom = var | literal | paren | codata | PRIM "(" IDENT ("," expr)* ","? ")" ;
