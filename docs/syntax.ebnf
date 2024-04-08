@@ -2,7 +2,12 @@
 
 decl = typeDecl | varDecl | infixDecl ; (* func decl *)
 
-typeDecl = "type" type "=" type ("|" type)* ; (* func typeDecl *)
+typeDecl = "type" IDENT (typeparams1)? "=" typebody ;
+typeparams1 = "(" IDENT ("," IDENT)* ","? ")" ;
+typebody = "{" constructor ("," constructor)* ","? "}" | type ; (* func typeDecl *)
+
+constructor = IDENT "(" typeparams ")" ;
+typeparams = (type ("," type)*)? ; (* func constructor *)
 
 varDecl = "def" IDENT "=" expr | "def" IDENT ":" type | "def" IDENT ":" type "=" expr ; (* func varDecl *)
 

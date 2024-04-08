@@ -1,5 +1,8 @@
 type Int     = prim(int)
-type List(a) = Nil() | Cons(a, List)
+type List(a) = {
+  Nil(),
+  Cons(a, List)
+}
 infixl 6 -
 def - = { #(x, y) -> prim(sub, x, y) }
 def map = {

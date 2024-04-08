@@ -1,5 +1,11 @@
-type Option(c) = None() | Some(c)
-type List(d) = Nil() | Cons(d, List(d))
+type Option(c) = {
+    None(),
+    Some(c),
+}
+type List(d) = {
+    Nil(),
+    Cons(d, List(d)),
+}
 
 def vendor = {
     #(items).get -> None(),

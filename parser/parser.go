@@ -49,27 +49,74 @@ func (p *Parser) decl() ast.Node {
 	return p.infixDecl()
 }
 
-// typeDecl = "type" type "=" type ("|" type)* ;
+// typeDecl = "type" IDENT (typeparams1)? "=" typebody ;
+// typeparams1 = "(" IDENT ("," IDENT)* ","? ")" ;
+// typebody = "{" constructor ("," constructor)* ","? "}" | type ;
 func (p *Parser) typeDecl() *ast.TypeDecl {
 	p.consume(token.TYPE)
-	def := p.typ()
+	typename := p.consume(token.IDENT)
+
+	var def ast.Node
+	def = &ast.Var{Name: typename}
+	if p.match(token.LEFTPAREN) {
+		p.consume(token.LEFTPAREN)
+		typeparams := []ast.Node{}
+		if !p.match(token.RIGHTPAREN) {
+			typeparams = append(typeparams, &ast.Var{Name: p.consume(token.IDENT)})
+			for p.match(token.COMMA) {
+				p.advance()
+				if p.match(token.RIGHTPAREN) {
+					break
+				}
+				typeparams = append(typeparams, &ast.Var{Name: p.consume(token.IDENT)})
+			}
+		}
+		p.consume(token.RIGHTPAREN)
+		def = &ast.Call{Func: def, Args: typeparams}
+	}
+
 	p.consume(token.EQUAL)
-	types := []ast.Node{p.typ()}
-	for p.match(token.BAR) {
-		p.advance()
+	var types []ast.Node
+	if p.match(token.LEFTBRACE) {
+		// if typebody is a record, then call p.typ()
+		if p.matchNth(1, token.IDENT) && p.matchNth(2, token.COLON) {
+			types = append(types, p.typ())
+		} else {
+			p.consume(token.LEFTBRACE)
+			for !p.match(token.RIGHTBRACE) {
+				types = append(types, p.constructor())
+				if p.match(token.COMMA) {
+					p.advance()
+				}
+			}
+			p.consume(token.RIGHTBRACE)
+		}
+	} else {
 		types = append(types, p.typ())
 	}
 
-	// all types must be a Call or Prim node
-	for _, t := range types {
-		if _, ok := t.(*ast.Call); !ok {
-			if _, ok := t.(*ast.Prim); !ok {
-				p.recover(errors.New("type must be a Call or Prim node"))
+	return &ast.TypeDecl{Def: def, Types: types}
+}
+
+// constructor = IDENT "(" typeparams ")" ;
+// typeparams = (type ("," type)*)? ;
+func (p *Parser) constructor() *ast.Call {
+	name := p.consume(token.IDENT)
+	p.consume(token.LEFTPAREN)
+	typeparams := []ast.Node{}
+	if !p.match(token.RIGHTPAREN) {
+		typeparams = append(typeparams, p.typ())
+		for p.match(token.COMMA) {
+			p.advance()
+			if p.match(token.RIGHTPAREN) {
+				break
 			}
+			typeparams = append(typeparams, p.typ())
 		}
 	}
+	p.consume(token.RIGHTPAREN)
 
-	return &ast.TypeDecl{Def: def, Types: types}
+	return &ast.Call{Func: &ast.Var{Name: name}, Args: typeparams}
 }
 
 // varDecl = "def" IDENT "=" expr | "def" IDENT ":" type | "def" IDENT ":" type "=" expr ;
@@ -515,6 +562,10 @@ func (p Parser) peek() token.Token {
 	return p.tokens[p.current]
 }
 
+func (p Parser) peekNth(n int) token.Token {
+	return p.tokens[p.current+n]
+}
+
 func (p *Parser) advance() token.Token {
 	if !p.IsAtEnd() {
 		p.current++
@@ -537,6 +588,17 @@ func (p Parser) match(kind token.Kind) bool {
 	}
 
 	return p.peek().Kind == kind
+}
+
+func (p Parser) matchNth(n int, kind token.Kind) bool {
+	if p.current+n >= len(p.tokens) {
+		return false
+	}
+	if p.tokens[p.current+n].Kind == token.EOF {
+		return false
+	}
+
+	return p.peekNth(n).Kind == kind
 }
 
 func (p *Parser) consume(kind token.Kind) token.Token {
