@@ -1,7 +1,6 @@
 package driver
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/takoeight0821/anma/ast"
@@ -62,5 +61,5 @@ func (r *PassRunner) RunSource(source string) ([]ast.Node, error) {
 		return r.Run([]ast.Node{expr})
 	}
 
-	return nil, fmt.Errorf("parse:\n%w", errors.Join(errDecls, errExpr))
+	return nil, fmt.Errorf("parse as declarations:\n%w\nparse as an expression:\n%w", errDecls, errExpr)
 }
