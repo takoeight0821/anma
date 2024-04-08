@@ -318,39 +318,35 @@ func (p *Parser) codata() *ast.Codata {
 // clauseBody = expr (";" expr)* ";"? ;
 func (p *Parser) clause() *ast.CodataClause {
 	// try to parse `clauseHead "->"`
-	savedErr := p.err
-	savedCurrent := p.current
-
-	var pattern ast.Node
-	if p.match(token.SHARP) {
-		// if the first token is `#`, then it is a pattern.
-		pattern = p.pattern()
-	} else {
-		// otherwise, it is a pattern list as parameters.
-		tok := p.consume(token.LEFTPAREN)
-		params := []ast.Node{}
-		if !p.match(token.RIGHTPAREN) {
-			params = append(params, p.pattern())
-			for p.match(token.COMMA) {
-				p.advance()
-				if p.match(token.RIGHTPAREN) {
-					break
-				}
+	pattern, patternErr := p.try(func() ast.Node {
+		var pattern ast.Node
+		if p.match(token.SHARP) {
+			// if the first token is `#`, then it is a pattern.
+			pattern = p.pattern()
+		} else {
+			// otherwise, it is a pattern list as parameters.
+			tok := p.consume(token.LEFTPAREN)
+			params := []ast.Node{}
+			if !p.match(token.RIGHTPAREN) {
 				params = append(params, p.pattern())
+				for p.match(token.COMMA) {
+					p.advance()
+					if p.match(token.RIGHTPAREN) {
+						break
+					}
+					params = append(params, p.pattern())
+				}
 			}
+			p.consume(token.RIGHTPAREN)
+			pattern = &ast.Call{Func: &ast.This{Token: tok}, Args: params}
 		}
-		p.consume(token.RIGHTPAREN)
-		pattern = &ast.Call{Func: &ast.This{Token: tok}, Args: params}
-	}
 
-	p.consume(token.ARROW)
-
-	// if the parsing is failed, insert `#() ->` as pattern and go back to the original position.
-	if p.err != nil {
-		p.err = savedErr
-		p.current = savedCurrent
-		pattern = &ast.Call{Func: &ast.This{Token: p.peek()}, Args: []ast.Node{}}
-	}
+		p.consume(token.ARROW)
+		return pattern
+	}, func() ast.Node {
+		// if the parsing is failed, insert `#() ->` as pattern and go back to the original position.
+		return &ast.Call{Func: &ast.This{Token: p.peek()}, Args: []ast.Node{}}
+	})
 
 	exprs := []ast.Node{p.expr()}
 	for p.match(token.SEMICOLON) {
@@ -359,6 +355,11 @@ func (p *Parser) clause() *ast.CodataClause {
 			break
 		}
 		exprs = append(exprs, p.expr())
+	}
+
+	if p.err != nil {
+		// if the parsing is failed, add patternErr to the error.
+		p.recover(patternErr)
 	}
 
 	return &ast.CodataClause{Pattern: pattern, Expr: &ast.Seq{Exprs: exprs}}
@@ -630,4 +631,20 @@ func (e UnexpectedTokenError) Error() string {
 
 func unexpectedToken(t token.Token, expected ...string) error {
 	return utils.PosError{Where: t, Err: UnexpectedTokenError{Expected: expected}}
+}
+
+func (p *Parser) try(action func() ast.Node, recover func() ast.Node) (ast.Node, error) {
+	savedErr := p.err
+	savedCurrent := p.current
+
+	node := action()
+	if p.err != nil {
+		raisedErr := p.err
+		p.err = savedErr
+		p.current = savedCurrent
+
+		return recover(), raisedErr
+	}
+
+	return node, nil
 }
