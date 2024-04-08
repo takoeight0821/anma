@@ -1,0 +1,1 @@
+(def main.0 (lambda () (seq (prim read_all_cps (lambda (:p1.1) (case ((var :p1.1)) (clause (var s.2) (seq (prim print_cps (var s.2) (lambda () (seq (prim exit))))))))))))

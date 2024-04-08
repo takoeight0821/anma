@@ -12,12 +12,14 @@ import (
 type Evaluator struct {
 	*evEnv
 	Stdout io.Writer
+	Stdin  io.Reader
 }
 
 func NewEvaluator() *Evaluator {
 	return &Evaluator{
 		evEnv:  newEvEnv(nil),
 		Stdout: os.Stdout,
+		Stdin:  os.Stdin,
 	}
 }
 

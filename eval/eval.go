@@ -3,6 +3,7 @@ package eval
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log"
 
 	"github.com/takoeight0821/anma/ast"
@@ -228,9 +229,56 @@ func fetchPrim(name token.Token) func(*Evaluator, ...Value) (Value, error) {
 
 			return Unit{}, nil
 		}
+	case "read_all_cps":
+		return func(ev *Evaluator, args ...Value) (Value, error) {
+			if len(args) != 1 {
+				return nil, utils.PosError{Where: name, Err: InvalidArgumentCountError{Expected: 1,
+					Actual: len(args)}}
+			}
+			cont, ok := args[0].(Callable)
+			if !ok {
+				return nil, utils.PosError{Where: name, Err: InvalidArgumentTypeError{Expected: "Callable", Actual: args[0]}}
+			}
+			bytes, err := io.ReadAll(ev.Stdin)
+			if err != nil {
+				return nil, err
+			}
+			return cont.Apply(name, String(bytes))
+		}
+	case "print_cps":
+		return func(ev *Evaluator, args ...Value) (Value, error) {
+			if len(args) != 2 {
+				return nil, utils.PosError{Where: name, Err: InvalidArgumentCountError{Expected: 2, Actual: len(args)}}
+			}
+			if arg, ok := args[0].(String); !ok {
+				return nil, utils.PosError{Where: name, Err: InvalidArgumentTypeError{Expected: "String", Actual: args[0]}}
+			} else {
+				fmt.Fprintf(ev.Stdout, "%s", string(arg))
+			}
+			cont, ok := args[1].(Callable)
+			if !ok {
+				return nil, utils.PosError{Where: name, Err: InvalidArgumentTypeError{Expected: "Callable", Actual: args[1]}}
+			}
+			return cont.Apply(name)
+		}
+	case "exit":
+		return func(ev *Evaluator, args ...Value) (Value, error) {
+			if len(args) != 0 {
+				return nil, utils.PosError{Where: name, Err: InvalidArgumentCountError{Expected: 0, Actual: len(args)}}
+			}
+			return nil, Exit{Code: 0}
+		}
 	default:
 		return nil
 	}
+}
+
+type Exit struct {
+	Code int
+}
+
+func (e Exit) Error() string {
+	return fmt.Sprintf("exit(%d)", e.Code)
 }
 
 func (ev *Evaluator) evalBinary(node *ast.Binary) (Value, error) {

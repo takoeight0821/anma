@@ -46,11 +46,16 @@ func TestGolden(t *testing.T) {
 		evaluator := eval.NewEvaluator()
 		var builder strings.Builder
 		evaluator.Stdout = &builder
+		evaluator.Stdin = strings.NewReader("test input\n")
 		values := make([]eval.Value, len(nodes))
 
 		for i, node := range nodes {
 			values[i], err = evaluator.Eval(node)
 			if err != nil {
+				if _, ok := err.(eval.Exit); ok {
+					break
+				}
+
 				t.Errorf("%s returned error: %v", testfile, err)
 				return
 			}
@@ -60,10 +65,14 @@ func TestGolden(t *testing.T) {
 			top := token.Token{Kind: token.IDENT, Lexeme: "toplevel", Line: 0, Literal: -1}
 			ret, err := main.Apply(top)
 			if err != nil {
-				t.Errorf("%s returned error: %v", testfile, err)
-				return
+				if _, ok := err.(eval.Exit); !ok {
+					t.Errorf("%s returned error: %v", testfile, err)
+					return
+				}
 			}
-			fmt.Fprintf(&builder, "result => %s\n", ret.String())
+			if ret != nil {
+				fmt.Fprintf(&builder, "result => %s\n", ret.String())
+			}
 
 			g := goldie.New(t)
 			g.Assert(t, testfile, []byte(builder.String()))
