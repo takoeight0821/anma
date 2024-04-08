@@ -313,9 +313,14 @@ func (p *Parser) codata() *ast.Codata {
 	return &ast.Codata{Clauses: clauses}
 }
 
-// clause = clauseHead "->" expr (";" expr)* ";"? ;
+// clause = clauseHead "->" clauseBody | clauseBody ;
 // clauseHead = "(" ")" | "(" pattern ("," pattern)* ","? ")" | pattern ;
+// clauseBody = expr (";" expr)* ";"? ;
 func (p *Parser) clause() *ast.CodataClause {
+	// try to parse `clauseHead "->"`
+	savedErr := p.err
+	savedCurrent := p.current
+
 	var pattern ast.Node
 	if p.match(token.SHARP) {
 		// if the first token is `#`, then it is a pattern.
@@ -339,6 +344,14 @@ func (p *Parser) clause() *ast.CodataClause {
 	}
 
 	p.consume(token.ARROW)
+
+	// if the parsing is failed, insert `#() ->` as pattern and go back to the original position.
+	if p.err != nil {
+		p.err = savedErr
+		p.current = savedCurrent
+		pattern = &ast.Call{Func: &ast.This{Token: p.peek()}, Args: []ast.Node{}}
+	}
+
 	exprs := []ast.Node{p.expr()}
 	for p.match(token.SEMICOLON) {
 		p.advance()
