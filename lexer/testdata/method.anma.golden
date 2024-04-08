@@ -7,9 +7,7 @@ DOT "." 2
 IDENT "print" 2
 ARROW "->" 2
 LEFTBRACE "{" 2
-LEFTPAREN "(" 2
 IDENT "x" 2
-RIGHTPAREN ")" 2
 ARROW "->" 2
 PRIM "prim" 2
 LEFTPAREN "(" 2

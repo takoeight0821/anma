@@ -323,8 +323,8 @@ func (p *Parser) clause() *ast.CodataClause {
 		if p.match(token.SHARP) {
 			// if the first token is `#`, then it is a pattern.
 			pattern = p.pattern()
-		} else {
-			// otherwise, it is a pattern list as parameters.
+		} else if p.match(token.LEFTPAREN) {
+			// if the first token is `(`, then it is a pattern list as parameters.
 			tok := p.consume(token.LEFTPAREN)
 			params := []ast.Node{}
 			if !p.match(token.RIGHTPAREN) {
@@ -339,6 +339,10 @@ func (p *Parser) clause() *ast.CodataClause {
 			}
 			p.consume(token.RIGHTPAREN)
 			pattern = &ast.Call{Func: &ast.This{Token: tok}, Args: params}
+		} else {
+			// otherwise, it is a single pattern as a parameter.
+			tok := p.peek()
+			pattern = &ast.Call{Func: &ast.This{Token: tok}, Args: []ast.Node{p.pattern()}}
 		}
 
 		p.consume(token.ARROW)
