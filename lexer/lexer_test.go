@@ -1,6 +1,7 @@
 package lexer_test
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -34,8 +35,7 @@ func TestGolden(t *testing.T) {
 
 		var builder strings.Builder
 		for _, token := range tokens {
-			builder.WriteString(token.String())
-			builder.WriteString("\n")
+			fmt.Fprintf(&builder, "%v %q %d\n", token.Kind, token.Lexeme, token.Line)
 		}
 
 		g := goldie.New(t)

@@ -1,170 +1,170 @@
-type
-Option
-(
-a
-)
-=
-{
-None
-(
-)
-,
-Some
-(
-a
-)
-,
-}
-type
-List
-(
-a
-)
-=
-{
-Nil
-(
-)
-,
-Cons
-(
-a
-,
-List
-(
-a
-)
-)
-,
-}
-def
-vendor
-=
-{
-#
-(
-items
-)
-.
-get
-->
-None
-(
-)
-,
-#
-(
-Nil
-(
-)
-)
-.
-put
-.
-get
-->
-prim
-(
-print
-,
-"Nil case"
-)
-;
-prim
-(
-print
-,
-Nil
-(
-)
-)
-;
-None
-(
-)
-,
-#
-(
-Cons
-(
-x
-,
-xs
-)
-)
-.
-put
-.
-get
-->
-prim
-(
-print
-,
-"Cons case"
-)
-;
-prim
-(
-print
-,
-Cons
-(
-x
-,
-xs
-)
-)
-;
-Some
-(
-x
-)
-,
-#
-(
-items
-)
-.
-put
-.
-put
-->
-vendor
-(
-items
-)
-.
-put
-,
-}
-def
-main
-=
-{
-#
-(
-)
-->
-prim
-(
-print
-,
-vendor
-(
-Cons
-(
-0
-,
-Nil
-(
-)
-)
-)
-.
-put
-.
-get
-)
-}
-
+TYPE "type" 1
+IDENT "Option" 1
+LEFTPAREN "(" 1
+IDENT "a" 1
+RIGHTPAREN ")" 1
+EQUAL "=" 1
+LEFTBRACE "{" 1
+IDENT "None" 2
+LEFTPAREN "(" 2
+RIGHTPAREN ")" 2
+COMMA "," 2
+IDENT "Some" 3
+LEFTPAREN "(" 3
+IDENT "a" 3
+RIGHTPAREN ")" 3
+COMMA "," 3
+RIGHTBRACE "}" 4
+TYPE "type" 5
+IDENT "List" 5
+LEFTPAREN "(" 5
+IDENT "a" 5
+RIGHTPAREN ")" 5
+EQUAL "=" 5
+LEFTBRACE "{" 5
+IDENT "Nil" 6
+LEFTPAREN "(" 6
+RIGHTPAREN ")" 6
+COMMA "," 6
+IDENT "Cons" 7
+LEFTPAREN "(" 7
+IDENT "a" 7
+COMMA "," 7
+IDENT "List" 7
+LEFTPAREN "(" 7
+IDENT "a" 7
+RIGHTPAREN ")" 7
+RIGHTPAREN ")" 7
+COMMA "," 7
+RIGHTBRACE "}" 8
+DEF "def" 10
+IDENT "vendor" 10
+EQUAL "=" 10
+LEFTBRACE "{" 10
+SHARP "#" 11
+LEFTPAREN "(" 11
+IDENT "items" 11
+RIGHTPAREN ")" 11
+DOT "." 11
+IDENT "get" 11
+ARROW "->" 11
+IDENT "None" 11
+LEFTPAREN "(" 11
+RIGHTPAREN ")" 11
+COMMA "," 11
+SHARP "#" 12
+LEFTPAREN "(" 12
+IDENT "Nil" 12
+LEFTPAREN "(" 12
+RIGHTPAREN ")" 12
+RIGHTPAREN ")" 12
+DOT "." 12
+IDENT "put" 12
+DOT "." 12
+IDENT "get" 12
+ARROW "->" 12
+PRIM "prim" 13
+LEFTPAREN "(" 13
+IDENT "print" 13
+COMMA "," 13
+STRING "\"Nil case\"" 13
+RIGHTPAREN ")" 13
+SEMICOLON ";" 13
+PRIM "prim" 14
+LEFTPAREN "(" 14
+IDENT "print" 14
+COMMA "," 14
+IDENT "Nil" 14
+LEFTPAREN "(" 14
+RIGHTPAREN ")" 14
+RIGHTPAREN ")" 14
+SEMICOLON ";" 14
+IDENT "None" 15
+LEFTPAREN "(" 15
+RIGHTPAREN ")" 15
+COMMA "," 15
+SHARP "#" 16
+LEFTPAREN "(" 16
+IDENT "Cons" 16
+LEFTPAREN "(" 16
+IDENT "x" 16
+COMMA "," 16
+IDENT "xs" 16
+RIGHTPAREN ")" 16
+RIGHTPAREN ")" 16
+DOT "." 16
+IDENT "put" 16
+DOT "." 16
+IDENT "get" 16
+ARROW "->" 16
+PRIM "prim" 17
+LEFTPAREN "(" 17
+IDENT "print" 17
+COMMA "," 17
+STRING "\"Cons case\"" 17
+RIGHTPAREN ")" 17
+SEMICOLON ";" 17
+PRIM "prim" 18
+LEFTPAREN "(" 18
+IDENT "print" 18
+COMMA "," 18
+IDENT "Cons" 18
+LEFTPAREN "(" 18
+IDENT "x" 18
+COMMA "," 18
+IDENT "xs" 18
+RIGHTPAREN ")" 18
+RIGHTPAREN ")" 18
+SEMICOLON ";" 18
+IDENT "Some" 19
+LEFTPAREN "(" 19
+IDENT "x" 19
+RIGHTPAREN ")" 19
+COMMA "," 19
+SHARP "#" 20
+LEFTPAREN "(" 20
+IDENT "items" 20
+RIGHTPAREN ")" 20
+DOT "." 20
+IDENT "put" 20
+DOT "." 20
+IDENT "put" 20
+ARROW "->" 20
+IDENT "vendor" 21
+LEFTPAREN "(" 21
+IDENT "items" 21
+RIGHTPAREN ")" 21
+DOT "." 21
+IDENT "put" 21
+COMMA "," 21
+RIGHTBRACE "}" 22
+DEF "def" 24
+IDENT "main" 24
+EQUAL "=" 24
+LEFTBRACE "{" 24
+SHARP "#" 25
+LEFTPAREN "(" 25
+RIGHTPAREN ")" 25
+ARROW "->" 25
+PRIM "prim" 25
+LEFTPAREN "(" 25
+IDENT "print" 25
+COMMA "," 25
+IDENT "vendor" 25
+LEFTPAREN "(" 25
+IDENT "Cons" 25
+LEFTPAREN "(" 25
+INTEGER "0" 25
+COMMA "," 25
+IDENT "Nil" 25
+LEFTPAREN "(" 25
+RIGHTPAREN ")" 25
+RIGHTPAREN ")" 25
+RIGHTPAREN ")" 25
+DOT "." 25
+IDENT "put" 25
+DOT "." 25
+IDENT "get" 25
+RIGHTPAREN ")" 25
+RIGHTBRACE "}" 26
+EOF "" 26

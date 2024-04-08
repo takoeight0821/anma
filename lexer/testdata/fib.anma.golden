@@ -1,143 +1,143 @@
-def
-+
-=
-{
-#
-(
-x
-,
-y
-,
-)
-->
-prim
-(
-add
-,
-x
-,
-y
-)
-}
-def
-zipWith
-=
-{
-#
-(
-f
-,
-xs
-,
-ys
-)
-.
-head
-->
-f
-(
-xs
-.
-head
-,
-ys
-.
-head
-)
-,
-#
-(
-f
-,
-xs
-,
-ys
-)
-.
-tail
-->
-zipWith
-(
-f
-,
-xs
-.
-tail
-,
-ys
-.
-tail
-)
-,
-}
-def
-fib
-=
-{
-#
-.
-head
-->
-1
-,
-#
-.
-tail
-.
-head
-->
-1
-,
-#
-.
-tail
-.
-tail
-->
-zipWith
-(
-{
-#
-(
-x
-,
-y
-)
-->
-x
-+
-y
-}
-,
-fib
-,
-fib
-.
-tail
-)
-,
-}
-def
-main
-=
-{
-#
-(
-)
-->
-prim
-(
-print
-,
-fib
-.
-tail
-.
-tail
-.
-tail
-.
-head
-)
-}
-
+DEF "def" 1
+OPERATOR "+" 1
+EQUAL "=" 1
+LEFTBRACE "{" 1
+SHARP "#" 1
+LEFTPAREN "(" 1
+IDENT "x" 1
+COMMA "," 1
+IDENT "y" 1
+COMMA "," 1
+RIGHTPAREN ")" 1
+ARROW "->" 1
+PRIM "prim" 1
+LEFTPAREN "(" 1
+IDENT "add" 1
+COMMA "," 1
+IDENT "x" 1
+COMMA "," 1
+IDENT "y" 1
+RIGHTPAREN ")" 1
+RIGHTBRACE "}" 1
+DEF "def" 2
+IDENT "zipWith" 2
+EQUAL "=" 2
+LEFTBRACE "{" 2
+SHARP "#" 3
+LEFTPAREN "(" 3
+IDENT "f" 3
+COMMA "," 3
+IDENT "xs" 3
+COMMA "," 3
+IDENT "ys" 3
+RIGHTPAREN ")" 3
+DOT "." 3
+IDENT "head" 3
+ARROW "->" 3
+IDENT "f" 3
+LEFTPAREN "(" 3
+IDENT "xs" 3
+DOT "." 3
+IDENT "head" 3
+COMMA "," 3
+IDENT "ys" 3
+DOT "." 3
+IDENT "head" 3
+RIGHTPAREN ")" 3
+COMMA "," 3
+SHARP "#" 4
+LEFTPAREN "(" 4
+IDENT "f" 4
+COMMA "," 4
+IDENT "xs" 4
+COMMA "," 4
+IDENT "ys" 4
+RIGHTPAREN ")" 4
+DOT "." 4
+IDENT "tail" 4
+ARROW "->" 4
+IDENT "zipWith" 4
+LEFTPAREN "(" 4
+IDENT "f" 4
+COMMA "," 4
+IDENT "xs" 4
+DOT "." 4
+IDENT "tail" 4
+COMMA "," 4
+IDENT "ys" 4
+DOT "." 4
+IDENT "tail" 4
+RIGHTPAREN ")" 4
+COMMA "," 4
+RIGHTBRACE "}" 5
+DEF "def" 6
+IDENT "fib" 6
+EQUAL "=" 6
+LEFTBRACE "{" 6
+SHARP "#" 7
+DOT "." 7
+IDENT "head" 7
+ARROW "->" 7
+INTEGER "1" 7
+COMMA "," 7
+SHARP "#" 8
+DOT "." 8
+IDENT "tail" 8
+DOT "." 8
+IDENT "head" 8
+ARROW "->" 8
+INTEGER "1" 8
+COMMA "," 8
+SHARP "#" 9
+DOT "." 9
+IDENT "tail" 9
+DOT "." 9
+IDENT "tail" 9
+ARROW "->" 9
+IDENT "zipWith" 9
+LEFTPAREN "(" 9
+LEFTBRACE "{" 9
+SHARP "#" 9
+LEFTPAREN "(" 9
+IDENT "x" 9
+COMMA "," 9
+IDENT "y" 9
+RIGHTPAREN ")" 9
+ARROW "->" 9
+IDENT "x" 9
+OPERATOR "+" 9
+IDENT "y" 9
+RIGHTBRACE "}" 9
+COMMA "," 9
+IDENT "fib" 9
+COMMA "," 9
+IDENT "fib" 9
+DOT "." 9
+IDENT "tail" 9
+RIGHTPAREN ")" 9
+COMMA "," 9
+RIGHTBRACE "}" 10
+DEF "def" 11
+IDENT "main" 11
+EQUAL "=" 11
+LEFTBRACE "{" 11
+SHARP "#" 11
+LEFTPAREN "(" 11
+RIGHTPAREN ")" 11
+ARROW "->" 11
+PRIM "prim" 11
+LEFTPAREN "(" 11
+IDENT "print" 11
+COMMA "," 11
+IDENT "fib" 11
+DOT "." 11
+IDENT "tail" 11
+DOT "." 11
+IDENT "tail" 11
+DOT "." 11
+IDENT "tail" 11
+DOT "." 11
+IDENT "head" 11
+RIGHTPAREN ")" 11
+RIGHTBRACE "}" 11
+EOF "" 11

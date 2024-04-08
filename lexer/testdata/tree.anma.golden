@@ -1,233 +1,233 @@
-type
-Int
-=
-prim
-(
-int
-)
-type
-List
-(
-a
-)
-=
-{
-Nil
-(
-)
-,
-Cons
-(
-a
-,
-List
-)
-}
-infixl
-6
--
-def
--
-=
-{
-#
-(
-x
-,
-y
-)
-->
-prim
-(
-sub
-,
-x
-,
-y
-)
-}
-def
-map
-=
-{
-#
-(
-f
-,
-Nil
-(
-)
-)
-->
-Nil
-(
-)
-,
-#
-(
-f
-,
-Cons
-(
-x
-,
-xs
-)
-)
-->
-Cons
-(
-f
-(
-x
-)
-,
-map
-(
-f
-,
-xs
-)
-)
-,
-}
-def
-prune
-=
-{
-#
-(
-x
-,
-t
-)
-.
-node
-->
-t
-.
-node
-,
-#
-(
-0
-,
-t
-)
-.
-children
-->
-Nil
-,
-#
-(
-x
-,
-t
-)
-.
-children
-->
-map
-(
-prune
-(
-x
--
-1
-)
-,
-t
-.
-children
-)
-,
-}
-def
-tree
-=
-{
-#
-.
-node
-->
-1
-,
-#
-.
-children
-->
-Cons
-(
-tree1
-,
-Cons
-(
-tree2
-,
-Nil
-(
-)
-)
-)
-,
-}
-def
-tree1
-=
-{
-#
-.
-node
-->
-2
-,
-#
-.
-children
-->
-Nil
-(
-)
-,
-}
-def
-tree2
-=
-{
-#
-.
-node
-->
-3
-,
-#
-.
-children
-->
-Cons
-(
-tree
-,
-Nil
-(
-)
-)
-,
-}
-def
-main
-=
-{
-#
-(
-)
-->
-prune
-(
-2
-,
-tree
-)
-}
-
+TYPE "type" 1
+IDENT "Int" 1
+EQUAL "=" 1
+PRIM "prim" 1
+LEFTPAREN "(" 1
+IDENT "int" 1
+RIGHTPAREN ")" 1
+TYPE "type" 2
+IDENT "List" 2
+LEFTPAREN "(" 2
+IDENT "a" 2
+RIGHTPAREN ")" 2
+EQUAL "=" 2
+LEFTBRACE "{" 2
+IDENT "Nil" 3
+LEFTPAREN "(" 3
+RIGHTPAREN ")" 3
+COMMA "," 3
+IDENT "Cons" 4
+LEFTPAREN "(" 4
+IDENT "a" 4
+COMMA "," 4
+IDENT "List" 4
+RIGHTPAREN ")" 4
+RIGHTBRACE "}" 5
+INFIXL "infixl" 6
+INTEGER "6" 6
+OPERATOR "-" 6
+DEF "def" 7
+OPERATOR "-" 7
+EQUAL "=" 7
+LEFTBRACE "{" 7
+SHARP "#" 7
+LEFTPAREN "(" 7
+IDENT "x" 7
+COMMA "," 7
+IDENT "y" 7
+RIGHTPAREN ")" 7
+ARROW "->" 7
+PRIM "prim" 7
+LEFTPAREN "(" 7
+IDENT "sub" 7
+COMMA "," 7
+IDENT "x" 7
+COMMA "," 7
+IDENT "y" 7
+RIGHTPAREN ")" 7
+RIGHTBRACE "}" 7
+DEF "def" 8
+IDENT "map" 8
+EQUAL "=" 8
+LEFTBRACE "{" 8
+SHARP "#" 9
+LEFTPAREN "(" 9
+IDENT "f" 9
+COMMA "," 9
+IDENT "Nil" 9
+LEFTPAREN "(" 9
+RIGHTPAREN ")" 9
+RIGHTPAREN ")" 9
+ARROW "->" 9
+IDENT "Nil" 9
+LEFTPAREN "(" 9
+RIGHTPAREN ")" 9
+COMMA "," 9
+SHARP "#" 10
+LEFTPAREN "(" 10
+IDENT "f" 10
+COMMA "," 10
+IDENT "Cons" 10
+LEFTPAREN "(" 10
+IDENT "x" 10
+COMMA "," 10
+IDENT "xs" 10
+RIGHTPAREN ")" 10
+RIGHTPAREN ")" 10
+ARROW "->" 10
+IDENT "Cons" 10
+LEFTPAREN "(" 10
+IDENT "f" 10
+LEFTPAREN "(" 10
+IDENT "x" 10
+RIGHTPAREN ")" 10
+COMMA "," 10
+IDENT "map" 10
+LEFTPAREN "(" 10
+IDENT "f" 10
+COMMA "," 10
+IDENT "xs" 10
+RIGHTPAREN ")" 10
+RIGHTPAREN ")" 10
+COMMA "," 10
+RIGHTBRACE "}" 11
+DEF "def" 12
+IDENT "prune" 12
+EQUAL "=" 12
+LEFTBRACE "{" 12
+SHARP "#" 13
+LEFTPAREN "(" 13
+IDENT "x" 13
+COMMA "," 13
+IDENT "t" 13
+RIGHTPAREN ")" 13
+DOT "." 13
+IDENT "node" 13
+ARROW "->" 13
+IDENT "t" 13
+DOT "." 13
+IDENT "node" 13
+COMMA "," 13
+SHARP "#" 14
+LEFTPAREN "(" 14
+INTEGER "0" 14
+COMMA "," 14
+IDENT "t" 14
+RIGHTPAREN ")" 14
+DOT "." 14
+IDENT "children" 14
+ARROW "->" 14
+IDENT "Nil" 14
+COMMA "," 14
+SHARP "#" 15
+LEFTPAREN "(" 15
+IDENT "x" 15
+COMMA "," 15
+IDENT "t" 15
+RIGHTPAREN ")" 15
+DOT "." 15
+IDENT "children" 15
+ARROW "->" 15
+IDENT "map" 15
+LEFTPAREN "(" 15
+IDENT "prune" 15
+LEFTPAREN "(" 15
+IDENT "x" 15
+OPERATOR "-" 15
+INTEGER "1" 15
+RIGHTPAREN ")" 15
+COMMA "," 15
+IDENT "t" 15
+DOT "." 15
+IDENT "children" 15
+RIGHTPAREN ")" 15
+COMMA "," 15
+RIGHTBRACE "}" 16
+DEF "def" 17
+IDENT "tree" 17
+EQUAL "=" 17
+LEFTBRACE "{" 17
+SHARP "#" 18
+DOT "." 18
+IDENT "node" 18
+ARROW "->" 18
+INTEGER "1" 18
+COMMA "," 18
+SHARP "#" 19
+DOT "." 19
+IDENT "children" 19
+ARROW "->" 19
+IDENT "Cons" 19
+LEFTPAREN "(" 19
+IDENT "tree1" 19
+COMMA "," 19
+IDENT "Cons" 19
+LEFTPAREN "(" 19
+IDENT "tree2" 19
+COMMA "," 19
+IDENT "Nil" 19
+LEFTPAREN "(" 19
+RIGHTPAREN ")" 19
+RIGHTPAREN ")" 19
+RIGHTPAREN ")" 19
+COMMA "," 19
+RIGHTBRACE "}" 20
+DEF "def" 21
+IDENT "tree1" 21
+EQUAL "=" 21
+LEFTBRACE "{" 21
+SHARP "#" 22
+DOT "." 22
+IDENT "node" 22
+ARROW "->" 22
+INTEGER "2" 22
+COMMA "," 22
+SHARP "#" 23
+DOT "." 23
+IDENT "children" 23
+ARROW "->" 23
+IDENT "Nil" 23
+LEFTPAREN "(" 23
+RIGHTPAREN ")" 23
+COMMA "," 23
+RIGHTBRACE "}" 24
+DEF "def" 25
+IDENT "tree2" 25
+EQUAL "=" 25
+LEFTBRACE "{" 25
+SHARP "#" 26
+DOT "." 26
+IDENT "node" 26
+ARROW "->" 26
+INTEGER "3" 26
+COMMA "," 26
+SHARP "#" 27
+DOT "." 27
+IDENT "children" 27
+ARROW "->" 27
+IDENT "Cons" 27
+LEFTPAREN "(" 27
+IDENT "tree" 27
+COMMA "," 27
+IDENT "Nil" 27
+LEFTPAREN "(" 27
+RIGHTPAREN ")" 27
+RIGHTPAREN ")" 27
+COMMA "," 27
+RIGHTBRACE "}" 28
+DEF "def" 29
+IDENT "main" 29
+EQUAL "=" 29
+LEFTBRACE "{" 29
+SHARP "#" 29
+LEFTPAREN "(" 29
+RIGHTPAREN ")" 29
+ARROW "->" 29
+IDENT "prune" 29
+LEFTPAREN "(" 29
+INTEGER "2" 29
+COMMA "," 29
+IDENT "tree" 29
+RIGHTPAREN ")" 29
+RIGHTBRACE "}" 29
+EOF "" 29
