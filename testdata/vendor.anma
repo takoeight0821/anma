@@ -22,5 +22,5 @@ def vendor = {
 }
 
 def main = {
-    #() -> prim(print, vendor(Cons(0, Nil())).put.get)
+    prim(print, vendor(Cons(0, Nil())).put.get)
 }

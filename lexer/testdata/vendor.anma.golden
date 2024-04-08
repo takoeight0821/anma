@@ -142,10 +142,6 @@ DEF "def" 24
 IDENT "main" 24
 EQUAL "=" 24
 LEFTBRACE "{" 24
-SHARP "#" 25
-LEFTPAREN "(" 25
-RIGHTPAREN ")" 25
-ARROW "->" 25
 PRIM "prim" 25
 LEFTPAREN "(" 25
 IDENT "print" 25

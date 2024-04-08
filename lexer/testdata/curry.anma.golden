@@ -44,10 +44,6 @@ DEF "def" 3
 IDENT "main" 3
 EQUAL "=" 3
 LEFTBRACE "{" 3
-SHARP "#" 3
-LEFTPAREN "(" 3
-RIGHTPAREN ")" 3
-ARROW "->" 3
 PRIM "prim" 3
 LEFTPAREN "(" 3
 IDENT "print" 3

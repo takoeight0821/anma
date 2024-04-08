@@ -8,7 +8,6 @@ DEF "def" 3
 OPERATOR "+" 3
 EQUAL "=" 3
 LEFTBRACE "{" 3
-SHARP "#" 3
 LEFTPAREN "(" 3
 IDENT "x" 3
 COMMA "," 3
@@ -28,7 +27,6 @@ DEF "def" 4
 OPERATOR "*" 4
 EQUAL "=" 4
 LEFTBRACE "{" 4
-SHARP "#" 4
 LEFTPAREN "(" 4
 IDENT "x" 4
 COMMA "," 4
@@ -48,10 +46,6 @@ DEF "def" 5
 IDENT "main" 5
 EQUAL "=" 5
 LEFTBRACE "{" 5
-SHARP "#" 5
-LEFTPAREN "(" 5
-RIGHTPAREN ")" 5
-ARROW "->" 5
 INTEGER "1" 5
 OPERATOR "*" 5
 LEFTPAREN "(" 5

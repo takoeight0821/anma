@@ -4,10 +4,10 @@ type List(a) = {
   Cons(a, List)
 }
 infixl 6 -
-def - = { #(x, y) -> prim(sub, x, y) }
+def - = { (x, y) -> prim(sub, x, y) }
 def map = {
-  #(f, Nil()) -> Nil(),
-  #(f, Cons(x, xs)) -> Cons(f(x), map(f, xs)),
+  (f, Nil()) -> Nil(),
+  (f, Cons(x, xs)) -> Cons(f(x), map(f, xs)),
 }
 def prune = {
   #(x,t).node -> t.node,
@@ -26,4 +26,4 @@ def tree2 = {
   #.node -> 3,
   #.children -> Cons(tree, Nil()),
 }
-def main = { #() -> prune(2, tree) }
+def main = { prune(2, tree) }

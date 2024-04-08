@@ -30,7 +30,6 @@ DEF "def" 7
 OPERATOR "-" 7
 EQUAL "=" 7
 LEFTBRACE "{" 7
-SHARP "#" 7
 LEFTPAREN "(" 7
 IDENT "x" 7
 COMMA "," 7
@@ -50,7 +49,6 @@ DEF "def" 8
 IDENT "map" 8
 EQUAL "=" 8
 LEFTBRACE "{" 8
-SHARP "#" 9
 LEFTPAREN "(" 9
 IDENT "f" 9
 COMMA "," 9
@@ -63,7 +61,6 @@ IDENT "Nil" 9
 LEFTPAREN "(" 9
 RIGHTPAREN ")" 9
 COMMA "," 9
-SHARP "#" 10
 LEFTPAREN "(" 10
 IDENT "f" 10
 COMMA "," 10
@@ -219,10 +216,6 @@ DEF "def" 29
 IDENT "main" 29
 EQUAL "=" 29
 LEFTBRACE "{" 29
-SHARP "#" 29
-LEFTPAREN "(" 29
-RIGHTPAREN ")" 29
-ARROW "->" 29
 IDENT "prune" 29
 LEFTPAREN "(" 29
 INTEGER "2" 29

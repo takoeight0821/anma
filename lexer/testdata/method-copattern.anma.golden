@@ -21,10 +21,6 @@ DEF "def" 4
 IDENT "main" 4
 EQUAL "=" 4
 LEFTBRACE "{" 4
-SHARP "#" 4
-LEFTPAREN "(" 4
-RIGHTPAREN ")" 4
-ARROW "->" 4
 IDENT "printer" 4
 DOT "." 4
 IDENT "print" 4
