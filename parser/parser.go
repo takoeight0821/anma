@@ -161,7 +161,7 @@ func (p *Parser) infixDecl() *ast.InfixDecl {
 	return &ast.InfixDecl{Assoc: kind, Prec: precedence, Name: name}
 }
 
-// expr = let | assert ;
+// expr = let | with | assert ;
 func (p *Parser) expr() ast.Node {
 	if p.IsAtEnd() {
 		p.recover(unexpectedToken(p.peek(), "expression"))
@@ -170,6 +170,9 @@ func (p *Parser) expr() ast.Node {
 	}
 	if p.match(token.LET) {
 		return p.let()
+	}
+	if p.match(token.WITH) {
+		return p.with()
 	}
 
 	return p.assert()
@@ -183,6 +186,28 @@ func (p *Parser) let() *ast.Let {
 	expr := p.assert()
 
 	return &ast.Let{Bind: pattern, Body: expr}
+}
+
+// with = "with" pattern "<-" assert | "with" assert ;
+func (p *Parser) with() *ast.With {
+	p.advance()
+
+	patterns, err := try(p, func() []ast.Node {
+		pattern := p.pattern()
+		p.consume(token.BACKARROW)
+
+		return []ast.Node{pattern}
+	}, func() []ast.Node {
+		return []ast.Node{}
+	})
+
+	expr := p.assert()
+
+	if p.err != nil {
+		p.recover(err)
+	}
+
+	return &ast.With{Binds: patterns, Body: expr}
 }
 
 // atom = var | literal | paren | codata | PRIM "(" IDENT ("," expr)* ","? ")" ;
@@ -318,7 +343,7 @@ func (p *Parser) codata() *ast.Codata {
 // clauseBody = expr (";" expr)* ";"? ;
 func (p *Parser) clause() *ast.CodataClause {
 	// try to parse `clauseHead "->"`
-	pattern, patternErr := p.try(func() ast.Node {
+	pattern, patternErr := try(p, func() ast.Node {
 		var pattern ast.Node
 		if p.match(token.SHARP) {
 			// if the first token is `#`, then it is a pattern.
@@ -637,7 +662,7 @@ func unexpectedToken(t token.Token, expected ...string) error {
 	return utils.PosError{Where: t, Err: UnexpectedTokenError{Expected: expected}}
 }
 
-func (p *Parser) try(action func() ast.Node, recover func() ast.Node) (ast.Node, error) {
+func try[T any](p *Parser, action func() T, recover func() T) (T, error) {
 	savedErr := p.err
 	savedCurrent := p.current
 

@@ -29,6 +29,7 @@ const (
 
 	// Keywords.
 	ARROW
+	BACKARROW
 	BAR
 	CASE
 	DEF
@@ -38,8 +39,9 @@ const (
 	INFIXL
 	INFIXR
 	LET
-	TYPE
 	PRIM
+	TYPE
+	WITH
 )
 
 type Token struct {

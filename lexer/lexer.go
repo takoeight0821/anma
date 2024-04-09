@@ -185,6 +185,7 @@ func (l *lexer) identifier() error {
 func getKeyword(str string) (token.Kind, bool) {
 	keywords := map[string]token.Kind{
 		"->":     token.ARROW,
+		"<-":     token.BACKARROW,
 		"|":      token.BAR,
 		"=":      token.EQUAL,
 		"case":   token.CASE,
@@ -194,8 +195,9 @@ func getKeyword(str string) (token.Kind, bool) {
 		"infixl": token.INFIXL,
 		"infixr": token.INFIXR,
 		"let":    token.LET,
-		"type":   token.TYPE,
 		"prim":   token.PRIM,
+		"type":   token.TYPE,
+		"with":   token.WITH,
 	}
 
 	if k, ok := keywords[str]; ok {

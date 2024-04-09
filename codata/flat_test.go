@@ -6,8 +6,9 @@ import (
 	"testing"
 
 	"github.com/sebdah/goldie/v2"
-	"github.com/takoeight0821/anma/driver"
 	"github.com/takoeight0821/anma/codata"
+	"github.com/takoeight0821/anma/desugarwith"
+	"github.com/takoeight0821/anma/driver"
 	"github.com/takoeight0821/anma/utils"
 )
 
@@ -28,6 +29,7 @@ func TestGolden(t *testing.T) {
 		}
 
 		runner := driver.NewPassRunner()
+		runner.AddPass(&desugarwith.DesugarWith{})
 		runner.AddPass(&codata.Flat{})
 
 		nodes, err := runner.RunSource(string(source))

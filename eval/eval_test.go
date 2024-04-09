@@ -8,6 +8,7 @@ import (
 
 	"github.com/sebdah/goldie/v2"
 	"github.com/takoeight0821/anma/codata"
+	"github.com/takoeight0821/anma/desugarwith"
 	"github.com/takoeight0821/anma/driver"
 	"github.com/takoeight0821/anma/eval"
 	"github.com/takoeight0821/anma/infix"
@@ -33,6 +34,7 @@ func TestGolden(t *testing.T) {
 		}
 
 		runner := driver.NewPassRunner()
+		runner.AddPass(&desugarwith.DesugarWith{})
 		runner.AddPass(&codata.Flat{})
 		runner.AddPass(infix.NewInfixResolver())
 		runner.AddPass(nameresolve.NewResolver())
@@ -65,10 +67,7 @@ func TestGolden(t *testing.T) {
 			top := token.Token{Kind: token.IDENT, Lexeme: "toplevel", Line: 0, Literal: -1}
 			ret, err := main.Apply(top)
 			if err != nil {
-				if _, ok := err.(eval.Exit); !ok {
-					t.Errorf("%s returned error: %v", testfile, err)
-					return
-				}
+				fmt.Fprintf(&builder, "error => %v\n", err)
 			}
 			if ret != nil {
 				fmt.Fprintf(&builder, "result => %s\n", ret.String())
