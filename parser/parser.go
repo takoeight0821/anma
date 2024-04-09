@@ -2,6 +2,8 @@ package parser
 
 import (
 	"errors"
+	"fmt"
+	"os"
 
 	"github.com/takoeight0821/anma/ast"
 	"github.com/takoeight0821/anma/token"
@@ -202,6 +204,10 @@ func (p *Parser) with() *ast.With {
 	})
 
 	expr := p.assert()
+
+	if _, ok := expr.(*ast.Call); !ok {
+		fmt.Fprintf(os.Stderr, "at %d: `%s`, warning: `with` expression should be a function call\n", expr.Base().Line, expr.Base().Lexeme)
+	}
 
 	if p.err != nil {
 		p.recover(err)

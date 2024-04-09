@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 
 	"github.com/takoeight0821/anma/ast"
 	"github.com/takoeight0821/anma/token"
@@ -198,8 +197,6 @@ func fetchPrim(name token.Token) func(*Evaluator, ...Value) (Value, error) {
 				return nil, utils.PosError{Where: name, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[1]}}
 			}
 
-			log.Printf("DEBUG: add [%v] %v %v", args, left, right)
-
 			return left + right, nil
 		}
 	case "mul":
@@ -215,8 +212,6 @@ func fetchPrim(name token.Token) func(*Evaluator, ...Value) (Value, error) {
 			if !ok {
 				return nil, utils.PosError{Where: name, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[1]}}
 			}
-
-			log.Printf("DEBUG: mul [%v] %v %v", args, left, right)
 
 			return left * right, nil
 		}

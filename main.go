@@ -9,6 +9,7 @@ import (
 	"github.com/adrg/xdg"
 	"github.com/peterh/liner"
 	"github.com/takoeight0821/anma/codata"
+	"github.com/takoeight0821/anma/desugarwith"
 	"github.com/takoeight0821/anma/driver"
 	"github.com/takoeight0821/anma/eval"
 	"github.com/takoeight0821/anma/infix"
@@ -80,6 +81,7 @@ func RunPrompt() error {
 	readHistory(line)
 
 	runner := driver.NewPassRunner()
+	runner.AddPass(&desugarwith.DesugarWith{})
 	runner.AddPass(&codata.Flat{})
 	runner.AddPass(infix.NewInfixResolver())
 	runner.AddPass(nameresolve.NewResolver())
@@ -116,6 +118,7 @@ func RunPrompt() error {
 // RunFile runs the specified file.
 func RunFile(path string) error {
 	runner := driver.NewPassRunner()
+	runner.AddPass(&desugarwith.DesugarWith{})
 	runner.AddPass(&codata.Flat{})
 	runner.AddPass(infix.NewInfixResolver())
 	runner.AddPass(nameresolve.NewResolver())
