@@ -591,7 +591,7 @@ func (p *Parser) fieldType() *ast.Field {
 }
 
 func (p *Parser) recover(err error) {
-	p.err = errors.Join(p.err, err)
+	p.err = errors.Join(err, p.err)
 }
 
 func (p Parser) peek() token.Token {
@@ -642,7 +642,7 @@ func (p *Parser) consume(kind token.Kind) token.Token {
 		return p.advance()
 	}
 
-	p.err = errors.Join(p.err, unexpectedToken(p.peek(), kind.String()))
+	p.recover(unexpectedToken(p.peek(), kind.String()))
 
 	return p.peek()
 }

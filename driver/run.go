@@ -51,15 +51,10 @@ func (r *PassRunner) RunSource(source string) ([]ast.Node, error) {
 		return nil, fmt.Errorf("lex: %w", err)
 	}
 
-	decls, errDecls := parser.NewParser(tokens).ParseDecl()
-	if errDecls == nil {
-		return r.Run(decls)
+	decls, err := parser.NewParser(tokens).ParseDecl()
+	if err != nil {
+		return nil, fmt.Errorf("parse: %w", err)
 	}
 
-	expr, errExpr := parser.NewParser(tokens).ParseExpr()
-	if errExpr == nil {
-		return r.Run([]ast.Node{expr})
-	}
-
-	return nil, fmt.Errorf("parse as declarations:\n%w\nparse as an expression:\n%w", errDecls, errExpr)
+	return r.Run(decls)
 }
