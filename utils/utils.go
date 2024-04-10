@@ -19,7 +19,7 @@ func (e PosError) Error() string {
 		return fmt.Sprintf("at end: %s", e.Err.Error())
 	}
 
-	return fmt.Sprintf("at %d: `%s`, %s", e.Where.Line, e.Where.Lexeme, e.Err.Error())
+	return fmt.Sprintf("at %d: `%s`\n\t%s", e.Where.Line, e.Where.Lexeme, e.Err.Error())
 }
 
 func FindSourceFiles(path string) ([]string, error) {
