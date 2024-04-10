@@ -13,9 +13,11 @@ varDecl = "def" IDENT "=" expr | "def" IDENT ":" type | "def" IDENT ":" type "="
 
 infixDecl = ("infix" | "infixl" | "infixr") INTEGER OPERATOR ; (* func infixDecl *)
 
-expr = let | assert ; (* func expr *)
+expr = let | with | assert ; (* func expr *)
 
 let = "let" pattern "=" assert ; (* func let *)
+
+with = "with" pattern "<-" assert | "with" assert ; (* func with *)
 
 atom = var | literal | paren | codata | PRIM "(" IDENT ("," expr)* ","? ")" ;
 var = IDENT ;
@@ -35,8 +37,9 @@ callTail = "(" ")" | "(" expr ("," expr)* ","? ")" ; (* func callTail *)
 
 codata = "{" clause ("," clause)* ","? "}" ; (* func codata *)
 
-clause = clauseHead "->" expr (";" expr)* ";"? ;
-clauseHead = "(" ")" | "(" pattern ("," pattern)* ","? ")" | pattern ; (* func clause *)
+clause = clauseHead "->" clauseBody | clauseBody ;
+clauseHead = "(" ")" | "(" pattern ("," pattern)* ","? ")" | pattern ;
+clauseBody = expr (";" expr)* ";"? ; (* func clause *)
 
 pattern = methodPat ; (* func pattern *)
 
