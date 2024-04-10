@@ -1,6 +1,7 @@
 package eval_test
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -23,6 +24,7 @@ func TestGolden(t *testing.T) {
 	testfiles, err := utils.FindSourceFiles("../testdata")
 	if err != nil {
 		t.Errorf("failed to find test files: %v", err)
+
 		return
 	}
 
@@ -30,6 +32,7 @@ func TestGolden(t *testing.T) {
 		source, err := os.ReadFile(testfile)
 		if err != nil {
 			t.Errorf("failed to read %s: %v", testfile, err)
+
 			return
 		}
 
@@ -42,6 +45,7 @@ func TestGolden(t *testing.T) {
 		nodes, err := runner.RunSource(string(source))
 		if err != nil {
 			t.Errorf("%s returned error: %v", testfile, err)
+
 			return
 		}
 
@@ -54,11 +58,13 @@ func TestGolden(t *testing.T) {
 		for i, node := range nodes {
 			values[i], err = evaluator.Eval(node)
 			if err != nil {
-				if _, ok := err.(eval.Exit); ok {
+				var exitErr eval.ExitError
+				if errors.As(err, &exitErr) {
 					break
 				}
 
 				t.Errorf("%s returned error: %v", testfile, err)
+
 				return
 			}
 		}

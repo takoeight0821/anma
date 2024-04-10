@@ -35,3 +35,4 @@ linters-settings:
   varnamelen:
     ignore-decls:
       - i int
+      - ok bool

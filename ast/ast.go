@@ -224,6 +224,7 @@ func (w *With) Base() token.Token {
 	if len(w.Binds) == 0 {
 		return w.Body.Base()
 	}
+
 	return w.Binds[0].Base()
 }
 
@@ -250,6 +251,7 @@ func (s *Seq) Base() token.Token {
 	if len(s.Exprs) == 0 {
 		return token.Token{}
 	}
+
 	return s.Exprs[0].Base()
 }
 
@@ -612,7 +614,7 @@ func concat[T fmt.Stringer](elems []T) fmt.Stringer {
 //
 //tool:ignore
 func Traverse(n Node, f func(Node, error) (Node, error)) (Node, error) {
-	n, err := n.Plate(nil, func(n Node, err error) (Node, error) {
+	n, err := n.Plate(nil, func(n Node, _ error) (Node, error) {
 		return Traverse(n, f)
 	})
 

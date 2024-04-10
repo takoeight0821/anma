@@ -3,7 +3,6 @@ package eval
 import (
 	"errors"
 	"fmt"
-	"io"
 
 	"github.com/takoeight0821/anma/ast"
 	"github.com/takoeight0821/anma/token"
@@ -32,15 +31,16 @@ func (ev *Evaluator) Eval(node ast.Node) (Value, error) {
 	case *ast.Let:
 		return Unit{}, ev.evalLet(node)
 	case *ast.Seq:
-		var v Value
+		var result Value
 		for _, expr := range node.Exprs {
 			var err error
-			v, err = ev.Eval(expr)
+			result, err = ev.Eval(expr)
 			if err != nil {
 				return nil, err
 			}
 		}
-		return v, nil
+
+		return result, nil
 	case *ast.Codata:
 		panic("unreachable: codata must be desugared")
 	case *ast.CodataClause:
@@ -182,97 +182,18 @@ func errorAt(base token.Token, err error) utils.PosError {
 }
 
 func fetchPrim(name token.Token) func(*Evaluator, ...Value) (Value, error) {
-	switch name.Lexeme {
-	case "add":
-		return func(ev *Evaluator, args ...Value) (Value, error) {
-			if len(args) != 2 {
-				return nil, utils.PosError{Where: name, Err: InvalidArgumentCountError{Expected: 2, Actual: len(args)}}
-			}
-			left, ok := asInt(args[0])
-			if !ok {
-				return nil, utils.PosError{Where: name, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[0]}}
-			}
-			right, ok := asInt(args[1])
-			if !ok {
-				return nil, utils.PosError{Where: name, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[1]}}
-			}
+	return func(ev *Evaluator, args ...Value) (Value, error) {
+		p := primitiveEvaluator{Evaluator: ev, where: name}
 
-			return left + right, nil
-		}
-	case "mul":
-		return func(ev *Evaluator, args ...Value) (Value, error) {
-			if len(args) != 2 {
-				return nil, utils.PosError{Where: name, Err: InvalidArgumentCountError{Expected: 2, Actual: len(args)}}
-			}
-			left, ok := asInt(args[0])
-			if !ok {
-				return nil, utils.PosError{Where: name, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[0]}}
-			}
-			right, ok := asInt(args[1])
-			if !ok {
-				return nil, utils.PosError{Where: name, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[1]}}
-			}
-
-			return left * right, nil
-		}
-	case "print":
-		return func(ev *Evaluator, args ...Value) (Value, error) {
-			if len(args) != 1 {
-				return nil, utils.PosError{Where: name, Err: InvalidArgumentCountError{Expected: 1, Actual: len(args)}}
-			}
-			fmt.Fprintln(ev.Stdout, args[0])
-
-			return Unit{}, nil
-		}
-	case "read_all_cps":
-		return func(ev *Evaluator, args ...Value) (Value, error) {
-			if len(args) != 1 {
-				return nil, utils.PosError{Where: name, Err: InvalidArgumentCountError{Expected: 1,
-					Actual: len(args)}}
-			}
-			cont, ok := args[0].(Callable)
-			if !ok {
-				return nil, utils.PosError{Where: name, Err: InvalidArgumentTypeError{Expected: "Callable", Actual: args[0]}}
-			}
-			bytes, err := io.ReadAll(ev.Stdin)
-			if err != nil {
-				return nil, err
-			}
-			return cont.Apply(name, String(bytes))
-		}
-	case "print_cps":
-		return func(ev *Evaluator, args ...Value) (Value, error) {
-			if len(args) != 2 {
-				return nil, utils.PosError{Where: name, Err: InvalidArgumentCountError{Expected: 2, Actual: len(args)}}
-			}
-			if arg, ok := args[0].(String); !ok {
-				return nil, utils.PosError{Where: name, Err: InvalidArgumentTypeError{Expected: "String", Actual: args[0]}}
-			} else {
-				fmt.Fprintf(ev.Stdout, "%s", string(arg))
-			}
-			cont, ok := args[1].(Callable)
-			if !ok {
-				return nil, utils.PosError{Where: name, Err: InvalidArgumentTypeError{Expected: "Callable", Actual: args[1]}}
-			}
-			return cont.Apply(name)
-		}
-	case "exit":
-		return func(ev *Evaluator, args ...Value) (Value, error) {
-			if len(args) != 0 {
-				return nil, utils.PosError{Where: name, Err: InvalidArgumentCountError{Expected: 0, Actual: len(args)}}
-			}
-			return nil, Exit{Code: 0}
-		}
-	default:
-		return nil
+		return p.primitive(name.Lexeme)(args...)
 	}
 }
 
-type Exit struct {
+type ExitError struct {
 	Code int
 }
 
-func (e Exit) Error() string {
+func (e ExitError) Error() string {
 	return fmt.Sprintf("exit(%d)", e.Code)
 }
 

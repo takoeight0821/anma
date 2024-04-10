@@ -77,7 +77,7 @@ type NotDefinedError struct {
 }
 
 func (e NotDefinedError) Error() string {
-	return fmt.Sprintf("%s is not defined", e.Name.String())
+	return e.Name.String() + " is not defined"
 }
 
 func (e *env) lookup(name token.Token) (token.Token, error) {
@@ -405,7 +405,7 @@ type AlreadyDefinedError struct {
 }
 
 func (e AlreadyDefinedError) Error() string {
-	return fmt.Sprintf("%s is already defined", e.Name.String())
+	return e.Name.String() + " is already defined"
 }
 
 // allVariables define all variables in the node.

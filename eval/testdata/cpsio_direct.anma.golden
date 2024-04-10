@@ -1,5 +1,7 @@
 test input
 error => at 6: `read_all_cps`
+	at 1: `read_all_cps`
 	at 7: `print_cps`
+	at 2: `print_cps`
 	at 8: `exit`
 	exit(0)

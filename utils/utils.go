@@ -16,7 +16,7 @@ type PosError struct {
 
 func (e PosError) Error() string {
 	if e.Where.Kind == token.EOF {
-		return fmt.Sprintf("at end: %s", e.Err.Error())
+		return "at end: " + e.Err.Error()
 	}
 
 	return fmt.Sprintf("at %d: `%s`\n\t%s", e.Where.Line, e.Where.Lexeme, e.Err.Error())
@@ -34,6 +34,9 @@ func FindSourceFiles(path string) ([]string, error) {
 
 		return nil
 	})
+	if err != nil {
+		return nil, fmt.Errorf("find source files: %w", err)
+	}
 
-	return files, err
+	return files, nil
 }

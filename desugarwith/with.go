@@ -1,6 +1,10 @@
 package desugarwith
 
-import "github.com/takoeight0821/anma/ast"
+import (
+	"fmt"
+
+	"github.com/takoeight0821/anma/ast"
+)
 
 type DesugarWith struct{}
 
@@ -27,14 +31,14 @@ func (d *DesugarWith) Run(program []ast.Node) ([]ast.Node, error) {
 func (d *DesugarWith) desugar(node ast.Node) (ast.Node, error) {
 	node, err := ast.Traverse(node, d.desugarEach)
 	if err != nil {
-		return node, err
+		return node, fmt.Errorf("desugar: %w", err)
 	}
 
 	return node, nil
 }
 
 func (d *DesugarWith) desugarEach(node ast.Node, err error) (ast.Node, error) {
-	// early return if error occured
+	// early return if error occurred
 	if err != nil {
 		return node, err
 	}
@@ -66,21 +70,23 @@ func (d *DesugarWith) desugarSeq(seq []ast.Node) ([]ast.Node, error) {
 		if err != nil {
 			return seq, err
 		}
+
 		return append([]ast.Node{first}, restDesugared...), nil
 	}
 }
 
-func (d *DesugarWith) desugarWith(w *ast.With, rest []ast.Node) ([]ast.Node, error) {
+func (d *DesugarWith) desugarWith(with *ast.With, rest []ast.Node) ([]ast.Node, error) {
 	restDesugared, err := d.desugarSeq(rest)
 	if err != nil {
 		return nil, err
 	}
 
 	cont := &ast.Codata{Clauses: [](*ast.CodataClause){&ast.CodataClause{
-		Pattern: &ast.Call{Func: &ast.This{Token: w.Base()}, Args: w.Binds},
+		Pattern: &ast.Call{Func: &ast.This{Token: with.Base()}, Args: with.Binds},
 		Expr:    &ast.Seq{Exprs: restDesugared},
 	}}}
 
 	return []ast.Node{
-		&ast.Call{Func: w.Body, Args: []ast.Node{cont}}}, nil
+		&ast.Call{Func: with.Body, Args: []ast.Node{cont}},
+	}, nil
 }

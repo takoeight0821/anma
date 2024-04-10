@@ -1,2 +1,4 @@
 test input
-error => exit(0)
+error => at 2: `read_all_cps`
+	at 3: `print_cps`
+	exit(0)

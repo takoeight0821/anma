@@ -20,6 +20,7 @@ type Flat struct {
 
 func (f *Flat) genUniq(hint string) string {
 	f.uniq++
+
 	return fmt.Sprintf(":%s%d", hint, f.uniq)
 }
 
@@ -53,9 +54,9 @@ func (f *Flat) flat(node ast.Node) (ast.Node, error) {
 }
 
 // flatEach flattens [Codata] nodes.
-// If error occured, return the original node and the error. Because ast.Traverse needs it.
+// If error occurred, return the original node and the error. Because ast.Traverse needs it.
 func (f *Flat) flatEach(node ast.Node, err error) (ast.Node, error) {
-	// early return if error occured
+	// early return if error occurred
 	if err != nil {
 		return node, err
 	}
@@ -72,18 +73,18 @@ func (f *Flat) flatEach(node ast.Node, err error) (ast.Node, error) {
 	return node, nil
 }
 
-func (f *Flat) flatCodata(c *ast.Codata) (ast.Node, error) {
+func (f *Flat) flatCodata(codata *ast.Codata) (ast.Node, error) {
 	f.uniq = 0
 	f.scrutinees = make([]token.Token, 0)
 	f.guards = make(map[int][]ast.Node)
 
 	plists := make(map[int][]ast.Node)
-	for i, clause := range c.Clauses {
+	for i, clause := range codata.Clauses {
 		plists[i] = makePatternList(clause.Pattern)
 	}
 
 	bodys := make(map[int]ast.Node)
-	for i, clause := range c.Clauses {
+	for i, clause := range codata.Clauses {
 		bodys[i] = clause.Expr
 	}
 
@@ -92,20 +93,22 @@ func (f *Flat) flatCodata(c *ast.Codata) (ast.Node, error) {
 
 // makePatternList makes a sequence of patterns from a pattern.
 // For example, if the pattern is `#.f(x, y)`, the sequence is `[#.f, #(x, y)]`.
-func makePatternList(p ast.Node) []ast.Node {
-	switch p := p.(type) {
+func makePatternList(pattern ast.Node) []ast.Node {
+	switch pattern := pattern.(type) {
 	case *ast.This:
 		return []ast.Node{}
 	case *ast.Access:
-		pl := makePatternList(p.Receiver)
-		return append(pl, &ast.Access{Receiver: &ast.This{Token: p.Base()}, Name: p.Name})
+		pl := makePatternList(pattern.Receiver)
+
+		return append(pl, &ast.Access{Receiver: &ast.This{Token: pattern.Base()}, Name: pattern.Name})
 	case *ast.Call:
-		pl := makePatternList(p.Func)
-		return append(pl, &ast.Call{Func: &ast.This{Token: p.Base()}, Args: p.Args})
+		pl := makePatternList(pattern.Func)
+
+		return append(pl, &ast.Call{Func: &ast.This{Token: pattern.Base()}, Args: pattern.Args})
 	case *ast.Paren:
-		return makePatternList(p.Expr)
+		return makePatternList(pattern.Expr)
 	default:
-		panic(fmt.Sprintf("unexpected pattern: %v", p))
+		panic(fmt.Sprintf("unexpected pattern: %v", pattern))
 	}
 }
 
@@ -119,15 +122,19 @@ func (f *Flat) build(plists map[int][]ast.Node, bodys map[int]ast.Node) (ast.Nod
 		return f.buildObject(plists, bodys)
 	case Function:
 		return f.buildLambda(plists, bodys)
-	default:
+	case Mismatch:
 		var where token.Token
 		for _, ps := range plists {
 			if len(ps) != 0 {
 				where = ps[0].Base()
+
 				break
 			}
 		}
+
 		return nil, utils.PosError{Where: where, Err: MismatchError{Plists: plists}}
+	default:
+		panic(fmt.Sprintf("unexpected kind: %v", kind))
 	}
 }
 
@@ -137,6 +144,7 @@ func allEmpty(plists map[int][]ast.Node) bool {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -174,6 +182,7 @@ func kindOf(plists map[int][]ast.Node) Kind {
 			return Mismatch
 		}
 	}
+
 	return kind
 }
 
@@ -187,6 +196,7 @@ func (e MismatchError) Error() string {
 	for _, ps := range e.Plists {
 		fmt.Fprintf(&builder, "\t%v\n", ps[0])
 	}
+
 	return builder.String()
 }
 
@@ -195,6 +205,7 @@ func (f *Flat) buildCase(plists map[int][]ast.Node, bodys map[int]ast.Node) ast.
 		// If there is no scrutinee, generate a body.
 		// Use the topmost body.
 		topmost := searchTopmost(plists)
+
 		return bodys[topmost]
 	}
 
@@ -204,7 +215,7 @@ func (f *Flat) buildCase(plists map[int][]ast.Node, bodys map[int]ast.Node) ast.
 	}
 	slices.Sort(plistsKeys)
 
-	var clauses [](*ast.CaseClause)
+	clauses := make([]*ast.CaseClause, 0, len(plistsKeys)) // Pre-allocate clauses with the correct capacity
 	for _, i := range plistsKeys {
 		clauses = append(clauses, &ast.CaseClause{
 			Patterns: f.guards[i],
@@ -270,21 +281,23 @@ func selectIndicies(indices []int, original map[int][]ast.Node) map[int][]ast.No
 	for _, i := range indices {
 		selected[i] = original[i]
 	}
+
 	return selected
 }
 
 func popField(plists map[int][]ast.Node) (map[string][]int, map[int][]ast.Node, error) {
 	fields := make(map[string][]int)
 	rest := make(map[int][]ast.Node)
-	for i, ps := range plists {
-		switch p := ps[0].(type) {
+	for i, patterns := range plists {
+		switch pattern := patterns[0].(type) {
 		case *ast.Access:
-			fields[p.Name.Lexeme] = append(fields[p.Name.Lexeme], i)
+			fields[pattern.Name.Lexeme] = append(fields[pattern.Name.Lexeme], i)
 		default:
-			return nil, nil, utils.PosError{Where: p.Base(), Err: UnexpectedPatternError{Pattern: p}}
+			return nil, nil, utils.PosError{Where: pattern.Base(), Err: UnexpectedPatternError{Pattern: pattern}}
 		}
-		rest[i] = ps[1:]
+		rest[i] = patterns[1:]
 	}
+
 	return fields, rest, nil
 }
 
@@ -295,16 +308,18 @@ func (f *Flat) buildLambda(plists map[int][]ast.Node, bodys map[int]ast.Node) (a
 	}
 
 	arity := -1
-	for _, ps := range guards {
+	var where token.Token
+	for _, patterns := range guards {
 		if arity == -1 {
-			arity = len(ps)
+			arity = len(patterns)
 		}
-		if len(ps) != arity {
-			var where token.Token
-			for _, p := range ps {
+		if len(patterns) != arity {
+			for _, p := range patterns {
 				where = p.Base()
+
 				break
 			}
+
 			return nil, utils.PosError{Where: where, Err: InvalidArityError{Guards: guards}}
 		}
 	}
@@ -314,11 +329,11 @@ func (f *Flat) buildLambda(plists map[int][]ast.Node, bodys map[int]ast.Node) (a
 
 	scrutinees := make([]token.Token, arity)
 	for i := range scrutinees {
-		// TODO: add line number from the original pattern
-		scrutinees[i] = token.Token{Kind: token.IDENT, Lexeme: f.genUniq("p"), Line: 0, Literal: nil}
+		scrutinees[i] = token.Token{Kind: token.IDENT, Lexeme: f.genUniq("p"), Line: where.Line, Literal: nil}
 	}
 
 	for i, ps := range guards {
+		//nolint:gocritic
 		guards[i] = append(f.guards[i], ps...)
 	}
 
@@ -330,7 +345,8 @@ func (f *Flat) buildLambda(plists map[int][]ast.Node, bodys map[int]ast.Node) (a
 
 	return &ast.Lambda{
 		Params: scrutinees,
-		Expr:   body}, nil
+		Expr:   body,
+	}, nil
 }
 
 type InvalidArityError struct {
@@ -344,15 +360,16 @@ func (e InvalidArityError) Error() string {
 func popGuard(plists map[int][]ast.Node) (map[int][]ast.Node, map[int][]ast.Node, error) {
 	guards := make(map[int][]ast.Node)
 	rest := make(map[int][]ast.Node)
-	for i, ps := range plists {
-		switch p := ps[0].(type) {
+	for i, patterns := range plists {
+		switch pattern := patterns[0].(type) {
 		case *ast.Call:
-			guards[i] = p.Args
+			guards[i] = pattern.Args
 		default:
-			return nil, nil, utils.PosError{Where: p.Base(), Err: UnexpectedPatternError{Pattern: p}}
+			return nil, nil, utils.PosError{Where: pattern.Base(), Err: UnexpectedPatternError{Pattern: pattern}}
 		}
-		rest[i] = ps[1:]
+		rest[i] = patterns[1:]
 	}
+
 	return guards, rest, nil
 }
 
