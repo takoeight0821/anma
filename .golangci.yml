@@ -15,8 +15,10 @@ linters:
     # - sql
     # - complexity
   disable:
+    - ireturn
     - wsl
     - gomnd
+    - depguard
   enable:
     - gosimple
     - unconvert
@@ -27,27 +29,9 @@ linters-settings:
   forbidigo:
     forbid:
       - ^print.*$
-  depguard:
-    rules:
-      main:
-        allow:
-          - $gostd
-          - github.com/takoeight0821/anma
-          - github.com/google/go-cmp/cmp
-          - github.com/peterh/liner
-          - github.com/adrg/xdg
   exhaustruct:
     include:
       - '.*\.<anonymous>'
-  ireturn:
-    allow:
-      - anon
-      - error
-      - empty
-      - stdlib
-      - Node
-      - Value
-      - Sexp
   varnamelen:
     ignore-decls:
       - i int
