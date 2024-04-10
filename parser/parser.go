@@ -15,32 +15,31 @@ import (
 type Parser struct {
 	tokens  []token.Token
 	current int
-	err     error
 }
 
 func NewParser(tokens []token.Token) *Parser {
-	return &Parser{tokens, 0, nil}
+	return &Parser{tokens, 0}
 }
 
 func (p *Parser) ParseExpr() (ast.Node, error) {
-	p.err = nil
-	node := p.expr()
-
-	return node, p.err
+	return p.expr()
 }
 
 func (p *Parser) ParseDecl() ([]ast.Node, error) {
-	p.err = nil
 	nodes := []ast.Node{}
 	for !p.IsAtEnd() {
-		nodes = append(nodes, p.decl())
+		node, err := p.decl()
+		if err != nil {
+			return nil, err
+		}
+		nodes = append(nodes, node)
 	}
 
-	return nodes, p.err
+	return nodes, nil
 }
 
 // decl = typeDecl | varDecl | infixDecl ;
-func (p *Parser) decl() ast.Node {
+func (p *Parser) decl() (ast.Node, error) {
 	if p.match(token.TYPE) {
 		return p.typeDecl()
 	}
@@ -54,76 +53,128 @@ func (p *Parser) decl() ast.Node {
 // typeDecl = "type" IDENT (typeparams1)? "=" typebody ;
 // typeparams1 = "(" IDENT ("," IDENT)* ","? ")" ;
 // typebody = "{" constructor ("," constructor)* ","? "}" | type ;
-func (p *Parser) typeDecl() *ast.TypeDecl {
-	p.consume(token.TYPE)
-	typename := p.consume(token.IDENT)
+func (p *Parser) typeDecl() (*ast.TypeDecl, error) {
+	if _, err := p.consume(token.TYPE); err != nil {
+		return nil, err
+	}
+	typename, err := p.consume(token.IDENT)
+	if err != nil {
+		return nil, err
+	}
 
 	var def ast.Node
 	def = &ast.Var{Name: typename}
 	if p.match(token.LEFTPAREN) {
-		p.consume(token.LEFTPAREN)
+		if _, err := p.consume(token.LEFTPAREN); err != nil {
+			return nil, err
+		}
 		typeparams := []ast.Node{}
 		if !p.match(token.RIGHTPAREN) {
-			typeparams = append(typeparams, &ast.Var{Name: p.consume(token.IDENT)})
+			name, err := p.consume(token.IDENT)
+			if err != nil {
+				return nil, err
+			}
+			typeparams = append(typeparams, &ast.Var{Name: name})
 			for p.match(token.COMMA) {
 				p.advance()
 				if p.match(token.RIGHTPAREN) {
 					break
 				}
-				typeparams = append(typeparams, &ast.Var{Name: p.consume(token.IDENT)})
+				name, err := p.consume(token.IDENT)
+				if err != nil {
+					return nil, err
+				}
+				typeparams = append(typeparams, &ast.Var{Name: name})
 			}
 		}
-		p.consume(token.RIGHTPAREN)
+		if _, err := p.consume(token.RIGHTPAREN); err != nil {
+			return nil, err
+		}
 		def = &ast.Call{Func: def, Args: typeparams}
 	}
 
-	p.consume(token.EQUAL)
+	if _, err := p.consume(token.EQUAL); err != nil {
+		return nil, err
+	}
 	var types []ast.Node
 	if p.match(token.LEFTBRACE) {
 		// if typebody is a record, then call p.typ()
 		if p.matchNth(1, token.IDENT) && p.matchNth(2, token.COLON) {
-			types = append(types, p.typ())
+			typ, err := p.typ()
+			if err != nil {
+				return nil, err
+			}
+			types = append(types, typ)
 		} else {
-			p.consume(token.LEFTBRACE)
+			if _, err := p.consume(token.LEFTBRACE); err != nil {
+				return nil, err
+			}
 			for !p.match(token.RIGHTBRACE) {
-				types = append(types, p.constructor())
+				typ, err := p.constructor()
+				if err != nil {
+					return nil, err
+				}
+				types = append(types, typ)
 				if p.match(token.COMMA) {
 					p.advance()
 				}
 			}
-			p.consume(token.RIGHTBRACE)
+			if _, err := p.consume(token.RIGHTBRACE); err != nil {
+				return nil, err
+			}
 		}
 	} else {
-		types = append(types, p.typ())
+		typ, err := p.typ()
+		if err != nil {
+			return nil, err
+		}
+		types = append(types, typ)
 	}
 
-	return &ast.TypeDecl{Def: def, Types: types}
+	return &ast.TypeDecl{Def: def, Types: types}, nil
 }
 
 // constructor = IDENT "(" typeparams ")" ;
 // typeparams = (type ("," type)*)? ;
-func (p *Parser) constructor() *ast.Call {
-	name := p.consume(token.IDENT)
-	p.consume(token.LEFTPAREN)
+func (p *Parser) constructor() (*ast.Call, error) {
+	name, err := p.consume(token.IDENT)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.consume(token.LEFTPAREN); err != nil {
+		return nil, err
+	}
 	typeparams := []ast.Node{}
 	if !p.match(token.RIGHTPAREN) {
-		typeparams = append(typeparams, p.typ())
+		typeparam, err := p.typ()
+		if err != nil {
+			return nil, err
+		}
+		typeparams = append(typeparams, typeparam)
 		for p.match(token.COMMA) {
 			p.advance()
 			if p.match(token.RIGHTPAREN) {
 				break
 			}
-			typeparams = append(typeparams, p.typ())
+			typeparam, err := p.typ()
+			if err != nil {
+				return nil, err
+			}
+			typeparams = append(typeparams, typeparam)
 		}
 	}
-	p.consume(token.RIGHTPAREN)
+	if _, err := p.consume(token.RIGHTPAREN); err != nil {
+		return nil, err
+	}
 
-	return &ast.Call{Func: &ast.Var{Name: name}, Args: typeparams}
+	return &ast.Call{Func: &ast.Var{Name: name}, Args: typeparams}, nil
 }
 
 // varDecl = "def" IDENT "=" expr | "def" IDENT ":" type | "def" IDENT ":" type "=" expr ;
-func (p *Parser) varDecl() *ast.VarDecl {
-	p.consume(token.DEF)
+func (p *Parser) varDecl() (*ast.VarDecl, error) {
+	if _, err := p.consume(token.DEF); err != nil {
+		return nil, err
+	}
 	var name token.Token
 	switch {
 	case p.match(token.IDENT):
@@ -131,44 +182,51 @@ func (p *Parser) varDecl() *ast.VarDecl {
 	case p.match(token.OPERATOR):
 		name = p.advance()
 	default:
-		p.recover(unexpectedToken(p.peek(), "identifier", "operator"))
-
-		return &ast.VarDecl{}
+		return nil, unexpectedToken(p.peek(), "identifier", "operator")
 	}
 	var typ ast.Node
 	var expr ast.Node
+	var err error
 	if p.match(token.COLON) {
 		p.advance()
-		typ = p.typ()
+		typ, err = p.typ()
+		if err != nil {
+			return nil, err
+		}
 	}
 	if p.match(token.EQUAL) {
 		p.advance()
-		expr = p.expr()
+		expr, err = p.expr()
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return &ast.VarDecl{Name: name, Type: typ, Expr: expr}
+	return &ast.VarDecl{Name: name, Type: typ, Expr: expr}, nil
 }
 
 // infixDecl = ("infix" | "infixl" | "infixr") INTEGER OPERATOR ;
-func (p *Parser) infixDecl() *ast.InfixDecl {
+func (p *Parser) infixDecl() (*ast.InfixDecl, error) {
 	kind := p.advance()
 	if kind.Kind != token.INFIX && kind.Kind != token.INFIXL && kind.Kind != token.INFIXR {
-		p.recover(unexpectedToken(p.peek(), "`infix`", "`infixl`", "`infixr`"))
-
-		return nil
+		return nil, unexpectedToken(p.peek(), "`infix`", "`infixl`", "`infixr`")
 	}
-	precedence := p.consume(token.INTEGER)
-	name := p.consume(token.OPERATOR)
+	precedence, err := p.consume(token.INTEGER)
+	if err != nil {
+		return nil, err
+	}
+	name, err := p.consume(token.OPERATOR)
+	if err != nil {
+		return nil, err
+	}
 
-	return &ast.InfixDecl{Assoc: kind, Prec: precedence, Name: name}
+	return &ast.InfixDecl{Assoc: kind, Prec: precedence, Name: name}, nil
 }
 
 // expr = let | with | assert ;
-func (p *Parser) expr() ast.Node {
+func (p *Parser) expr() (ast.Node, error) {
 	if p.IsAtEnd() {
-		p.recover(unexpectedToken(p.peek(), "expression"))
-
-		return nil
+		return nil, unexpectedToken(p.peek(), "expression")
 	}
 	if p.match(token.LET) {
 		return p.let()
@@ -181,39 +239,55 @@ func (p *Parser) expr() ast.Node {
 }
 
 // let = "let" pattern "=" assert ;
-func (p *Parser) let() *ast.Let {
+func (p *Parser) let() (*ast.Let, error) {
 	p.advance()
-	pattern := p.pattern()
-	p.consume(token.EQUAL)
-	expr := p.assert()
+	pattern, err := p.pattern()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.consume(token.EQUAL); err != nil {
+		return nil, err
+	}
+	expr, err := p.assert()
+	if err != nil {
+		return nil, err
+	}
 
-	return &ast.Let{Bind: pattern, Body: expr}
+	return &ast.Let{Bind: pattern, Body: expr}, nil
 }
 
 // with = "with" pattern "<-" assert | "with" assert ;
-func (p *Parser) with() *ast.With {
+func (p *Parser) with() (*ast.With, error) {
 	p.advance()
 
-	patterns, err := try(p, func() []ast.Node {
-		pattern := p.pattern()
-		p.consume(token.BACKARROW)
+	patterns, err := try(p, func() ([]ast.Node, error) {
+		pattern, err := p.pattern()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.consume(token.BACKARROW); err != nil {
+			return nil, err
+		}
 
-		return []ast.Node{pattern}
-	}, func() []ast.Node {
-		return []ast.Node{}
+		return []ast.Node{pattern}, nil
+	}, func() ([]ast.Node, error) {
+		return []ast.Node{}, nil
 	})
+	if err != nil {
+		return nil, err
+	}
 
-	expr := p.assert()
+	expr, err := p.assert()
+	if err != nil {
+		return nil, err
+	}
 
 	if _, ok := expr.(*ast.Call); !ok {
-		fmt.Fprintf(os.Stderr, "at %d: `%s`, warning: `with` expression should be a function call\n", expr.Base().Line, expr.Base().Lexeme)
+		fmt.Fprintf(os.Stderr, "at %d: `%s`, warning: `with` expression should be a function call\n",
+			expr.Base().Line, expr.Base().Lexeme)
 	}
 
-	if p.err != nil {
-		p.recover(err)
-	}
-
-	return &ast.With{Binds: patterns, Body: expr}
+	return &ast.With{Binds: patterns, Body: expr}, nil
 }
 
 // atom = var | literal | paren | codata | PRIM "(" IDENT ("," expr)* ","? ")" ;
@@ -221,23 +295,33 @@ func (p *Parser) with() *ast.With {
 // literal = INTEGER | STRING ;
 // paren = "(" expr ")" ;
 // codata = "{" clause ("," clause)* ","? "}" ;
-func (p *Parser) atom() ast.Node {
+func (p *Parser) atom() (ast.Node, error) {
 	//exhaustive:ignore
 	switch tok := p.advance(); tok.Kind {
 	case token.IDENT:
-		return &ast.Var{Name: tok}
+		return &ast.Var{Name: tok}, nil
 	case token.INTEGER, token.STRING:
-		return &ast.Literal{Token: tok}
+		return &ast.Literal{Token: tok}, nil
 	case token.LEFTPAREN:
-		expr := p.expr()
-		p.consume(token.RIGHTPAREN)
+		expr, err := p.expr()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.consume(token.RIGHTPAREN); err != nil {
+			return nil, err
+		}
 
-		return &ast.Paren{Expr: expr}
+		return &ast.Paren{Expr: expr}, nil
 	case token.LEFTBRACE:
 		return p.codata()
 	case token.PRIM:
-		p.consume(token.LEFTPAREN)
-		name := p.consume(token.IDENT)
+		if _, err := p.consume(token.LEFTPAREN); err != nil {
+			return nil, err
+		}
+		name, err := p.consume(token.IDENT)
+		if err != nil {
+			return nil, err
+		}
 		args := []ast.Node{}
 		if !p.match(token.RIGHTPAREN) {
 			for p.match(token.COMMA) {
@@ -245,271 +329,395 @@ func (p *Parser) atom() ast.Node {
 				if p.match(token.RIGHTPAREN) {
 					break
 				}
-				args = append(args, p.expr())
+				arg, err := p.expr()
+				if err != nil {
+					return nil, err
+				}
+				args = append(args, arg)
 			}
 		}
-		p.consume(token.RIGHTPAREN)
+		if _, err := p.consume(token.RIGHTPAREN); err != nil {
+			return nil, err
+		}
 
-		return &ast.Prim{Name: name, Args: args}
+		return &ast.Prim{Name: name, Args: args}, nil
 	default:
-		p.recover(unexpectedToken(tok, "identifier", "integer", "string", "`(`", "`{`"))
-
-		return nil
+		return nil, unexpectedToken(tok, "identifier", "integer", "string", "`(`", "`{`")
 	}
 }
 
 // assert = binary (":" type)* ;
-func (p *Parser) assert() ast.Node {
-	expr := p.binary()
+func (p *Parser) assert() (ast.Node, error) {
+	expr, err := p.binary()
+	if err != nil {
+		return nil, err
+	}
 	for p.match(token.COLON) {
 		p.advance()
-		typ := p.typ()
+		typ, err := p.typ()
+		if err != nil {
+			return nil, err
+		}
 		expr = &ast.Assert{Expr: expr, Type: typ}
 	}
 
-	return expr
+	return expr, nil
 }
 
 // binary = method (operator method)* ;
-func (p *Parser) binary() ast.Node {
-	expr := p.method()
+func (p *Parser) binary() (ast.Node, error) {
+	expr, err := p.method()
+	if err != nil {
+		return nil, err
+	}
 	for p.match(token.OPERATOR) {
 		op := p.advance()
-		right := p.method()
+		right, err := p.method()
+		if err != nil {
+			return nil, err
+		}
 		expr = &ast.Binary{Left: expr, Op: op, Right: right}
 	}
 
-	return expr
+	return expr, nil
 }
 
 // method = atom (accessTail | callTail)* ;
-func (p *Parser) method() ast.Node {
-	expr := p.atom()
+func (p *Parser) method() (ast.Node, error) {
+	expr, err := p.atom()
+	if err != nil {
+		return nil, err
+	}
 	for {
 		switch {
 		case p.match(token.DOT):
-			expr = p.accessTail(expr)
+			expr, err = p.accessTail(expr)
+			if err != nil {
+				return nil, err
+			}
 		case p.match(token.LEFTPAREN):
-			expr = p.callTail(expr)
+			expr, err = p.callTail(expr)
+			if err != nil {
+				return nil, err
+			}
 		default:
-			return expr
+			return expr, nil
 		}
 	}
 }
 
 // accessTail = "." IDENT callTail? ;
-func (p *Parser) accessTail(receiver ast.Node) ast.Node {
-	p.consume(token.DOT)
-	name := p.consume(token.IDENT)
+func (p *Parser) accessTail(receiver ast.Node) (ast.Node, error) {
+	if _, err := p.consume(token.DOT); err != nil {
+		return nil, err
+	}
+	name, err := p.consume(token.IDENT)
+	if err != nil {
+		return nil, err
+	}
 	expr := &ast.Access{Receiver: receiver, Name: name}
 
 	if p.match(token.LEFTPAREN) {
 		return p.callTail(expr)
 	}
 
-	return expr
+	return expr, nil
 }
 
 // callTail = "(" ")" | "(" expr ("," expr)* ","? ")" ;
-func (p *Parser) callTail(fun ast.Node) ast.Node {
-	p.consume(token.LEFTPAREN)
+//
+//nolint:dupl
+func (p *Parser) callTail(fun ast.Node) (ast.Node, error) {
+	if _, err := p.consume(token.LEFTPAREN); err != nil {
+		return nil, err
+	}
 	args := []ast.Node{}
 	if !p.match(token.RIGHTPAREN) {
-		args = append(args, p.expr())
+		arg, err := p.expr()
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, arg)
 		for p.match(token.COMMA) {
 			p.advance()
 			if p.match(token.RIGHTPAREN) {
 				break
 			}
-			args = append(args, p.expr())
+			arg, err := p.expr()
+			if err != nil {
+				return nil, err
+			}
+			args = append(args, arg)
 		}
 	}
-	p.consume(token.RIGHTPAREN)
+	if _, err := p.consume(token.RIGHTPAREN); err != nil {
+		return nil, err
+	}
 
-	return &ast.Call{Func: fun, Args: args}
+	return &ast.Call{Func: fun, Args: args}, nil
 }
 
 // codata = "{" clause ("," clause)* ","? "}" ;
-func (p *Parser) codata() *ast.Codata {
-	clauses := []*ast.CodataClause{p.clause()}
+func (p *Parser) codata() (*ast.Codata, error) {
+	clause, err := p.clause()
+	if err != nil {
+		return nil, err
+	}
+	clauses := []*ast.CodataClause{clause}
 	for p.match(token.COMMA) {
 		p.advance()
 		if p.match(token.RIGHTBRACE) {
 			break
 		}
-		clauses = append(clauses, p.clause())
+		clause, err := p.clause()
+		if err != nil {
+			return nil, err
+		}
+		clauses = append(clauses, clause)
 	}
-	p.consume(token.RIGHTBRACE)
+	if _, err := p.consume(token.RIGHTBRACE); err != nil {
+		return nil, err
+	}
 
-	return &ast.Codata{Clauses: clauses}
+	return &ast.Codata{Clauses: clauses}, nil
 }
 
 // clause = clauseHead "->" clauseBody | clauseBody ;
 // clauseHead = "(" ")" | "(" pattern ("," pattern)* ","? ")" | pattern ;
 // clauseBody = expr (";" expr)* ";"? ;
-func (p *Parser) clause() *ast.CodataClause {
+func (p *Parser) clause() (*ast.CodataClause, error) {
 	// try to parse `clauseHead "->"`
-	pattern, patternErr := try(p, func() ast.Node {
+	pattern, err := try(p, func() (ast.Node, error) {
 		var pattern ast.Node
-		if p.match(token.SHARP) {
+		var err error
+		switch {
+		case p.match(token.SHARP):
 			// if the first token is `#`, then it is a pattern.
-			pattern = p.pattern()
-		} else if p.match(token.LEFTPAREN) {
+			pattern, err = p.pattern()
+			if err != nil {
+				return nil, err
+			}
+		case p.match(token.LEFTPAREN):
 			// if the first token is `(`, then it is a pattern list as parameters.
-			tok := p.consume(token.LEFTPAREN)
+			tok, err := p.consume(token.LEFTPAREN)
+			if err != nil {
+				return nil, err
+			}
 			params := []ast.Node{}
 			if !p.match(token.RIGHTPAREN) {
-				params = append(params, p.pattern())
+				param, err := p.pattern()
+				if err != nil {
+					return nil, err
+				}
+				params = append(params, param)
 				for p.match(token.COMMA) {
 					p.advance()
 					if p.match(token.RIGHTPAREN) {
 						break
 					}
-					params = append(params, p.pattern())
+					param, err := p.pattern()
+					if err != nil {
+						return nil, err
+					}
+					params = append(params, param)
 				}
 			}
-			p.consume(token.RIGHTPAREN)
+			if _, err := p.consume(token.RIGHTPAREN); err != nil {
+				return nil, err
+			}
 			pattern = &ast.Call{Func: &ast.This{Token: tok}, Args: params}
-		} else {
+		default:
 			// otherwise, it is a single pattern as a parameter.
 			tok := p.peek()
-			pattern = &ast.Call{Func: &ast.This{Token: tok}, Args: []ast.Node{p.pattern()}}
+			arg, err := p.pattern()
+			if err != nil {
+				return nil, err
+			}
+			pattern = &ast.Call{Func: &ast.This{Token: tok}, Args: []ast.Node{arg}}
 		}
 
-		p.consume(token.ARROW)
-		return pattern
-	}, func() ast.Node {
-		// if the parsing is failed, insert `#() ->` as pattern and go back to the original position.
-		return &ast.Call{Func: &ast.This{Token: p.peek()}, Args: []ast.Node{}}
-	})
+		if _, err := p.consume(token.ARROW); err != nil {
+			return nil, err
+		}
 
-	exprs := []ast.Node{p.expr()}
+		return pattern, nil
+	}, func() (ast.Node, error) {
+		// if the parsing is failed, insert `#() ->` as pattern and go back to the original position.
+		return &ast.Call{Func: &ast.This{Token: p.peek()}, Args: []ast.Node{}}, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	expr, err := p.expr()
+	if err != nil {
+		return nil, err
+	}
+	exprs := []ast.Node{expr}
 	for p.match(token.SEMICOLON) {
 		p.advance()
 		if p.match(token.RIGHTBRACE) {
 			break
 		}
-		exprs = append(exprs, p.expr())
+		expr, err := p.expr()
+		if err != nil {
+			return nil, err
+		}
+		exprs = append(exprs, expr)
 	}
 
-	if p.err != nil {
-		// if the parsing is failed, add patternErr to the error.
-		p.recover(patternErr)
-	}
-
-	return &ast.CodataClause{Pattern: pattern, Expr: &ast.Seq{Exprs: exprs}}
+	return &ast.CodataClause{Pattern: pattern, Expr: &ast.Seq{Exprs: exprs}}, nil
 }
 
 // pattern = methodPat ;
-func (p *Parser) pattern() ast.Node {
+func (p *Parser) pattern() (ast.Node, error) {
 	if p.IsAtEnd() {
-		p.recover(unexpectedToken(p.peek(), "pattern"))
-
-		return nil
+		return nil, unexpectedToken(p.peek(), "pattern")
 	}
 
 	return p.methodPat()
 }
 
 // methodPat = atomPat (accessPatTail | callPatTail)* ;
-func (p *Parser) methodPat() ast.Node {
-	pat := p.atomPat()
+func (p *Parser) methodPat() (ast.Node, error) {
+	pat, err := p.atomPat()
+	if err != nil {
+		return nil, err
+	}
 	for {
 		switch {
 		case p.match(token.DOT):
-			pat = p.accessPatTail(pat)
+			pat, err = p.accessPatTail(pat)
+			if err != nil {
+				return nil, err
+			}
 		case p.match(token.LEFTPAREN):
-			pat = p.callPatTail(pat)
+			pat, err = p.callPatTail(pat)
+			if err != nil {
+				return nil, err
+			}
 		default:
-			return pat
+			return pat, nil
 		}
 	}
 }
 
 // accessPatTail = "." IDENT callPatTail? ;
-func (p *Parser) accessPatTail(receiver ast.Node) ast.Node {
-	p.consume(token.DOT)
-	name := p.consume(token.IDENT)
+func (p *Parser) accessPatTail(receiver ast.Node) (ast.Node, error) {
+	if _, err := p.consume(token.DOT); err != nil {
+		return nil, err
+	}
+	name, err := p.consume(token.IDENT)
+	if err != nil {
+		return nil, err
+	}
 	pat := &ast.Access{Receiver: receiver, Name: name}
 
 	if p.match(token.LEFTPAREN) {
 		return p.callPatTail(pat)
 	}
 
-	return pat
+	return pat, nil
 }
 
 // callPatTail = "(" ")" | "(" pattern ("," pattern)* ","? ")" ;
-func (p *Parser) callPatTail(fun ast.Node) ast.Node {
-	p.consume(token.LEFTPAREN)
+//
+//nolint:dupl
+func (p *Parser) callPatTail(fun ast.Node) (ast.Node, error) {
+	if _, err := p.consume(token.LEFTPAREN); err != nil {
+		return nil, err
+	}
 	args := []ast.Node{}
 	if !p.match(token.RIGHTPAREN) {
-		args = append(args, p.pattern())
+		arg, err := p.pattern()
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, arg)
 		for p.match(token.COMMA) {
 			p.advance()
 			if p.match(token.RIGHTPAREN) {
 				break
 			}
-			args = append(args, p.pattern())
+			arg, err := p.pattern()
+			if err != nil {
+				return nil, err
+			}
+			args = append(args, arg)
 		}
 	}
-	p.consume(token.RIGHTPAREN)
+	if _, err := p.consume(token.RIGHTPAREN); err != nil {
+		return nil, err
+	}
 
-	return &ast.Call{Func: fun, Args: args}
+	return &ast.Call{Func: fun, Args: args}, nil
 }
 
 // atomPat = IDENT | INTEGER | STRING | "(" pattern ")" ;
-func (p *Parser) atomPat() ast.Node {
+func (p *Parser) atomPat() (ast.Node, error) {
 	//exhaustive:ignore
 	switch tok := p.advance(); tok.Kind {
 	case token.SHARP:
-		return &ast.This{Token: tok}
+		return &ast.This{Token: tok}, nil
 	case token.IDENT:
-		return &ast.Var{Name: tok}
+		return &ast.Var{Name: tok}, nil
 	case token.INTEGER, token.STRING:
-		return &ast.Literal{Token: tok}
+		return &ast.Literal{Token: tok}, nil
 	case token.LEFTPAREN:
-		pat := p.pattern()
-		p.consume(token.RIGHTPAREN)
+		pat, err := p.pattern()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.consume(token.RIGHTPAREN); err != nil {
+			return nil, err
+		}
 
-		return &ast.Paren{Expr: pat}
+		return &ast.Paren{Expr: pat}, nil
 	default:
-		p.recover(unexpectedToken(tok, "identifier", "integer", "string", "`(`"))
-
-		return nil
+		return nil, unexpectedToken(tok, "identifier", "integer", "string", "`(`")
 	}
 }
 
 // type = binopType ;
-func (p *Parser) typ() ast.Node {
+func (p *Parser) typ() (ast.Node, error) {
 	if p.IsAtEnd() {
-		p.recover(unexpectedToken(p.peek(), "type"))
-
-		return nil
+		return nil, unexpectedToken(p.peek(), "type")
 	}
 
 	return p.binopType()
 }
 
 // binopType = callType (operator callType)* ;
-func (p *Parser) binopType() ast.Node {
-	typ := p.callType()
+func (p *Parser) binopType() (ast.Node, error) {
+	typ, err := p.callType()
+	if err != nil {
+		return nil, err
+	}
 	for p.match(token.OPERATOR) || p.match(token.ARROW) {
 		op := p.advance()
-		right := p.callType()
+		right, err := p.callType()
+		if err != nil {
+			return nil, err
+		}
 		typ = &ast.Binary{Left: typ, Op: op, Right: right}
 	}
 
-	return typ
+	return typ, nil
 }
 
 // callType = (PRIM "(" IDENT ("," type)* ","? ")" | atomType) ("(" ")" | "(" type ("," type)* ","? ")")* ;
-func (p *Parser) callType() ast.Node {
+func (p *Parser) callType() (ast.Node, error) {
 	var typ ast.Node
+	var err error
 	if p.match(token.PRIM) {
 		p.advance()
-		p.consume(token.LEFTPAREN)
-		name := p.consume(token.IDENT)
+		if _, err := p.consume(token.LEFTPAREN); err != nil {
+			return nil, err
+		}
+		name, err := p.consume(token.IDENT)
+		if err != nil {
+			return nil, err
+		}
 		args := []ast.Node{}
 		if !p.match(token.RIGHTPAREN) {
 			for p.match(token.COMMA) {
@@ -517,81 +725,124 @@ func (p *Parser) callType() ast.Node {
 				if p.match(token.RIGHTPAREN) {
 					break
 				}
-				args = append(args, p.typ())
+				arg, err := p.typ()
+				if err != nil {
+					return nil, err
+				}
+				args = append(args, arg)
 			}
 		}
-		p.consume(token.RIGHTPAREN)
+		if _, err := p.consume(token.RIGHTPAREN); err != nil {
+			return nil, err
+		}
 		typ = &ast.Prim{Name: name, Args: args}
 	} else {
-		typ = p.atomType()
+		typ, err = p.atomType()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	for p.match(token.LEFTPAREN) {
-		typ = p.callTypeTail(typ)
+		typ, err = p.callTypeTail(typ)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return typ
+	return typ, nil
 }
 
-func (p *Parser) callTypeTail(fun ast.Node) *ast.Call {
-	p.consume(token.LEFTPAREN)
+func (p *Parser) callTypeTail(fun ast.Node) (*ast.Call, error) {
+	if _, err := p.consume(token.LEFTPAREN); err != nil {
+		return nil, err
+	}
 	args := []ast.Node{}
 	if !p.match(token.RIGHTPAREN) {
-		args = append(args, p.typ())
+		arg, err := p.typ()
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, arg)
 		for p.match(token.COMMA) {
 			p.advance()
 			if p.match(token.RIGHTPAREN) {
 				break
 			}
-			args = append(args, p.typ())
+			arg, err := p.typ()
+			if err != nil {
+				return nil, err
+			}
+			args = append(args, arg)
 		}
 	}
-	p.consume(token.RIGHTPAREN)
+	if _, err := p.consume(token.RIGHTPAREN); err != nil {
+		return nil, err
+	}
 
-	return &ast.Call{Func: fun, Args: args}
+	return &ast.Call{Func: fun, Args: args}, nil
 }
 
 // atomType = IDENT | "{" fieldType ("," fieldType)* ","? "}" | "(" type ("," type)* ","? ")" ;
-func (p *Parser) atomType() ast.Node {
+func (p *Parser) atomType() (ast.Node, error) {
 	//exhaustive:ignore
 	switch tok := p.advance(); tok.Kind {
 	case token.IDENT:
-		return &ast.Var{Name: tok}
+		return &ast.Var{Name: tok}, nil
 	case token.LEFTBRACE:
-		fields := []*ast.Field{p.fieldType()}
+		field, err := p.fieldType()
+		if err != nil {
+			return nil, err
+		}
+		fields := []*ast.Field{field}
 		for p.match(token.COMMA) {
 			p.advance()
 			if p.match(token.RIGHTBRACE) {
 				break
 			}
-			fields = append(fields, p.fieldType())
+			field, err := p.fieldType()
+			if err != nil {
+				return nil, err
+			}
+			fields = append(fields, field)
 		}
-		p.consume(token.RIGHTBRACE)
+		if _, err := p.consume(token.RIGHTBRACE); err != nil {
+			return nil, err
+		}
 
-		return &ast.Object{Fields: fields}
+		return &ast.Object{Fields: fields}, nil
 	case token.LEFTPAREN:
-		typ := p.typ()
-		p.consume(token.RIGHTPAREN)
+		typ, err := p.typ()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.consume(token.RIGHTPAREN); err != nil {
+			return nil, err
+		}
 
-		return &ast.Paren{Expr: typ}
+		return &ast.Paren{Expr: typ}, nil
 	default:
-		p.recover(unexpectedToken(tok, "identifier", "`{`", "`(`"))
-
-		return nil
+		return nil, unexpectedToken(tok, "identifier", "`{`", "`(`")
 	}
 }
 
 // fieldType = IDENT ":" type ;
-func (p *Parser) fieldType() *ast.Field {
-	name := p.consume(token.IDENT)
-	p.consume(token.COLON)
-	typ := p.typ()
+func (p *Parser) fieldType() (*ast.Field, error) {
+	name, err := p.consume(token.IDENT)
+	if err != nil {
+		return nil, err
+	}
 
-	return &ast.Field{Name: name.Lexeme, Expr: typ}
-}
+	if _, err := p.consume(token.COLON); err != nil {
+		return nil, err
+	}
 
-func (p *Parser) recover(err error) {
-	p.err = errors.Join(err, p.err)
+	typ, err := p.typ()
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.Field{Name: name.Lexeme, Expr: typ}, nil
 }
 
 func (p Parser) peek() token.Token {
@@ -626,25 +877,23 @@ func (p Parser) match(kind token.Kind) bool {
 	return p.peek().Kind == kind
 }
 
-func (p Parser) matchNth(n int, kind token.Kind) bool {
-	if p.current+n >= len(p.tokens) {
+func (p Parser) matchNth(shift int, kind token.Kind) bool {
+	if p.current+shift >= len(p.tokens) {
 		return false
 	}
-	if p.tokens[p.current+n].Kind == token.EOF {
+	if p.tokens[p.current+shift].Kind == token.EOF {
 		return false
 	}
 
-	return p.peekNth(n).Kind == kind
+	return p.peekNth(shift).Kind == kind
 }
 
-func (p *Parser) consume(kind token.Kind) token.Token {
+func (p *Parser) consume(kind token.Kind) (token.Token, error) {
 	if p.match(kind) {
-		return p.advance()
+		return p.advance(), nil
 	}
 
-	p.recover(unexpectedToken(p.peek(), kind.String()))
-
-	return p.peek()
+	return p.peek(), unexpectedToken(p.peek(), kind.String())
 }
 
 type UnexpectedTokenError struct {
@@ -668,17 +917,19 @@ func unexpectedToken(t token.Token, expected ...string) error {
 	return utils.PosError{Where: t, Err: UnexpectedTokenError{Expected: expected}}
 }
 
-func try[T any](p *Parser, action func() T, recover func() T) (T, error) {
-	savedErr := p.err
+func try[T any](p *Parser, action func() (T, error), handler func() (T, error)) (T, error) {
 	savedCurrent := p.current
 
-	node := action()
-	if p.err != nil {
-		raisedErr := p.err
-		p.err = savedErr
+	node, err := action()
+	if err != nil {
 		p.current = savedCurrent
 
-		return recover(), raisedErr
+		node, rerr := handler()
+		if rerr != nil {
+			return node, errors.Join(err, rerr)
+		}
+
+		return node, nil
 	}
 
 	return node, nil
