@@ -1,7 +1,9 @@
 def main = {
-    prim(read_all_cps, { s ->
-        prim(print_cps, s, {
-            prim(exit)
-            })
-    })
+    let exit = {
+        prim(exit)
+    };
+    let print = { s ->
+        prim(print_cps, s, exit)
+    };
+    prim(read_all_cps, print)
 }
