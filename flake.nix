@@ -41,7 +41,7 @@
       in {
         packages.default = anma;
         devShells.default = pkgs.mkShell {
-          buildInputs = with pkgs; [go gopls gotools go-tools];
+          buildInputs = with pkgs; [go gopls gotools go-tools golangci-lint];
         };
         formatter = pkgs.alejandra;
       }
