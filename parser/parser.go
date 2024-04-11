@@ -488,52 +488,9 @@ func (p *Parser) codata() (*ast.Codata, error) {
 func (p *Parser) clause() (*ast.CodataClause, error) {
 	// try to parse `clauseHead "->"`
 	pattern, err := try(p, func() (ast.Node, error) {
-		var pattern ast.Node
-		var err error
-		switch {
-		case p.match(token.SHARP):
-			// if the first token is `#`, then it is a pattern.
-			pattern, err = p.pattern()
-			if err != nil {
-				return nil, err
-			}
-		case p.match(token.LEFTPAREN):
-			// if the first token is `(`, then it is a pattern list as parameters.
-			tok, err := p.consume(token.LEFTPAREN)
-			if err != nil {
-				return nil, err
-			}
-			params := []ast.Node{}
-			if !p.match(token.RIGHTPAREN) {
-				param, err := p.pattern()
-				if err != nil {
-					return nil, err
-				}
-				params = append(params, param)
-				for p.match(token.COMMA) {
-					p.advance()
-					if p.match(token.RIGHTPAREN) {
-						break
-					}
-					param, err := p.pattern()
-					if err != nil {
-						return nil, err
-					}
-					params = append(params, param)
-				}
-			}
-			if _, err := p.consume(token.RIGHTPAREN); err != nil {
-				return nil, err
-			}
-			pattern = &ast.Call{Func: &ast.This{Token: tok}, Args: params}
-		default:
-			// otherwise, it is a single pattern as a parameter.
-			tok := p.peek()
-			arg, err := p.pattern()
-			if err != nil {
-				return nil, err
-			}
-			pattern = &ast.Call{Func: &ast.This{Token: tok}, Args: []ast.Node{arg}}
+		pattern, err := p.clauseHead()
+		if err != nil {
+			return nil, err
 		}
 
 		if _, err := p.consume(token.ARROW); err != nil {
@@ -567,6 +524,51 @@ func (p *Parser) clause() (*ast.CodataClause, error) {
 	}
 
 	return &ast.CodataClause{Pattern: pattern, Expr: &ast.Seq{Exprs: exprs}}, nil
+}
+
+func (p *Parser) clauseHead() (ast.Node, error) {
+	switch p.peek().Kind {
+	case token.SHARP:
+
+		return p.pattern()
+	case token.LEFTPAREN:
+		tok, err := p.consume(token.LEFTPAREN)
+		if err != nil {
+			return nil, err
+		}
+		params := []ast.Node{}
+		if !p.match(token.RIGHTPAREN) {
+			param, err := p.pattern()
+			if err != nil {
+				return nil, err
+			}
+			params = append(params, param)
+			for p.match(token.COMMA) {
+				p.advance()
+				if p.match(token.RIGHTPAREN) {
+					break
+				}
+				param, err := p.pattern()
+				if err != nil {
+					return nil, err
+				}
+				params = append(params, param)
+			}
+		}
+		if _, err := p.consume(token.RIGHTPAREN); err != nil {
+			return nil, err
+		}
+
+		return &ast.Call{Func: &ast.This{Token: tok}, Args: params}, nil
+	default:
+		tok := p.peek()
+		arg, err := p.pattern()
+		if err != nil {
+			return nil, err
+		}
+
+		return &ast.Call{Func: &ast.This{Token: tok}, Args: []ast.Node{arg}}, nil
+	}
 }
 
 // pattern = methodPat ;
