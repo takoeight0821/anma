@@ -58,11 +58,6 @@ func TestGolden(t *testing.T) {
 		for i, node := range nodes {
 			values[i], err = evaluator.Eval(node)
 			if err != nil {
-				var exitErr eval.ExitError
-				if errors.As(err, &exitErr) {
-					break
-				}
-
 				t.Errorf("%s returned error: %v", testfile, err)
 
 				return
@@ -72,7 +67,10 @@ func TestGolden(t *testing.T) {
 		if main, ok := evaluator.SearchMain(); ok {
 			top := token.Token{Kind: token.IDENT, Lexeme: "toplevel", Location: token.Location{}, Literal: -1}
 			ret, err := main.Apply(top)
-			if err != nil {
+			var exitErr eval.ExitError
+			if errors.As(err, &exitErr) {
+				fmt.Fprintf(&builder, "exit => %d\n", exitErr.Code)
+			} else if err != nil {
 				fmt.Fprintf(&builder, "error => %v\n", err)
 			}
 			if ret != nil {

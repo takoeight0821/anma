@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -150,7 +151,10 @@ func RunFile(path string) error {
 	// top is a dummy token.
 	top := token.Token{Kind: token.IDENT, Lexeme: "toplevel", Location: token.Location{}, Literal: -1}
 	_, err = main.Apply(top)
-	if err != nil {
+	var exitErr eval.ExitError
+	if errors.As(err, &exitErr) {
+		os.Exit(exitErr.Code)
+	} else if err != nil {
 		return fmt.Errorf("run file: %w", err)
 	}
 

@@ -22,6 +22,10 @@ func (e PosError) Error() string {
 	return fmt.Sprintf("at %v: `%s`\n\t%s", e.Where.Location, e.Where.Lexeme, e.Err.Error())
 }
 
+func (e PosError) Unwrap() error {
+	return e.Err
+}
+
 func FindSourceFiles(path string) ([]string, error) {
 	var files []string
 	err := filepath.WalkDir(path, func(path string, _ fs.DirEntry, err error) error {

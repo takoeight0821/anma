@@ -1,7 +1,2 @@
 test input
-error => at ../testdata/cpsio_direct.anma:6:15: `read_all_cps`
-	at ../testdata/cpsio_direct.anma:1:40: `read_all_cps`
-	at ../testdata/cpsio_direct.anma:7:10: `print_cps`
-	at ../testdata/cpsio_direct.anma:2:38: `print_cps`
-	at ../testdata/cpsio_direct.anma:8:5: `exit`
-	exit(0)
+exit => 0
