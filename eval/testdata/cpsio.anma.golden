@@ -1,4 +1,4 @@
 test input
-error => at 8: `read_all_cps`
-	at 6: `print_cps`
+error => at ../testdata/cpsio.anma:8:10: `read_all_cps`
+	at ../testdata/cpsio.anma:6:14: `print_cps`
 	exit(0)

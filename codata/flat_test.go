@@ -34,7 +34,7 @@ func TestGolden(t *testing.T) {
 		runner.AddPass(&desugarwith.DesugarWith{})
 		runner.AddPass(&codata.Flat{})
 
-		nodes, err := runner.RunSource(string(source))
+		nodes, err := runner.RunSource(testfile, string(source))
 		if err != nil {
 			t.Errorf("%s returned error: %v", testfile, err)
 

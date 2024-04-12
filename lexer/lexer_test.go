@@ -29,7 +29,7 @@ func TestGolden(t *testing.T) {
 			return
 		}
 
-		tokens, err := lexer.Lex(string(source))
+		tokens, err := lexer.Lex(testfile, string(source))
 		if err != nil {
 			t.Errorf("%s returned error: %v", testfile, err)
 
@@ -38,7 +38,7 @@ func TestGolden(t *testing.T) {
 
 		var builder strings.Builder
 		for _, token := range tokens {
-			fmt.Fprintf(&builder, "%v %q %d\n", token.Kind, token.Lexeme, token.Line)
+			fmt.Fprintf(&builder, "%v %q %v\n", token.Kind, token.Lexeme, token.Location)
 		}
 
 		g := goldie.New(t)

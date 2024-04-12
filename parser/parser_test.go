@@ -31,7 +31,7 @@ func TestGolden(t *testing.T) {
 
 		runner := driver.NewPassRunner()
 
-		nodes, err := runner.RunSource(string(source))
+		nodes, err := runner.RunSource(testfile, string(source))
 		if err != nil {
 			t.Errorf("%s returned error: %v", testfile, err)
 

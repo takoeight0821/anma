@@ -42,7 +42,7 @@ func TestGolden(t *testing.T) {
 		runner.AddPass(infix.NewInfixResolver())
 		runner.AddPass(nameresolve.NewResolver())
 
-		nodes, err := runner.RunSource(string(source))
+		nodes, err := runner.RunSource(testfile, string(source))
 		if err != nil {
 			t.Errorf("%s returned error: %v", testfile, err)
 
@@ -70,7 +70,7 @@ func TestGolden(t *testing.T) {
 		}
 
 		if main, ok := evaluator.SearchMain(); ok {
-			top := token.Token{Kind: token.IDENT, Lexeme: "toplevel", Line: 0, Literal: -1}
+			top := token.Token{Kind: token.IDENT, Lexeme: "toplevel", Location: token.Location{}, Literal: -1}
 			ret, err := main.Apply(top)
 			if err != nil {
 				fmt.Fprintf(&builder, "error => %v\n", err)

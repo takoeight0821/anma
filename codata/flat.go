@@ -329,7 +329,7 @@ func (f *Flat) buildLambda(plists map[int][]ast.Node, bodys map[int]ast.Node) (a
 
 	scrutinees := make([]token.Token, arity)
 	for i := range scrutinees {
-		scrutinees[i] = token.Token{Kind: token.IDENT, Lexeme: f.genUniq("p"), Line: where.Line, Literal: nil}
+		scrutinees[i] = token.Token{Kind: token.IDENT, Lexeme: f.genUniq("p"), Location: where.Location, Literal: nil}
 	}
 
 	for i, ps := range guards {

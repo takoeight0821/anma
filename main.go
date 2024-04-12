@@ -95,7 +95,7 @@ func RunPrompt() error {
 		}
 		line.AppendHistory(input)
 
-		nodes, err := runner.RunSource(input)
+		nodes, err := runner.RunSource("repl", input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 
@@ -129,7 +129,7 @@ func RunFile(path string) error {
 		return fmt.Errorf("read file: %w", err)
 	}
 
-	nodes, err := runner.RunSource(string(bytes))
+	nodes, err := runner.RunSource(path, string(bytes))
 	if err != nil {
 		return fmt.Errorf("run file: %w", err)
 	}
@@ -148,7 +148,7 @@ func RunFile(path string) error {
 		return noMainError{}
 	}
 	// top is a dummy token.
-	top := token.Token{Kind: token.IDENT, Lexeme: "toplevel", Line: 0, Literal: -1}
+	top := token.Token{Kind: token.IDENT, Lexeme: "toplevel", Location: token.Location{}, Literal: -1}
 	_, err = main.Apply(top)
 	if err != nil {
 		return fmt.Errorf("run file: %w", err)

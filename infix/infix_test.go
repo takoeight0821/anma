@@ -36,7 +36,7 @@ func TestGolden(t *testing.T) {
 		runner.AddPass(&codata.Flat{})
 		runner.AddPass(infix.NewInfixResolver())
 
-		nodes, err := runner.RunSource(string(source))
+		nodes, err := runner.RunSource(testfile, string(source))
 		if err != nil {
 			t.Errorf("%s returned error: %v", testfile, err)
 

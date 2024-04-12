@@ -283,8 +283,8 @@ func (p *Parser) with() (*ast.With, error) {
 	}
 
 	if _, ok := expr.(*ast.Call); !ok {
-		fmt.Fprintf(os.Stderr, "at %d: `%s`, warning: `with` expression should be a function call\n",
-			expr.Base().Line, expr.Base().Lexeme)
+		fmt.Fprintf(os.Stderr, "at %v: `%s`, warning: `with` expression should be a function call\n",
+			expr.Base().Location, expr.Base().Lexeme)
 	}
 
 	return &ast.With{Binds: patterns, Body: expr}, nil
@@ -527,6 +527,7 @@ func (p *Parser) clause() (*ast.CodataClause, error) {
 }
 
 func (p *Parser) clauseHead() (ast.Node, error) {
+	//nolint:exhaustive
 	switch p.peek().Kind {
 	case token.SHARP:
 

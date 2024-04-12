@@ -82,7 +82,7 @@ func (e NotDefinedError) Error() string {
 
 func (e *env) lookup(name token.Token) (token.Token, error) {
 	if uniq, ok := e.table[name.Lexeme]; ok {
-		return token.Token{Kind: name.Kind, Lexeme: name.Lexeme, Line: name.Line, Literal: uniq}, nil
+		return token.Token{Kind: name.Kind, Lexeme: name.Lexeme, Location: name.Location, Literal: uniq}, nil
 	}
 
 	if e.parent != nil {
