@@ -10,13 +10,16 @@ import (
 	"github.com/takoeight0821/anma/token"
 )
 
-func Lex(source string) ([]token.Token, error) {
+func Lex(filePath, source string) ([]token.Token, error) {
 	lexer := lexer{
 		source:  source,
 		tokens:  []token.Token{},
 		start:   0,
 		current: 0,
-		line:    1,
+
+		filePath: filePath,
+		line:     1,
+		column:   1,
 	}
 
 	var err error
@@ -25,7 +28,7 @@ func Lex(source string) ([]token.Token, error) {
 		err = errors.Join(err, lexer.scanToken())
 	}
 
-	lexer.tokens = append(lexer.tokens, token.Token{Kind: token.EOF, Lexeme: "", Line: lexer.line, Literal: nil})
+	lexer.tokens = append(lexer.tokens, token.Token{Kind: token.EOF, Lexeme: "", Location: lexer.location(), Literal: nil})
 
 	return lexer.tokens, err
 }
@@ -36,7 +39,14 @@ type lexer struct {
 
 	start   int // start of current lexeme
 	current int // current position in source
-	line    int // current line number
+
+	filePath string // current file path
+	line     int    // current line number
+	column   int    // current column number
+}
+
+func (l lexer) location() token.Location {
+	return token.Location{FilePath: l.filePath, Line: l.line, Column: l.column}
 }
 
 func (l lexer) isAtEnd() bool {
@@ -55,13 +65,14 @@ func (l lexer) peek() rune {
 func (l *lexer) advance() rune {
 	runeValue, width := utf8.DecodeRuneInString(l.source[l.current:])
 	l.current += width
+	l.column++
 
 	return runeValue
 }
 
-func (l *lexer) addToken(kind token.Kind, literal any) {
+func (l *lexer) addToken(loc token.Location, kind token.Kind, literal any) {
 	text := l.source[l.start:l.current]
-	l.tokens = append(l.tokens, token.Token{Kind: kind, Lexeme: text, Line: l.line, Literal: literal})
+	l.tokens = append(l.tokens, token.Token{Kind: kind, Lexeme: text, Location: loc, Literal: literal})
 }
 
 type UnexpectedCharacterError struct {
@@ -75,6 +86,7 @@ func (e UnexpectedCharacterError) Error() string {
 
 func (l *lexer) scanToken() error {
 	l.start = l.current
+	loc := l.location()
 	char := l.advance()
 	switch char {
 	case ' ', '\r', '\t':
@@ -82,24 +94,25 @@ func (l *lexer) scanToken() error {
 		return nil
 	case '\n':
 		l.line++
+		l.column = 1
 
 		return nil
 	case '"':
-		return l.string()
+		return l.string(loc)
 	default:
 		if k, ok := getReservedSymbol(char); ok {
-			l.addToken(k, nil)
+			l.addToken(loc, k, nil)
 
 			return nil
 		}
 		if isDigit(char) {
-			return l.integer()
+			return l.integer(loc)
 		}
 		if isAlpha(char) {
-			return l.identifier()
+			return l.identifier(loc)
 		}
 		if isSymbol(char) {
-			return l.operator()
+			return l.operator(loc)
 		}
 	}
 
@@ -114,7 +127,7 @@ func (e UnterminatedStringError) Error() string {
 	return fmt.Sprintf("unterminated string at line %d", e.Line)
 }
 
-func (l *lexer) string() error {
+func (l *lexer) string(loc token.Location) error {
 	for l.peek() != '"' && !l.isAtEnd() {
 		if l.peek() == '\n' {
 			l.line++
@@ -139,7 +152,7 @@ func (l *lexer) string() error {
 	}
 
 	value := l.source[l.start+1 : l.current-1]
-	l.addToken(token.STRING, value)
+	l.addToken(loc, token.STRING, value)
 
 	return nil
 }
@@ -148,7 +161,7 @@ func isDigit(c rune) bool {
 	return c >= '0' && c <= '9'
 }
 
-func (l *lexer) integer() error {
+func (l *lexer) integer(loc token.Location) error {
 	for isDigit(l.peek()) {
 		l.advance()
 	}
@@ -157,7 +170,7 @@ func (l *lexer) integer() error {
 	if err != nil {
 		return fmt.Errorf("invalid integer: %w", err)
 	}
-	l.addToken(token.INTEGER, value)
+	l.addToken(loc, token.INTEGER, value)
 
 	return nil
 }
@@ -166,7 +179,7 @@ func isAlpha(c rune) bool {
 	return unicode.IsLetter(c) || c == '_'
 }
 
-func (l *lexer) identifier() error {
+func (l *lexer) identifier(loc token.Location) error {
 	for isAlpha(l.peek()) || isDigit(l.peek()) {
 		l.advance()
 	}
@@ -174,9 +187,9 @@ func (l *lexer) identifier() error {
 	value := l.source[l.start:l.current]
 
 	if k, ok := getKeyword(value); ok {
-		l.addToken(k, nil)
+		l.addToken(loc, k, nil)
 	} else {
-		l.addToken(token.IDENT, nil)
+		l.addToken(loc, token.IDENT, nil)
 	}
 
 	return nil
@@ -235,16 +248,16 @@ func getReservedSymbol(char rune) (token.Kind, bool) {
 	return token.OPERATOR, false
 }
 
-func (l *lexer) operator() error {
+func (l *lexer) operator(loc token.Location) error {
 	for isSymbol(l.peek()) {
 		l.advance()
 	}
 
 	value := l.source[l.start:l.current]
 	if k, ok := getKeyword(value); ok {
-		l.addToken(k, nil)
+		l.addToken(loc, k, nil)
 	} else {
-		l.addToken(token.OPERATOR, nil)
+		l.addToken(loc, token.OPERATOR, nil)
 	}
 
 	return nil

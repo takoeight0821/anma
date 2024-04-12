@@ -45,10 +45,10 @@ const (
 )
 
 type Token struct {
-	Kind    Kind
-	Lexeme  string
-	Line    int
-	Literal any
+	Kind     Kind
+	Lexeme   string
+	Location Location
+	Literal  any
 }
 
 func (t Token) String() string {
@@ -61,4 +61,14 @@ func (t Token) String() string {
 
 func (t Token) Base() Token {
 	return t
+}
+
+type Location struct {
+	FilePath string
+	Line     int
+	Column   int
+}
+
+func (l Location) String() string {
+	return fmt.Sprintf("%s:%d:%d", l.FilePath, l.Line, l.Column)
 }
