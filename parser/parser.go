@@ -290,10 +290,11 @@ func (p *Parser) with() (*ast.With, error) {
 	return &ast.With{Binds: patterns, Body: expr}, nil
 }
 
-// atom = var | literal | paren | codata | PRIM "(" IDENT ("," expr)* ","? ")" ;
+// atom = var | literal | paren | tuple | codata | PRIM "(" IDENT ("," expr)* ","? ")" ;
 // var = IDENT ;
 // literal = INTEGER | STRING ;
-// paren = "(" ")" | "(" expr ("," expr)* ","? ")" ;
+// paren = "(" ")" | "(" expr ")" ;
+// tuple = "[" "]" | "[" expr ("," expr)* ","? "]" ;
 // codata = "{" clause ("," clause)* ","? "}" ;
 func (p *Parser) atom() (ast.Node, error) {
 	//exhaustive:ignore
@@ -303,8 +304,18 @@ func (p *Parser) atom() (ast.Node, error) {
 	case token.INTEGER, token.STRING:
 		return &ast.Literal{Token: tok}, nil
 	case token.LEFTPAREN:
+		expr, err := p.expr()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.consume(token.RIGHTPAREN); err != nil {
+			return nil, err
+		}
+
+		return &ast.Paren{Expr: expr}, nil
+	case token.LEFTBRACKET:
 		var exprs []ast.Node
-		if !p.match(token.RIGHTPAREN) {
+		if !p.match(token.RIGHTBRACKET) {
 			expr, err := p.expr()
 			if err != nil {
 				return nil, err
@@ -312,7 +323,7 @@ func (p *Parser) atom() (ast.Node, error) {
 			exprs = append(exprs, expr)
 			for p.match(token.COMMA) {
 				p.advance()
-				if p.match(token.RIGHTPAREN) {
+				if p.match(token.RIGHTBRACKET) {
 					break
 				}
 				expr, err := p.expr()
@@ -322,15 +333,11 @@ func (p *Parser) atom() (ast.Node, error) {
 				exprs = append(exprs, expr)
 			}
 		}
-		if _, err := p.consume(token.RIGHTPAREN); err != nil {
+		if _, err := p.consume(token.RIGHTBRACKET); err != nil {
 			return nil, err
 		}
 
-		if len(exprs) == 1 {
-			return &ast.Paren{Expr: exprs[0]}, nil
-		} else {
-			return &ast.Tuple{Exprs: exprs}, nil
-		}
+		return &ast.Tuple{Exprs: exprs}, nil
 	case token.LEFTBRACE:
 		return p.codata()
 	case token.PRIM:
@@ -675,7 +682,8 @@ func (p *Parser) callPatTail(fun ast.Node) (ast.Node, error) {
 	return &ast.Call{Func: fun, Args: args}, nil
 }
 
-// atomPat = IDENT | INTEGER | STRING | "(" pattern ")" ;
+// atomPat = IDENT | INTEGER | STRING | "(" pattern ")" | tuplePat ;
+// tuplePat = "[" "]" | "[" pattern ("," pattern)* ","? "]" ;
 func (p *Parser) atomPat() (ast.Node, error) {
 	//exhaustive:ignore
 	switch tok := p.advance(); tok.Kind {
@@ -686,8 +694,18 @@ func (p *Parser) atomPat() (ast.Node, error) {
 	case token.INTEGER, token.STRING:
 		return &ast.Literal{Token: tok}, nil
 	case token.LEFTPAREN:
+		pat, err := p.pattern()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.consume(token.RIGHTPAREN); err != nil {
+			return nil, err
+		}
+
+		return &ast.Paren{Expr: pat}, nil
+	case token.LEFTBRACKET:
 		var pats []ast.Node
-		if !p.match(token.RIGHTPAREN) {
+		if !p.match(token.RIGHTBRACKET) {
 			pat, err := p.pattern()
 			if err != nil {
 				return nil, err
@@ -695,7 +713,7 @@ func (p *Parser) atomPat() (ast.Node, error) {
 			pats = append(pats, pat)
 			for p.match(token.COMMA) {
 				p.advance()
-				if p.match(token.RIGHTPAREN) {
+				if p.match(token.RIGHTBRACKET) {
 					break
 				}
 				pat, err := p.pattern()
@@ -705,15 +723,11 @@ func (p *Parser) atomPat() (ast.Node, error) {
 				pats = append(pats, pat)
 			}
 		}
-		if _, err := p.consume(token.RIGHTPAREN); err != nil {
+		if _, err := p.consume(token.RIGHTBRACKET); err != nil {
 			return nil, err
 		}
 
-		if len(pats) == 1 {
-			return &ast.Paren{Expr: pats[0]}, nil
-		} else {
-			return &ast.Tuple{Exprs: pats}, nil
-		}
+		return &ast.Tuple{Exprs: pats}, nil
 	default:
 		return nil, unexpectedToken(tok, "identifier", "integer", "string", "`(`")
 	}
@@ -824,7 +838,8 @@ func (p *Parser) callTypeTail(fun ast.Node) (*ast.Call, error) {
 	return &ast.Call{Func: fun, Args: args}, nil
 }
 
-// atomType = IDENT | "{" fieldType ("," fieldType)* ","? "}" | "(" type ("," type)* ","? ")" ;
+// atomType = IDENT | "{" fieldType ("," fieldType)* ","? "}" | "(" type  ")" | tupleType ;
+// tupleType = "[" "]" | "[" type ("," type)* ","? "]";
 func (p *Parser) atomType() (ast.Node, error) {
 	//exhaustive:ignore
 	switch tok := p.advance(); tok.Kind {
@@ -852,6 +867,31 @@ func (p *Parser) atomType() (ast.Node, error) {
 		}
 
 		return &ast.Object{Fields: fields}, nil
+	case token.LEFTBRACKET:
+		var types []ast.Node
+		if !p.match(token.RIGHTBRACKET) {
+			typ, err := p.typ()
+			if err != nil {
+				return nil, err
+			}
+			types = append(types, typ)
+			for p.match(token.COMMA) {
+				p.advance()
+				if p.match(token.RIGHTBRACKET) {
+					break
+				}
+				typ, err := p.typ()
+				if err != nil {
+					return nil, err
+				}
+				types = append(types, typ)
+			}
+		}
+		if _, err := p.consume(token.RIGHTBRACKET); err != nil {
+			return nil, err
+		}
+
+		return &ast.Tuple{Exprs: types}, nil
 	case token.LEFTPAREN:
 		typ, err := p.typ()
 		if err != nil {
