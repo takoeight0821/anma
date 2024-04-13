@@ -704,7 +704,6 @@ func (p *Parser) atomPat() (ast.Node, error) {
 				}
 				pats = append(pats, pat)
 			}
-
 		}
 		if _, err := p.consume(token.RIGHTPAREN); err != nil {
 			return nil, err

@@ -18,6 +18,8 @@ func (ev *Evaluator) Eval(node ast.Node) (Value, error) {
 		return ev.evalLiteral(node)
 	case *ast.Paren:
 		return ev.evalParen(node)
+	case *ast.Tuple:
+		return ev.evalTuple(node)
 	case *ast.Access:
 		return ev.evalAccess(node)
 	case *ast.Call:
@@ -99,6 +101,19 @@ func (ev *Evaluator) evalLiteral(node *ast.Literal) (Value, error) {
 
 func (ev *Evaluator) evalParen(node *ast.Paren) (Value, error) {
 	return ev.Eval(node.Expr)
+}
+
+func (ev *Evaluator) evalTuple(node *ast.Tuple) (Value, error) {
+	var err error
+	values := make([]Value, len(node.Exprs))
+	for i, expr := range node.Exprs {
+		values[i], err = ev.Eval(expr)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return Tuple(values), nil
 }
 
 func (ev *Evaluator) evalAccess(node *ast.Access) (Value, error) {

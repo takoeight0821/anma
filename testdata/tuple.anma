@@ -3,5 +3,7 @@ def f = {
 }
 
 def main = {
-    #() -> prim(print, f((1, 2))),
+    #() ->
+    prim(print, (1, 2));
+    prim(print, f((1, 2))),
 }

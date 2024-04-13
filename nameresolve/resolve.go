@@ -151,6 +151,16 @@ func (r *Resolver) solve(node ast.Node) (ast.Node, error) {
 		node.Expr, err = r.solve(node.Expr)
 
 		return node, err
+	case *ast.Tuple:
+		var err error
+		for i, expr := range node.Exprs {
+			node.Exprs[i], err = r.solve(expr)
+			if err != nil {
+				return node, err
+			}
+		}
+
+		return node, nil
 	case *ast.Access:
 		var err error
 		node.Receiver, err = r.solve(node.Receiver)
@@ -504,6 +514,17 @@ func asPattern(resolver *Resolver, pattern ast.Node) ([]string, error) {
 		return nil, nil
 	case *ast.Paren:
 		return resolver.assign(pattern.Expr, asPattern)
+	case *ast.Tuple:
+		var defined []string
+		for _, pat := range pattern.Exprs {
+			newDefs, err := resolver.assign(pat, asPattern)
+			if err != nil {
+				return nil, err
+			}
+			defined = append(defined, newDefs...)
+		}
+
+		return defined, nil
 	case *ast.Access:
 		return resolver.assign(pattern.Receiver, asPattern)
 	case *ast.Call:

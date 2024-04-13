@@ -34,6 +34,50 @@ func (u Unit) match(pattern ast.Node) (map[Name]Value, bool) {
 
 var _ Value = Unit{}
 
+type Tuple []Value
+
+func (t Tuple) String() string {
+	var builder strings.Builder
+
+	fmt.Fprintf(&builder, "(")
+	for i, val := range t {
+		if i != 0 {
+			fmt.Fprintf(&builder, ", ")
+		}
+		fmt.Fprintf(&builder, "%v", val)
+	}
+	fmt.Fprintf(&builder, ")")
+
+	return builder.String()
+}
+
+func (t Tuple) match(pattern ast.Node) (map[Name]Value, bool) {
+	switch pattern := pattern.(type) {
+	case *ast.Var:
+		return map[Name]Value{tokenToName(pattern.Name): t}, true
+	case *ast.Tuple:
+		matches := make(map[Name]Value)
+		for i, elem := range t {
+			if i >= len(pattern.Exprs) {
+				return nil, false
+			}
+			m, ok := elem.match(pattern.Exprs[i])
+			if !ok {
+				return nil, false
+			}
+			for k, v := range m {
+				matches[k] = v
+			}
+		}
+
+		return matches, true
+	default:
+		return nil, false
+	}
+}
+
+var _ Value = Tuple{}
+
 type Int int
 
 func (i Int) String() string {
