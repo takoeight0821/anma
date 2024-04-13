@@ -76,6 +76,27 @@ func (p *Paren) Plate(err error, f func(Node, error) (Node, error)) (Node, error
 
 var _ Node = &Paren{}
 
+type Tuple struct {
+	Where token.Token
+	Exprs []Node
+}
+
+func (t Tuple) String() string {
+	return utils.Parenthesize("tuple", utils.Concat[Node](t.Exprs)).String()
+}
+
+func (t *Tuple) Base() token.Token {
+	return t.Where
+}
+
+func (t *Tuple) Plate(err error, f func(Node, error) (Node, error)) (Node, error) {
+	for i, expr := range t.Exprs {
+		t.Exprs[i], err = f(expr, err)
+	}
+
+	return t, err
+}
+
 type Access struct {
 	Receiver Node
 	Name     token.Token

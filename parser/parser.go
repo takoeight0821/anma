@@ -293,7 +293,7 @@ func (p *Parser) with() (*ast.With, error) {
 // atom = var | literal | paren | codata | PRIM "(" IDENT ("," expr)* ","? ")" ;
 // var = IDENT ;
 // literal = INTEGER | STRING ;
-// paren = "(" expr ")" ;
+// paren = "(" ")" | "(" expr ("," expr)* ","? ")" ;
 // codata = "{" clause ("," clause)* ","? "}" ;
 func (p *Parser) atom() (ast.Node, error) {
 	//exhaustive:ignore
@@ -303,15 +303,34 @@ func (p *Parser) atom() (ast.Node, error) {
 	case token.INTEGER, token.STRING:
 		return &ast.Literal{Token: tok}, nil
 	case token.LEFTPAREN:
-		expr, err := p.expr()
-		if err != nil {
-			return nil, err
+		var exprs []ast.Node
+		if !p.match(token.RIGHTPAREN) {
+			expr, err := p.expr()
+			if err != nil {
+				return nil, err
+			}
+			exprs = append(exprs, expr)
+			for p.match(token.COMMA) {
+				p.advance()
+				if p.match(token.RIGHTPAREN) {
+					break
+				}
+				expr, err := p.expr()
+				if err != nil {
+					return nil, err
+				}
+				exprs = append(exprs, expr)
+			}
 		}
 		if _, err := p.consume(token.RIGHTPAREN); err != nil {
 			return nil, err
 		}
 
-		return &ast.Paren{Expr: expr}, nil
+		if len(exprs) == 1 {
+			return &ast.Paren{Expr: exprs[0]}, nil
+		} else {
+			return &ast.Tuple{Exprs: exprs}, nil
+		}
 	case token.LEFTBRACE:
 		return p.codata()
 	case token.PRIM:
@@ -667,15 +686,35 @@ func (p *Parser) atomPat() (ast.Node, error) {
 	case token.INTEGER, token.STRING:
 		return &ast.Literal{Token: tok}, nil
 	case token.LEFTPAREN:
-		pat, err := p.pattern()
-		if err != nil {
-			return nil, err
+		var pats []ast.Node
+		if !p.match(token.RIGHTPAREN) {
+			pat, err := p.pattern()
+			if err != nil {
+				return nil, err
+			}
+			pats = append(pats, pat)
+			for p.match(token.COMMA) {
+				p.advance()
+				if p.match(token.RIGHTPAREN) {
+					break
+				}
+				pat, err := p.pattern()
+				if err != nil {
+					return nil, err
+				}
+				pats = append(pats, pat)
+			}
+
 		}
 		if _, err := p.consume(token.RIGHTPAREN); err != nil {
 			return nil, err
 		}
 
-		return &ast.Paren{Expr: pat}, nil
+		if len(pats) == 1 {
+			return &ast.Paren{Expr: pats[0]}, nil
+		} else {
+			return &ast.Tuple{Exprs: pats}, nil
+		}
 	default:
 		return nil, unexpectedToken(tok, "identifier", "integer", "string", "`(`")
 	}
