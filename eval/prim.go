@@ -91,7 +91,7 @@ func (p *primitiveEvaluator) print(args ...Value) (Value, error) {
 	}
 	fmt.Fprintln(p.Stdout, args[0])
 
-	return Unit{}, nil
+	return Unit(), nil
 }
 
 func (p *primitiveEvaluator) mul(args ...Value) (Value, error) {

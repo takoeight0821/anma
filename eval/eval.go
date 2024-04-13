@@ -31,7 +31,7 @@ func (ev *Evaluator) Eval(node ast.Node) (Value, error) {
 	case *ast.Assert:
 		return ev.evalAssert(node)
 	case *ast.Let:
-		return Unit{}, ev.evalLet(node)
+		return Unit(), ev.evalLet(node)
 	case *ast.Seq:
 		var result Value
 		for _, expr := range node.Exprs {
@@ -56,11 +56,11 @@ func (ev *Evaluator) Eval(node ast.Node) (Value, error) {
 	case *ast.Field:
 		panic("unreachable: field cannot appear outside of object")
 	case *ast.TypeDecl:
-		return Unit{}, ev.evalTypeDecl(node)
+		return Unit(), ev.evalTypeDecl(node)
 	case *ast.VarDecl:
-		return Unit{}, ev.evalVarDecl(node)
+		return Unit(), ev.evalVarDecl(node)
 	case *ast.InfixDecl:
-		return Unit{}, nil
+		return Unit(), nil
 	case *ast.This:
 		panic("unreachable: this cannot appear outside of pattern")
 	}

@@ -17,22 +17,9 @@ type Callable interface {
 	Apply(where token.Token, args ...Value) (Value, error)
 }
 
-type Unit struct{}
-
-func (u Unit) String() string {
-	return "<unit>"
+func Unit() Tuple {
+	return Tuple(make([]Value, 0))
 }
-
-func (u Unit) match(pattern ast.Node) (map[Name]Value, bool) {
-	switch pattern := pattern.(type) {
-	case *ast.Var:
-		return map[Name]Value{tokenToName(pattern.Name): u}, true
-	default:
-		return nil, false
-	}
-}
-
-var _ Value = Unit{}
 
 type Tuple []Value
 
