@@ -256,20 +256,36 @@ func (p *Parser) let() (*ast.Let, error) {
 	return &ast.Let{Bind: pattern, Body: expr}, nil
 }
 
-// with = "with" pattern "<-" assert | "with" assert ;
+// with = "with" withBind "<-" assert | "with" assert ;
+// withBind = pattern ("," pattern)* "," ;
 func (p *Parser) with() (*ast.With, error) {
 	p.advance()
 
 	patterns, err := try(p, func() ([]ast.Node, error) {
+		var patterns []ast.Node
 		pattern, err := p.pattern()
 		if err != nil {
 			return nil, err
 		}
+		patterns = append(patterns, pattern)
+
+		for p.match(token.COMMA) {
+			p.advance()
+			if p.match(token.BACKARROW) {
+				break
+			}
+			pattern, err := p.pattern()
+			if err != nil {
+				return nil, err
+			}
+			patterns = append(patterns, pattern)
+		}
+
 		if _, err := p.consume(token.BACKARROW); err != nil {
 			return nil, err
 		}
 
-		return []ast.Node{pattern}, nil
+		return patterns, nil
 	}, func() ([]ast.Node, error) {
 		return []ast.Node{}, nil
 	})

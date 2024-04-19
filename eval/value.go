@@ -26,14 +26,14 @@ type Tuple []Value
 func (t Tuple) String() string {
 	var builder strings.Builder
 
-	fmt.Fprintf(&builder, "(")
+	fmt.Fprintf(&builder, "[")
 	for i, val := range t {
 		if i != 0 {
 			fmt.Fprintf(&builder, ", ")
 		}
 		fmt.Fprintf(&builder, "%v", val)
 	}
-	fmt.Fprintf(&builder, ")")
+	fmt.Fprintf(&builder, "]")
 
 	return builder.String()
 }

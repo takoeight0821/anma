@@ -357,6 +357,10 @@ func (l Lambda) String() string {
 }
 
 func (l *Lambda) Base() token.Token {
+	if len(l.Params) == 0 {
+		return l.Expr.Base()
+	}
+
 	return l.Params[0]
 }
 
