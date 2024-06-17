@@ -152,16 +152,6 @@ func anyEmpty(plists map[int][]ast.Node) bool {
 	return false
 }
 
-func allEmpty(plists map[int][]ast.Node) bool {
-	for _, ps := range plists {
-		if len(ps) != 0 {
-			return false
-		}
-	}
-
-	return true
-}
-
 type Kind int
 
 const (
@@ -245,14 +235,12 @@ func (f *Flat) buildCase(plists map[int][]ast.Node, bodys map[int]ast.Node) (ast
 
 	// restBodys is a map of bodies corresponding to restPlists.
 	restBodys := make(map[int]ast.Node)
-	for i := range restKeys {
+	for _, i := range restKeys {
 		restBodys[i] = bodys[i]
 	}
 
 	var restBody ast.Node
-	if len(restPlists) == 0 {
-		restBody = nil
-	} else {
+	if len(restPlists) != 0 {
 		innerF := &Flat{uniq: f.uniq, scrutinees: f.scrutinees, guards: selectIndicies(restKeys, f.guards)}
 		var err error
 		restBody, err = innerF.build(restPlists, restBodys)
