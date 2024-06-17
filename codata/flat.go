@@ -113,8 +113,12 @@ func makePatternList(pattern ast.Node) []ast.Node {
 }
 
 func (f *Flat) build(plists map[int][]ast.Node, bodys map[int]ast.Node) (ast.Node, error) {
-	if allEmpty(plists) {
-		return f.buildCase(plists, bodys), nil
+	if len(plists) == 0 {
+		panic(fmt.Sprintf("empty plists: %v", plists))
+	}
+
+	if anyEmpty(plists) {
+		return f.buildCase(plists, bodys)
 	}
 	kind := kindOf(plists)
 	switch kind {
@@ -136,6 +140,16 @@ func (f *Flat) build(plists map[int][]ast.Node, bodys map[int]ast.Node) (ast.Nod
 	default:
 		panic(fmt.Sprintf("unexpected kind: %v", kind))
 	}
+}
+
+func anyEmpty(plists map[int][]ast.Node) bool {
+	for _, ps := range plists {
+		if len(ps) == 0 {
+			return true
+		}
+	}
+
+	return false
 }
 
 func allEmpty(plists map[int][]ast.Node) bool {
@@ -192,7 +206,7 @@ type MismatchError struct {
 
 func (e MismatchError) Error() string {
 	var builder strings.Builder
-	fmt.Fprintf(&builder, "mismatched patterns:\n")
+	fmt.Fprintf(&builder, "mismatched patterns %v:\n", e.Plists)
 	for _, ps := range e.Plists {
 		fmt.Fprintf(&builder, "\t%v\n", ps[0])
 	}
@@ -200,13 +214,13 @@ func (e MismatchError) Error() string {
 	return builder.String()
 }
 
-func (f *Flat) buildCase(plists map[int][]ast.Node, bodys map[int]ast.Node) ast.Node {
+func (f *Flat) buildCase(plists map[int][]ast.Node, bodys map[int]ast.Node) (ast.Node, error) {
 	if len(f.scrutinees) == 0 {
 		// If there is no scrutinee, generate a body.
 		// Use the topmost body.
 		topmost := searchTopmost(plists)
 
-		return bodys[topmost]
+		return bodys[topmost], nil
 	}
 
 	plistsKeys := make([]int, 0, len(plists))
@@ -215,12 +229,54 @@ func (f *Flat) buildCase(plists map[int][]ast.Node, bodys map[int]ast.Node) ast.
 	}
 	slices.Sort(plistsKeys)
 
+	// restPlists is a map of patterns that are not empty.
+	restPlists := make(map[int][]ast.Node)
+	for _, i := range plistsKeys {
+		if len(plists[i]) != 0 {
+			restPlists[i] = plists[i]
+		}
+	}
+
+	restKeys := make([]int, 0, len(restPlists))
+	for k := range restPlists {
+		restKeys = append(restKeys, k)
+	}
+	slices.Sort(restKeys)
+
+	// restBodys is a map of bodies corresponding to restPlists.
+	restBodys := make(map[int]ast.Node)
+	for i := range restKeys {
+		restBodys[i] = bodys[i]
+	}
+
+	var restBody ast.Node
+	if len(restPlists) == 0 {
+		restBody = nil
+	} else {
+		innerF := &Flat{uniq: f.uniq, scrutinees: f.scrutinees, guards: selectIndicies(restKeys, f.guards)}
+		var err error
+		restBody, err = innerF.build(restPlists, restBodys)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	clauses := make([]*ast.CaseClause, 0, len(plistsKeys)) // Pre-allocate clauses with the correct capacity
 	for _, i := range plistsKeys {
-		clauses = append(clauses, &ast.CaseClause{
-			Patterns: f.guards[i],
-			Expr:     bodys[i],
-		})
+		if len(plists[i]) == 0 {
+			clauses = append(clauses, &ast.CaseClause{
+				Patterns: f.guards[i],
+				Expr:     bodys[i],
+			})
+		} else {
+			if restBody == nil {
+				panic("restBody must not be nil")
+			}
+			clauses = append(clauses, &ast.CaseClause{
+				Patterns: f.guards[i],
+				Expr:     restBody,
+			})
+		}
 	}
 
 	scrutinees := make([]ast.Node, len(f.scrutinees))
@@ -231,7 +287,7 @@ func (f *Flat) buildCase(plists map[int][]ast.Node, bodys map[int]ast.Node) ast.
 	return &ast.Case{
 		Scrutinees: scrutinees,
 		Clauses:    clauses,
-	}
+	}, nil
 }
 
 func searchTopmost(plists map[int][]ast.Node) int {

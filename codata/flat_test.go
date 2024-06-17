@@ -23,6 +23,7 @@ func TestGolden(t *testing.T) {
 	}
 
 	for _, testfile := range testfiles {
+		t.Logf("testing %s", testfile)
 		source, err := os.ReadFile(testfile)
 		if err != nil {
 			t.Errorf("failed to read %s: %v", testfile, err)
