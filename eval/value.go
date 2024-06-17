@@ -76,7 +76,10 @@ func (i Int) match(pattern ast.Node) (map[Name]Value, bool) {
 	case *ast.Var:
 		return map[Name]Value{tokenToName(pattern.Name): i}, true
 	case *ast.Literal:
-		if pattern.Kind == token.INTEGER && pattern.Literal == i {
+		if pattern.Kind != token.INTEGER {
+			return nil, false
+		}
+		if v, ok := pattern.Literal.(int); ok && v == int(i) {
 			return map[Name]Value{}, true
 		}
 	}
