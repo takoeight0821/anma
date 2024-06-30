@@ -168,7 +168,7 @@ func (p *Parser) constructor() (*ast.Call, error) {
 	return &ast.Call{Func: &ast.Var{Name: name}, Args: typeparams}, nil
 }
 
-// varDecl = "def" IDENT "=" expr | "def" IDENT ":" type | "def" IDENT ":" type "=" expr ;
+// varDecl = "def" IDENT "=" expr ;
 func (p *Parser) varDecl() (*ast.VarDecl, error) {
 	if _, err := p.consume(token.DEF); err != nil {
 		return nil, err
@@ -182,25 +182,16 @@ func (p *Parser) varDecl() (*ast.VarDecl, error) {
 	default:
 		return nil, unexpectedToken(p.peek(), "identifier", "operator")
 	}
-	var typ ast.Node
-	var expr ast.Node
-	var err error
-	if p.match(token.COLON) {
-		p.advance()
-		typ, err = p.typ()
-		if err != nil {
-			return nil, err
-		}
-	}
-	if p.match(token.EQUAL) {
-		p.advance()
-		expr, err = p.expr()
-		if err != nil {
-			return nil, err
-		}
+	if _, err := p.consume(token.EQUAL); err != nil {
+		return nil, err
 	}
 
-	return &ast.VarDecl{Name: name, Type: typ, Expr: expr}, nil
+	expr, err := p.expr()
+	if err != nil {
+		return nil, err
+	}
+
+	return &ast.VarDecl{Name: name, Expr: expr}, nil
 }
 
 // infixDecl = ("infix" | "infixl" | "infixr") INTEGER OPERATOR ;

@@ -377,17 +377,9 @@ func (r *Resolver) solve(node ast.Node) (ast.Node, error) {
 		if err != nil {
 			return node, err
 		}
-		if node.Type != nil {
-			node.Type, err = r.solve(node.Type)
-			if err != nil {
-				return node, err
-			}
-		}
-		if node.Expr != nil {
-			node.Expr, err = r.solve(node.Expr)
-			if err != nil {
-				return node, err
-			}
+		node.Expr, err = r.solve(node.Expr)
+		if err != nil {
+			return node, err
 		}
 
 		return node, nil

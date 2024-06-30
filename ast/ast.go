@@ -488,19 +488,11 @@ var _ Node = &TypeDecl{}
 
 type VarDecl struct {
 	Name token.Token
-	Type Node
 	Expr Node
 }
 
 func (v VarDecl) String() string {
-	if v.Type == nil {
-		return utils.Parenthesize("def", v.Name, v.Expr).String()
-	}
-	if v.Expr == nil {
-		return utils.Parenthesize("def", v.Name, v.Type).String()
-	}
-
-	return utils.Parenthesize("def", v.Name, v.Type, v.Expr).String()
+	return utils.Parenthesize("def", v.Name, v.Expr).String()
 }
 
 func (v *VarDecl) Base() token.Token {
@@ -508,12 +500,7 @@ func (v *VarDecl) Base() token.Token {
 }
 
 func (v *VarDecl) Plate(err error, f func(Node, error) (Node, error)) (Node, error) {
-	if v.Type != nil {
-		v.Type, err = f(v.Type, err)
-	}
-	if v.Expr != nil {
-		v.Expr, err = f(v.Expr, err)
-	}
+	v.Expr, err = f(v.Expr, err)
 
 	return v, err
 }
