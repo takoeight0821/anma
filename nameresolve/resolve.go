@@ -206,18 +206,6 @@ func (r *Resolver) solve(node ast.Node) (ast.Node, error) {
 		}
 
 		return node, nil
-	case *ast.Assert:
-		var err error
-		node.Expr, err = r.solve(node.Expr)
-		if err != nil {
-			return node, err
-		}
-		node.Type, err = r.solve(node.Type)
-		if err != nil {
-			return node, err
-		}
-
-		return node, nil
 	case *ast.Let:
 		_, err := r.assign(node.Bind, overwrite)
 		if err != nil {

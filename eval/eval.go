@@ -28,8 +28,6 @@ func (ev *Evaluator) Eval(node ast.Node) (Value, error) {
 		return ev.evalPrim(node)
 	case *ast.Binary:
 		return ev.evalBinary(node)
-	case *ast.Assert:
-		return ev.evalAssert(node)
 	case *ast.Let:
 		return Unit(), ev.evalLet(node)
 	case *ast.Seq:
@@ -237,10 +235,6 @@ func (ev *Evaluator) evalBinary(node *ast.Binary) (Value, error) {
 	}
 
 	return nil, utils.PosError{Where: node.Base(), Err: UndefinedVariableError{Name: node.Op}}
-}
-
-func (ev *Evaluator) evalAssert(node *ast.Assert) (Value, error) {
-	return ev.Eval(node.Expr)
 }
 
 // evalLet evaluates the given let expression.

@@ -188,28 +188,6 @@ func (b *Binary) Plate(err error, f func(Node, error) (Node, error)) (Node, erro
 
 var _ Node = &Binary{}
 
-type Assert struct {
-	Expr Node
-	Type Node
-}
-
-func (a Assert) String() string {
-	return utils.Parenthesize("assert", a.Expr, a.Type).String()
-}
-
-func (a *Assert) Base() token.Token {
-	return a.Expr.Base()
-}
-
-func (a *Assert) Plate(err error, f func(Node, error) (Node, error)) (Node, error) {
-	a.Expr, err = f(a.Expr, err)
-	a.Type, err = f(a.Type, err)
-
-	return a, err
-}
-
-var _ Node = &Assert{}
-
 type Let struct {
 	Bind Node
 	Body Node

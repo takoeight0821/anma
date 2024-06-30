@@ -212,7 +212,7 @@ func (p *Parser) infixDecl() (*ast.InfixDecl, error) {
 	return &ast.InfixDecl{Assoc: kind, Prec: precedence, Name: name}, nil
 }
 
-// expr = let | assert ;
+// expr = let | binary ;
 func (p *Parser) expr() (ast.Node, error) {
 	if p.IsAtEnd() {
 		return nil, unexpectedToken(p.peek(), "expression")
@@ -221,10 +221,10 @@ func (p *Parser) expr() (ast.Node, error) {
 		return p.let()
 	}
 
-	return p.assert()
+	return p.binary()
 }
 
-// let = "let" pattern "=" assert ;
+// let = "let" pattern "=" binary ;
 func (p *Parser) let() (*ast.Let, error) {
 	p.advance()
 	pattern, err := p.pattern()
@@ -234,7 +234,7 @@ func (p *Parser) let() (*ast.Let, error) {
 	if _, err := p.consume(token.EQUAL); err != nil {
 		return nil, err
 	}
-	expr, err := p.assert()
+	expr, err := p.binary()
 	if err != nil {
 		return nil, err
 	}
@@ -322,24 +322,6 @@ func (p *Parser) atom() (ast.Node, error) {
 	default:
 		return nil, unexpectedToken(tok, "identifier", "integer", "string", "`(`", "`{`")
 	}
-}
-
-// assert = binary (":" type)* ;
-func (p *Parser) assert() (ast.Node, error) {
-	expr, err := p.binary()
-	if err != nil {
-		return nil, err
-	}
-	for p.match(token.COLON) {
-		p.advance()
-		typ, err := p.typ()
-		if err != nil {
-			return nil, err
-		}
-		expr = &ast.Assert{Expr: expr, Type: typ}
-	}
-
-	return expr, nil
 }
 
 // binary = method (operator method)* ;
