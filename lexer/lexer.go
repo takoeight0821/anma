@@ -210,7 +210,6 @@ func getKeyword(str string) (token.Kind, bool) {
 		"let":    token.LET,
 		"prim":   token.PRIM,
 		"type":   token.TYPE,
-		"with":   token.WITH,
 	}
 
 	if k, ok := keywords[str]; ok {

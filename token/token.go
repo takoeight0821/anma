@@ -41,7 +41,6 @@ const (
 	LET
 	PRIM
 	TYPE
-	WITH
 )
 
 type Token struct {

@@ -2,8 +2,6 @@ package parser
 
 import (
 	"errors"
-	"fmt"
-	"os"
 
 	"github.com/takoeight0821/anma/ast"
 	"github.com/takoeight0821/anma/token"
@@ -223,16 +221,13 @@ func (p *Parser) infixDecl() (*ast.InfixDecl, error) {
 	return &ast.InfixDecl{Assoc: kind, Prec: precedence, Name: name}, nil
 }
 
-// expr = let | with | assert ;
+// expr = let | assert ;
 func (p *Parser) expr() (ast.Node, error) {
 	if p.IsAtEnd() {
 		return nil, unexpectedToken(p.peek(), "expression")
 	}
 	if p.match(token.LET) {
 		return p.let()
-	}
-	if p.match(token.WITH) {
-		return p.with()
 	}
 
 	return p.assert()
@@ -254,56 +249,6 @@ func (p *Parser) let() (*ast.Let, error) {
 	}
 
 	return &ast.Let{Bind: pattern, Body: expr}, nil
-}
-
-// with = "with" withBind "<-" assert | "with" assert ;
-// withBind = pattern ("," pattern)* "," ;
-func (p *Parser) with() (*ast.With, error) {
-	p.advance()
-
-	patterns, err := try(p, func() ([]ast.Node, error) {
-		var patterns []ast.Node
-		pattern, err := p.pattern()
-		if err != nil {
-			return nil, err
-		}
-		patterns = append(patterns, pattern)
-
-		for p.match(token.COMMA) {
-			p.advance()
-			if p.match(token.BACKARROW) {
-				break
-			}
-			pattern, err := p.pattern()
-			if err != nil {
-				return nil, err
-			}
-			patterns = append(patterns, pattern)
-		}
-
-		if _, err := p.consume(token.BACKARROW); err != nil {
-			return nil, err
-		}
-
-		return patterns, nil
-	}, func() ([]ast.Node, error) {
-		return []ast.Node{}, nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	expr, err := p.assert()
-	if err != nil {
-		return nil, err
-	}
-
-	if _, ok := expr.(*ast.Call); !ok {
-		fmt.Fprintf(os.Stderr, "at %v: `%s`, warning: `with` expression should be a function call\n",
-			expr.Base().Location, expr.Base().Lexeme)
-	}
-
-	return &ast.With{Binds: patterns, Body: expr}, nil
 }
 
 // atom = var | literal | paren | tuple | codata | PRIM "(" IDENT ("," expr)* ","? ")" ;

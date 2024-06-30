@@ -232,34 +232,6 @@ func (l *Let) Plate(err error, f func(Node, error) (Node, error)) (Node, error) 
 
 var _ Node = &Let{}
 
-type With struct {
-	Binds []Node
-	Body  Node
-}
-
-func (w With) String() string {
-	return utils.Parenthesize("with", utils.Concat(w.Binds), w.Body).String()
-}
-
-func (w *With) Base() token.Token {
-	if len(w.Binds) == 0 {
-		return w.Body.Base()
-	}
-
-	return w.Binds[0].Base()
-}
-
-func (w *With) Plate(err error, f func(Node, error) (Node, error)) (Node, error) {
-	for i, bind := range w.Binds {
-		w.Binds[i], err = f(bind, err)
-	}
-	w.Body, err = f(w.Body, err)
-
-	return w, err
-}
-
-var _ Node = &With{}
-
 type Seq struct {
 	Exprs []Node
 }
