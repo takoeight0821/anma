@@ -249,22 +249,31 @@ func (f *Flat) buildCase(plists map[int][]ast.Node, bodys map[int]ast.Node) (ast
 		}
 	}
 
-	clauses := make([]*ast.CaseClause, 0, len(plistsKeys)) // Pre-allocate clauses with the correct capacity
+	clauses := make([]*ast.CaseClause, 0)
 	for _, i := range plistsKeys {
 		if len(plists[i]) == 0 {
 			clauses = append(clauses, &ast.CaseClause{
 				Patterns: f.guards[i],
 				Expr:     bodys[i],
 			})
-		} else {
-			if restBody == nil {
-				panic("restBody must not be nil")
-			}
-			clauses = append(clauses, &ast.CaseClause{
-				Patterns: f.guards[i],
-				Expr:     restBody,
+		}
+	}
+	if len(restPlists) != 0 {
+		anyPatterns := make([]ast.Node, 0, len(f.scrutinees))
+		for range f.scrutinees {
+			anyPatterns = append(anyPatterns, &ast.Var{
+				Name: token.Token{
+					Kind:     token.IDENT,
+					Lexeme:   f.genUniq("_"),
+					Location: restBody.Base().Location,
+					Literal:  nil,
+				},
 			})
 		}
+		clauses = append(clauses, &ast.CaseClause{
+			Patterns: anyPatterns,
+			Expr:     restBody,
+		})
 	}
 
 	scrutinees := make([]ast.Node, len(f.scrutinees))
