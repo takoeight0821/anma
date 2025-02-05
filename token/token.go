@@ -1,12 +1,18 @@
 package token
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+
+	. "github.com/takoeight0821/anma/pretty"
+)
 
 //go:generate go run golang.org/x/tools/cmd/stringer@v0.13.0 -type=Kind
 type Kind int
 
 const (
-	EOF Kind = iota
+	ERROR Kind = iota
+	EOF
 
 	// Single-character tokens.
 	LEFTPAREN
@@ -26,12 +32,14 @@ const (
 	OPERATOR
 	INTEGER
 	STRING
+	SYMBOL
 
 	// Keywords.
 	ARROW
 	BACKARROW
 	BAR
 	CASE
+	DATA
 	DEF
 	EQUAL
 	FN
@@ -51,6 +59,14 @@ type Token struct {
 	Literal  any
 }
 
+func (t Token) Pretty(level int, _ ...Option) fmt.Stringer {
+	var builder strings.Builder
+
+	fmt.Fprintf(&builder, "%s%v", Indent(level), t)
+
+	return &builder
+}
+
 func (t Token) String() string {
 	if (t.Kind == IDENT || t.Kind == OPERATOR) && t.Literal != nil {
 		return fmt.Sprintf("%s.%#v", t.Lexeme, t.Literal)
@@ -63,6 +79,21 @@ func (t Token) Base() Token {
 	return t
 }
 
+// Dummy returns a special token for internal use.
+// This token is used to represent the toplevel of the program.
+func Dummy() Token {
+	return Token{
+		Kind:   IDENT,
+		Lexeme: "toplevel",
+		Location: Location{
+			FilePath: "",
+			Line:     0,
+			Column:   0,
+		},
+		Literal: -1,
+	}
+}
+
 type Location struct {
 	FilePath string
 	Line     int
@@ -70,5 +101,14 @@ type Location struct {
 }
 
 func (l Location) String() string {
-	return fmt.Sprintf("%s:%d:%d", l.FilePath, l.Line, l.Column)
+	// if FilePath starts with "./" or "../", remove them.
+	filePath := l.FilePath
+	if len(filePath) >= 2 && filePath[0] == '.' && filePath[1] == '/' {
+		filePath = filePath[2:]
+	}
+	if len(filePath) >= 3 && filePath[0] == '.' && filePath[1] == '.' && filePath[2] == '/' {
+		filePath = filePath[3:]
+	}
+
+	return fmt.Sprintf("%s:%d:%d", filePath, l.Line, l.Column)
 }

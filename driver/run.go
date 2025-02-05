@@ -1,11 +1,17 @@
 package driver
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/takoeight0821/anma/ast"
-	"github.com/takoeight0821/anma/lexer"
+	"github.com/takoeight0821/anma/codata"
+	"github.com/takoeight0821/anma/desugarcurry"
+	"github.com/takoeight0821/anma/desugarwith"
+	"github.com/takoeight0821/anma/infix"
+	"github.com/takoeight0821/anma/nameresolve"
 	"github.com/takoeight0821/anma/parser"
+	"github.com/takoeight0821/anma/scanner"
 )
 
 type Pass interface {
@@ -27,6 +33,23 @@ func (r *PassRunner) AddPass(pass Pass) {
 	r.passes = append(r.passes, pass)
 }
 
+func AddPassesUntil(runner *PassRunner, until Pass) {
+	passes := []Pass{
+		&desugarwith.DesugarWith{},
+		&desugarcurry.DesugarCurry{},
+		&codata.Flat{},
+		infix.NewInfixResolver(),
+		nameresolve.NewResolver(),
+	}
+
+	for _, pass := range passes {
+		runner.AddPass(pass)
+		if pass.Name() == until.Name() {
+			break
+		}
+	}
+}
+
 // Run executes passes in order.
 // If an error occurs, it stops the execution and returns the current program.
 func (r *PassRunner) Run(program []ast.Node) ([]ast.Node, error) {
@@ -46,14 +69,20 @@ func (r *PassRunner) Run(program []ast.Node) ([]ast.Node, error) {
 
 // RunSource parses the source code and executes passes in order.
 func (r *PassRunner) RunSource(filePath, source string) ([]ast.Node, error) {
-	tokens, err := lexer.Lex(filePath, source)
-	if err != nil {
-		return nil, fmt.Errorf("lex: %w", err)
-	}
-
-	decls, err := parser.NewParser(tokens).ParseDecl()
+	tokens := scanner.Scan(filePath, source)
+	parser, err := parser.NewParser(tokens)
 	if err != nil {
 		return nil, fmt.Errorf("parse: %w", err)
+	}
+
+	decls, err := parser.ParseDecl()
+	if err != nil {
+		expr, err2 := parser.ParseExpr()
+		decls = []ast.Node{expr}
+
+		if err2 != nil {
+			return nil, fmt.Errorf("parse: %w", errors.Join(err, err2))
+		}
 	}
 
 	return r.Run(decls)

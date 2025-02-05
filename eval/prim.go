@@ -6,6 +6,7 @@ import (
 
 	"github.com/takoeight0821/anma/token"
 	"github.com/takoeight0821/anma/utils"
+	"github.com/xlab/treeprint"
 )
 
 type primitiveEvaluator struct {
@@ -21,8 +22,11 @@ func (p *primitiveEvaluator) primitive(name string) primitive {
 		"print_cps":    p.printCPS,
 		"read_all_cps": p.readAllCPS,
 		"print":        p.print,
+		"print_trace":  p.printTrace,
 		"mul":          p.mul,
 		"add":          p.add,
+		"sub":          p.sub,
+		"less_equal":   p.lessEqual,
 	}
 
 	return pmap[name]
@@ -46,14 +50,14 @@ func (p *primitiveEvaluator) printCPS(args ...Value) (Value, error) {
 		return nil, utils.PosError{Where: p.where, Err: InvalidArgumentTypeError{Expected: "String", Actual: args[0]}}
 	}
 
-	fmt.Fprintf(p.Stdout, "%s", string(arg))
+	fmt.Fprintf(p.Stdout, "%s", arg.value)
 
 	cont, ok := args[1].(Callable)
 	if !ok {
 		return nil, utils.PosError{Where: p.where, Err: InvalidArgumentTypeError{Expected: "Callable", Actual: args[1]}}
 	}
 
-	result, err := cont.Apply(p.where)
+	result, err := cont.Apply(p.where, Unit())
 	if err != nil {
 		return nil, utils.PosError{Where: p.where, Err: err}
 	}
@@ -77,7 +81,7 @@ func (p *primitiveEvaluator) readAllCPS(args ...Value) (Value, error) {
 		return nil, utils.PosError{Where: p.where, Err: err}
 	}
 
-	result, err := cont.Apply(p.where, String(bytes))
+	result, err := cont.Apply(p.where, String{value: string(bytes), trace: Root{}})
 	if err != nil {
 		return nil, utils.PosError{Where: p.where, Err: err}
 	}
@@ -90,6 +94,16 @@ func (p *primitiveEvaluator) print(args ...Value) (Value, error) {
 		return nil, utils.PosError{Where: p.where, Err: InvalidArgumentCountError{Expected: 1, Actual: len(args)}}
 	}
 	fmt.Fprintln(p.Stdout, args[0])
+
+	return Unit(), nil
+}
+
+func (p *primitiveEvaluator) printTrace(args ...Value) (Value, error) {
+	if len(args) != 1 {
+		return nil, utils.PosError{Where: p.where, Err: InvalidArgumentCountError{Expected: 1, Actual: len(args)}}
+	}
+	tree := treeprint.NewWithRoot(args[0].String())
+	fmt.Fprintln(p.Stdout, TraceAsTree(args[0], args[0].Trace(), tree))
 
 	return Unit(), nil
 }
@@ -107,7 +121,7 @@ func (p *primitiveEvaluator) mul(args ...Value) (Value, error) {
 		return nil, utils.PosError{Where: p.where, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[1]}}
 	}
 
-	return left * right, nil
+	return Int{value: left.value * right.value, trace: Root{}}, nil
 }
 
 func (p *primitiveEvaluator) add(args ...Value) (Value, error) {
@@ -123,5 +137,41 @@ func (p *primitiveEvaluator) add(args ...Value) (Value, error) {
 		return nil, utils.PosError{Where: p.where, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[1]}}
 	}
 
-	return left + right, nil
+	return Int{value: left.value + right.value, trace: Root{}}, nil
+}
+
+func (p *primitiveEvaluator) sub(args ...Value) (Value, error) {
+	if len(args) != 2 {
+		return nil, utils.PosError{Where: p.where, Err: InvalidArgumentCountError{Expected: 2, Actual: len(args)}}
+	}
+	left, ok := asInt(args[0])
+	if !ok {
+		return nil, utils.PosError{Where: p.where, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[0]}}
+	}
+	right, ok := asInt(args[1])
+	if !ok {
+		return nil, utils.PosError{Where: p.where, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[1]}}
+	}
+
+	return Int{value: left.value - right.value, trace: Root{}}, nil
+}
+
+func (p *primitiveEvaluator) lessEqual(args ...Value) (Value, error) {
+	if len(args) != 2 {
+		return nil, utils.PosError{Where: p.where, Err: InvalidArgumentCountError{Expected: 2, Actual: len(args)}}
+	}
+	left, ok := asInt(args[0])
+	if !ok {
+		return nil, utils.PosError{Where: p.where, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[0]}}
+	}
+	right, ok := asInt(args[1])
+	if !ok {
+		return nil, utils.PosError{Where: p.where, Err: InvalidArgumentTypeError{Expected: "Int", Actual: args[1]}}
+	}
+
+	if left.value <= right.value {
+		return Int{value: 1, trace: Root{}}, nil
+	}
+
+	return Int{value: 0, trace: Root{}}, nil
 }

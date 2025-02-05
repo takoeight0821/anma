@@ -1,13 +1,29 @@
 package utils
 
 import (
+	"cmp"
 	"fmt"
 	"io/fs"
+	"iter"
+	"maps"
 	"path/filepath"
+	"slices"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/takoeight0821/anma/token"
 )
+
+func IsUpper(s string) bool {
+	if len(s) == 0 {
+		return false
+	}
+
+	r, _ := utf8.DecodeRuneInString(s)
+
+	return unicode.IsUpper(r)
+}
 
 // PosError represents an error that occurred at a specific position in the code.
 type PosError struct {
@@ -20,7 +36,7 @@ func (e PosError) Error() string {
 		return "at end: " + e.Err.Error()
 	}
 
-	return fmt.Sprintf("at %v: `%s`\n\t%s", e.Where.Location, e.Where.Lexeme, e.Err.Error())
+	return fmt.Sprintf("at %v: `%v`\n\t%s", e.Where.Location, e.Where, e.Err.Error())
 }
 
 func (e PosError) Unwrap() error {
@@ -33,7 +49,7 @@ func FindSourceFiles(path string) ([]string, error) {
 		if err != nil {
 			return err
 		}
-		if filepath.Ext(path) == ".anma" {
+		if filepath.Ext(path) == ".mlg" {
 			files = append(files, path)
 		}
 
@@ -89,4 +105,18 @@ func Concat[T fmt.Stringer](elems []T) fmt.Stringer {
 	}
 
 	return &builder
+}
+
+// Ordered takes a map and returns a sequence of key-value pairs in the order of the keys.
+// The keys are sorted in ascending order.
+func Ordered[K cmp.Ordered, V any](m map[K]V) iter.Seq2[K, V] {
+	keys := slices.Sorted(maps.Keys(m))
+
+	return func(yield func(K, V) bool) {
+		for _, key := range keys {
+			if !yield(key, m[key]) {
+				break
+			}
+		}
+	}
 }

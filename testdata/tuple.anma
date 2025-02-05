@@ -1,9 +1,0 @@
-def f = {
-    #([x, y]) -> prim(add, x, y),
-}
-
-def main = {
-    #() ->
-    prim(print, [1, "string"]);
-    prim(print, f([1, 2])),
-}

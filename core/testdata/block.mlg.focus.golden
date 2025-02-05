@@ -1,0 +1,111 @@
+(def
+ print.0
+ ($def.2)
+ (cut
+  (cocase
+   ((method
+     ap
+     ($p1.4)
+     ($lambda.3)
+     (cut
+      (cocase
+       ((method
+         ap
+         ($p2.6)
+         ($lambda.5)
+         (cut
+          (do
+           $case.7
+           (cut
+            (do
+             $ap.8
+             (cut
+              (symbol tuple)
+              (destruct
+               ap
+               ((var $p1.4) (var $p2.6))
+               ((var $ap.8)))))
+            (case
+             ((clause
+               (extract
+                (symbol tuple)
+                ap
+                ((var x.9) (var k.10))
+                ((var $_.11)))
+               (cut
+                (do
+                 $seq.13
+                 (cut
+                  (do
+                   $prim.12
+                   (prim print ((var x.9)) (var $prim.12)))
+                  (then
+                   $_.15
+                   (cut
+                    (do
+                     $ap.14
+                     (cut
+                      (var k.10)
+                      (destruct ap () ((var $ap.14)))))
+                    (var $seq.13)))))
+                (var $case.7)))))))
+          (var $lambda.5)))))
+      (var $lambda.3)))))
+  (var $def.2)))
+(def
+ main.1
+ ($def.16)
+ (cut
+  (cocase
+   ((method
+     ap
+     ()
+     ($lambda.17)
+     (cut
+      (do
+       $prim.18
+       (cut
+        (do
+         $ap.21
+         (cut
+          (do
+           $ap.20
+           (cut
+            (do
+             $top.19
+             (invoke print.0 ((var $top.19))))
+            (destruct ap ((literal 0)) ((var $ap.20)))))
+          (destruct
+           ap
+           ((cocase
+             ((method
+               ap
+               ()
+               ($lambda.22)
+               (cut
+                (do
+                 $ap.25
+                 (cut
+                  (do
+                   $ap.24
+                   (cut
+                    (do
+                     $top.23
+                     (invoke print.0 ((var $top.23))))
+                    (destruct ap ((literal 1)) ((var $ap.24)))))
+                  (destruct
+                   ap
+                   ((cocase
+                     ((method
+                       ap
+                       ()
+                       ($lambda.26)
+                       (cut (literal 0) (var $lambda.26))))))
+                   ((var $ap.25)))))
+                (var $lambda.22))))))
+           ((var $ap.21)))))
+        (then
+         $x.27
+         (prim print_trace ((var $x.27)) (var $prim.18)))))
+      (var $lambda.17)))))
+  (var $def.16)))

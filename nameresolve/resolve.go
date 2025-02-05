@@ -94,19 +94,7 @@ func (e *env) lookup(name token.Token) (token.Token, error) {
 
 // Define all top-level variables in the node.
 func (r *Resolver) registerTopLevel(node ast.Node) error {
-	switch node := node.(type) {
-	case *ast.TypeDecl:
-		_, err := r.assign(node.Def, asTypeConstructor)
-		if err != nil {
-			return err
-		}
-		for _, typ := range node.Types {
-			_, err := r.assign(typ, asConstructor)
-			if err != nil {
-				return err
-			}
-		}
-	case *ast.VarDecl:
+	if node, ok := node.(*ast.VarDecl); ok {
 		if _, ok := r.env.table[node.Name.Lexeme]; ok {
 			return utils.PosError{Where: node.Base(), Err: AlreadyDefinedError{Name: node.Name}}
 		}
@@ -145,6 +133,8 @@ func (r *Resolver) solve(node ast.Node) (ast.Node, error) {
 
 		return node, err
 	case *ast.Literal:
+		return node, nil
+	case *ast.Symbol:
 		return node, nil
 	case *ast.Paren:
 		var err error
@@ -201,18 +191,6 @@ func (r *Resolver) solve(node ast.Node) (ast.Node, error) {
 			return node, err
 		}
 		node.Right, err = r.solve(node.Right)
-		if err != nil {
-			return node, err
-		}
-
-		return node, nil
-	case *ast.Assert:
-		var err error
-		node.Expr, err = r.solve(node.Expr)
-		if err != nil {
-			return node, err
-		}
-		node.Type, err = r.solve(node.Type)
 		if err != nil {
 			return node, err
 		}
@@ -349,39 +327,11 @@ func (r *Resolver) solve(node ast.Node) (ast.Node, error) {
 		}
 
 		return node, nil
-	case *ast.TypeDecl:
-		r.env = newEnv(r.env)
-		defer func() { r.env = r.env.parent }()
-
-		// Define type parameters.
-		_, err := r.assign(node.Def, ifNotDefined)
-		if err != nil {
-			return node, err
-		}
-
-		node.Def, err = r.solve(node.Def)
-		if err != nil {
-			return node, err
-		}
-		for i, typ := range node.Types {
-			node.Types[i], err = r.solve(typ)
-			if err != nil {
-				return node, err
-			}
-		}
-
-		return node, nil
 	case *ast.VarDecl:
 		var err error
 		node.Name, err = r.env.lookup(node.Name)
 		if err != nil {
 			return node, err
-		}
-		if node.Type != nil {
-			node.Type, err = r.solve(node.Type)
-			if err != nil {
-				return node, err
-			}
 		}
 		if node.Expr != nil {
 			node.Expr, err = r.solve(node.Expr)
@@ -418,34 +368,6 @@ func (e AlreadyDefinedError) Error() string {
 	return e.Name.String() + " is already defined"
 }
 
-// allVariables define all variables in the node.
-// If a variable is already defined in current scope, it is an error.
-func allVariables(resolver *Resolver, node ast.Node) ([]string, error) {
-	var defined []string
-	_, err := ast.Traverse(node, func(node ast.Node, err error) (ast.Node, error) {
-		if err != nil {
-			return node, err
-		}
-		switch node := node.(type) {
-		case *ast.Var:
-			if _, ok := resolver.env.table[node.Name.Lexeme]; ok {
-				return node, utils.PosError{Where: node.Base(), Err: AlreadyDefinedError{Name: node.Name}}
-			}
-			resolver.define(node.Name)
-			defined = append(defined, node.Name.Lexeme)
-
-			return node, nil
-		default:
-			return node, nil
-		}
-	})
-	if err != nil {
-		return nil, fmt.Errorf("allVariables: %w", err)
-	}
-
-	return defined, nil
-}
-
 // overwrite defines all variables in the node.
 // If a variable is already defined in current scope, it is overwritten.
 func overwrite(r *Resolver, node ast.Node) ([]string, error) {
@@ -468,29 +390,6 @@ func overwrite(r *Resolver, node ast.Node) ([]string, error) {
 	return defined, nil
 }
 
-// ifNotDefined define variables in the node if they are not defined.
-func ifNotDefined(resolver *Resolver, node ast.Node) ([]string, error) {
-	var defined []string
-	_, err := ast.Traverse(node, func(node ast.Node, _ error) (ast.Node, error) {
-		switch node := node.(type) {
-		case *ast.Var:
-			if _, err := resolver.env.lookup(node.Name); err != nil {
-				resolver.define(node.Name)
-				defined = append(defined, node.Name.Lexeme)
-			}
-
-			return node, nil
-		default:
-			return node, nil
-		}
-	})
-	if err != nil {
-		return nil, fmt.Errorf("ifNotDefined: %w", err)
-	}
-
-	return defined, nil
-}
-
 type InvalidPatternError struct {
 	Pattern ast.Node
 }
@@ -500,10 +399,13 @@ func (e InvalidPatternError) Error() string {
 }
 
 // Define variables in the node as pattern.
-// If a variable appears as a function, it is ignored.
 func asPattern(resolver *Resolver, pattern ast.Node) ([]string, error) {
 	switch pattern := pattern.(type) {
 	case *ast.Var:
+		// If pattern is a constructor, ignore it.
+		if utils.IsUpper(pattern.Name.Lexeme) {
+			return nil, nil
+		}
 		if _, ok := resolver.env.table[pattern.Name.Lexeme]; ok {
 			return nil, utils.PosError{Where: pattern.Base(), Err: AlreadyDefinedError{Name: pattern.Name}}
 		}
@@ -511,6 +413,8 @@ func asPattern(resolver *Resolver, pattern ast.Node) ([]string, error) {
 
 		return []string{pattern.Name.Lexeme}, nil
 	case *ast.Literal:
+		return nil, nil
+	case *ast.Symbol:
 		return nil, nil
 	case *ast.Paren:
 		return resolver.assign(pattern.Expr, asPattern)
@@ -528,7 +432,11 @@ func asPattern(resolver *Resolver, pattern ast.Node) ([]string, error) {
 	case *ast.Access:
 		return resolver.assign(pattern.Receiver, asPattern)
 	case *ast.Call:
-		var defined []string
+		defined, err := resolver.assign(pattern.Func, asPattern)
+		if err != nil {
+			return nil, err
+		}
+
 		for _, arg := range pattern.Args {
 			newDefs, err := resolver.assign(arg, asPattern)
 			if err != nil {
@@ -540,38 +448,6 @@ func asPattern(resolver *Resolver, pattern ast.Node) ([]string, error) {
 		return defined, nil
 	default:
 		return nil, utils.PosError{Where: pattern.Base(), Err: InvalidPatternError{Pattern: pattern}}
-	}
-}
-
-// Define variables in the node as type constructor.
-// If the given node is a variable, define it.
-// Otherwise, pass the node to asConstructor.
-func asTypeConstructor(resolver *Resolver, typ ast.Node) ([]string, error) {
-	switch typ := typ.(type) {
-	case *ast.Var:
-		return resolver.assign(typ, allVariables)
-	default:
-		return resolver.assign(typ, asConstructor)
-	}
-}
-
-// Define variables in the node as constructor.
-// If a variable appears as a function, define it.
-func asConstructor(resolver *Resolver, typ ast.Node) ([]string, error) {
-	switch typ := typ.(type) {
-	case *ast.Var:
-		return nil, nil
-	case *ast.Paren:
-		return resolver.assign(typ.Expr, asConstructor)
-	case *ast.Call:
-		// typ.Func is a constructor.
-		return resolver.assign(typ.Func, allVariables)
-	case *ast.Prim:
-		return nil, nil
-	case *ast.Object:
-		return nil, nil
-	default:
-		return nil, utils.PosError{Where: typ.Base(), Err: InvalidTypeError{Type: typ}}
 	}
 }
 

@@ -3,20 +3,74 @@ package eval_test
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/sebdah/goldie/v2"
-	"github.com/takoeight0821/anma/codata"
-	"github.com/takoeight0821/anma/desugarwith"
 	"github.com/takoeight0821/anma/driver"
 	"github.com/takoeight0821/anma/eval"
-	"github.com/takoeight0821/anma/infix"
 	"github.com/takoeight0821/anma/nameresolve"
 	"github.com/takoeight0821/anma/token"
 	"github.com/takoeight0821/anma/utils"
 )
+
+func BenchmarkTestdata(b *testing.B) {
+	testfiles, err := utils.FindSourceFiles("../testdata")
+	if err != nil {
+		b.Errorf("failed to find test files: %v", err)
+
+		return
+	}
+
+	for range b.N {
+		for _, testfile := range testfiles {
+			source, err := os.ReadFile(testfile)
+			if err != nil {
+				b.Errorf("failed to read %s: %v", testfile, err)
+
+				return
+			}
+
+			runner := driver.NewPassRunner()
+			driver.AddPassesUntil(runner, nameresolve.NewResolver())
+
+			nodes, err := runner.RunSource(testfile, string(source))
+			if err != nil {
+				b.Errorf("%s returned error: %v", testfile, err)
+
+				return
+			}
+
+			evaluator := eval.NewEvaluator()
+			evaluator.Stdout = io.Discard
+			evaluator.Stdin = strings.NewReader("test input\n")
+			values := make([]eval.Value, len(nodes))
+
+			for i, node := range nodes {
+				values[i], err = evaluator.Eval(node)
+				if err != nil {
+					b.Errorf("%s returned error: %v", testfile, err)
+
+					return
+				}
+			}
+
+			if main, ok := evaluator.SearchMain(); ok {
+				_, err := main.Apply(token.Dummy(), eval.Unit())
+
+				var exitErr eval.ExitError
+
+				if err != nil && !errors.As(err, &exitErr) {
+					b.Errorf("%s returned error: %v", testfile, err)
+				}
+			} else {
+				b.Errorf("%s does not have a main function", testfile)
+			}
+		}
+	}
+}
 
 func TestGolden(t *testing.T) {
 	t.Parallel()
@@ -29,6 +83,7 @@ func TestGolden(t *testing.T) {
 	}
 
 	for _, testfile := range testfiles {
+		t.Logf("testfile: %s", testfile)
 		source, err := os.ReadFile(testfile)
 		if err != nil {
 			t.Errorf("failed to read %s: %v", testfile, err)
@@ -37,10 +92,7 @@ func TestGolden(t *testing.T) {
 		}
 
 		runner := driver.NewPassRunner()
-		runner.AddPass(&desugarwith.DesugarWith{})
-		runner.AddPass(&codata.Flat{})
-		runner.AddPass(infix.NewInfixResolver())
-		runner.AddPass(nameresolve.NewResolver())
+		driver.AddPassesUntil(runner, nameresolve.NewResolver())
 
 		nodes, err := runner.RunSource(testfile, string(source))
 		if err != nil {
@@ -65,8 +117,7 @@ func TestGolden(t *testing.T) {
 		}
 
 		if main, ok := evaluator.SearchMain(); ok {
-			top := token.Token{Kind: token.IDENT, Lexeme: "toplevel", Location: token.Location{}, Literal: -1}
-			ret, err := main.Apply(top)
+			ret, err := main.Apply(token.Dummy(), eval.Unit())
 			var exitErr eval.ExitError
 			if errors.As(err, &exitErr) {
 				fmt.Fprintf(&builder, "exit => %d\n", exitErr.Code)

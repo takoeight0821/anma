@@ -16,8 +16,10 @@ func (ev *Evaluator) Eval(node ast.Node) (Value, error) {
 		return ev.evalVar(node)
 	case *ast.Literal:
 		return ev.evalLiteral(node)
+	case *ast.Symbol:
+		return ev.evalSymbol(node)
 	case *ast.Paren:
-		return ev.evalParen(node)
+		panic("unreachable: paren must be desugared")
 	case *ast.Tuple:
 		return ev.evalTuple(node)
 	case *ast.Access:
@@ -27,9 +29,7 @@ func (ev *Evaluator) Eval(node ast.Node) (Value, error) {
 	case *ast.Prim:
 		return ev.evalPrim(node)
 	case *ast.Binary:
-		return ev.evalBinary(node)
-	case *ast.Assert:
-		return ev.evalAssert(node)
+		panic("unreachable: binary must be desugared")
 	case *ast.Let:
 		return Unit(), ev.evalLet(node)
 	case *ast.Seq:
@@ -55,8 +55,6 @@ func (ev *Evaluator) Eval(node ast.Node) (Value, error) {
 		return ev.evalObject(node), nil
 	case *ast.Field:
 		panic("unreachable: field cannot appear outside of object")
-	case *ast.TypeDecl:
-		return Unit(), ev.evalTypeDecl(node)
 	case *ast.VarDecl:
 		return Unit(), ev.evalVarDecl(node)
 	case *ast.InfixDecl:
@@ -86,21 +84,21 @@ func (ev *Evaluator) evalLiteral(node *ast.Literal) (Value, error) {
 			return nil, utils.PosError{Where: node.Base(), Err: InvalidLiteralError{Kind: node.Kind}}
 		}
 
-		return Int(v), nil
+		return Int{value: v, trace: Root{}}, nil
 	case token.STRING:
 		v, ok := node.Literal.(string)
 		if !ok {
 			return nil, utils.PosError{Where: node.Base(), Err: InvalidLiteralError{Kind: node.Kind}}
 		}
 
-		return String(v), nil
+		return String{value: v, trace: Root{}}, nil
 	default:
 		return nil, utils.PosError{Where: node.Base(), Err: InvalidLiteralError{Kind: node.Kind}}
 	}
 }
 
-func (ev *Evaluator) evalParen(node *ast.Paren) (Value, error) {
-	return ev.Eval(node.Expr)
+func (ev *Evaluator) evalSymbol(node *ast.Symbol) (Value, error) {
+	return Symbol{Name: node.Name.Lexeme, Values: make([]Value, 0), trace: Root{}}, nil
 }
 
 func (ev *Evaluator) evalTuple(node *ast.Tuple) (Value, error) {
@@ -113,7 +111,7 @@ func (ev *Evaluator) evalTuple(node *ast.Tuple) (Value, error) {
 		}
 	}
 
-	return Tuple(values), nil
+	return Tuple{values, Root{}}, nil
 }
 
 func (ev *Evaluator) evalAccess(node *ast.Access) (Value, error) {
@@ -131,7 +129,7 @@ func (ev *Evaluator) evalAccess(node *ast.Access) (Value, error) {
 			}
 			receiver.Fields[node.Name.Lexeme] = value
 
-			return value, nil
+			return value.WithTrace(Access{Receiver: receiver, Name: node.Name}), nil
 		}
 
 		return nil, utils.PosError{Where: node.Base(), Err: UndefinedFieldError{Receiver: receiver, Name: node.Name.Lexeme}}
@@ -188,7 +186,7 @@ func asInt(v Value) (Int, bool) {
 	case Int:
 		return v, true
 	default:
-		return 0, false
+		return Int{value: 0, trace: Root{}}, false
 	}
 }
 
@@ -212,37 +210,6 @@ func (e ExitError) Error() string {
 	return fmt.Sprintf("exit(%d)", e.Code)
 }
 
-func (ev *Evaluator) evalBinary(node *ast.Binary) (Value, error) {
-	name := tokenToName(node.Op)
-	if operator := ev.evEnv.get(name); operator != nil {
-		switch operator := operator.(type) {
-		case Callable:
-			left, err := ev.Eval(node.Left)
-			if err != nil {
-				return nil, err
-			}
-			right, err := ev.Eval(node.Right)
-			if err != nil {
-				return nil, err
-			}
-			v, err := operator.Apply(node.Base(), left, right)
-			if err != nil {
-				return nil, utils.PosError{Where: node.Base(), Err: err}
-			}
-
-			return v, nil
-		default:
-			return nil, utils.PosError{Where: node.Base(), Err: NotCallableError{Func: operator}}
-		}
-	}
-
-	return nil, utils.PosError{Where: node.Base(), Err: UndefinedVariableError{Name: node.Op}}
-}
-
-func (ev *Evaluator) evalAssert(node *ast.Assert) (Value, error) {
-	return ev.Eval(node.Expr)
-}
-
 // evalLet evaluates the given let expression.
 // let expression does not create a new scope.
 // It just overrides the existing bindings or creates new bindings if not exists.
@@ -251,7 +218,7 @@ func (ev *Evaluator) evalLet(node *ast.Let) error {
 	if err != nil {
 		return err
 	}
-	if env, ok := body.match(node.Bind); ok {
+	if env, ok := body.Match(node.Bind); ok {
 		for name, v := range env {
 			ev.evEnv.set(name, v)
 		}
@@ -275,6 +242,7 @@ func (ev *Evaluator) evalLambda(node *ast.Lambda) Function {
 		Evaluator: *ev,
 		Params:    params,
 		Body:      node.Expr,
+		trace:     Root{},
 	}
 }
 
@@ -322,7 +290,7 @@ func matchClause(clause *ast.CaseClause, scrs []Value) (map[Name]Value, bool) {
 	}
 	env := make(map[Name]Value)
 	for i, pattern := range clause.Patterns {
-		m, ok := scrs[i].match(pattern)
+		m, ok := scrs[i].Match(pattern)
 		if !ok {
 			return nil, false
 		}
@@ -337,52 +305,16 @@ func matchClause(clause *ast.CaseClause, scrs []Value) (map[Name]Value, bool) {
 func (ev *Evaluator) evalObject(node *ast.Object) Object {
 	fields := make(map[string]Value)
 	for _, field := range node.Fields {
-		fields[field.Name] = Thunk{Evaluator: *ev, Body: field.Expr}
+		fields[field.Name] = Thunk{Evaluator: *ev, Body: field.Expr, trace: Root{}}
 	}
 
-	return Object{Fields: fields}
-}
-
-func (ev *Evaluator) evalTypeDecl(node *ast.TypeDecl) error {
-	for _, ctor := range node.Types {
-		err := ev.defineConstructor(ctor)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (ev *Evaluator) defineConstructor(node ast.Node) error {
-	switch node := node.(type) {
-	case *ast.Var:
-		ev.evEnv.set(tokenToName(node.Name), Data{Tag: tokenToName(node.Name), Elems: nil})
-
-		return nil
-	case *ast.Call:
-		switch fn := node.Func.(type) {
-		case *ast.Var:
-			ev.evEnv.set(tokenToName(fn.Name), Constructor{Evaluator: *ev, Tag: tokenToName(fn.Name), Params: len(node.Args)})
-
-			return nil
-		case *ast.Prim:
-			// For type checking
-			// Ignore in evaluation
-			return nil
-		}
-	case *ast.Prim:
-		// For type checking
-		// Ignore in evaluation
-		return nil
-	}
-
-	return utils.PosError{Where: node.Base(), Err: NotConstructorError{Node: node}}
+	return Object{Fields: fields, trace: Root{}}
 }
 
 func (ev *Evaluator) evalVarDecl(node *ast.VarDecl) error {
 	if node.Expr != nil {
 		v, err := ev.Eval(node.Expr)
+		v = v.WithTrace(Var{Name: node.Name})
 		if err != nil {
 			return err
 		}

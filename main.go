@@ -9,11 +9,8 @@ import (
 
 	"github.com/adrg/xdg"
 	"github.com/peterh/liner"
-	"github.com/takoeight0821/anma/codata"
-	"github.com/takoeight0821/anma/desugarwith"
 	"github.com/takoeight0821/anma/driver"
 	"github.com/takoeight0821/anma/eval"
-	"github.com/takoeight0821/anma/infix"
 	"github.com/takoeight0821/anma/nameresolve"
 	"github.com/takoeight0821/anma/token"
 )
@@ -44,7 +41,7 @@ func main() {
 }
 
 func historyPath() string {
-	return filepath.Join(xdg.DataHome, "anma", ".anma_history")
+	return filepath.Join(xdg.DataHome, "malgo", ".malgo_history")
 }
 
 // writeHistory writes the history of the REPL to a file.
@@ -82,10 +79,7 @@ func RunPrompt() error {
 	readHistory(line)
 
 	runner := driver.NewPassRunner()
-	runner.AddPass(&desugarwith.DesugarWith{})
-	runner.AddPass(&codata.Flat{})
-	runner.AddPass(infix.NewInfixResolver())
-	runner.AddPass(nameresolve.NewResolver())
+	driver.AddPassesUntil(runner, nameresolve.NewResolver())
 
 	evaluator := eval.NewEvaluator()
 
@@ -119,10 +113,7 @@ func RunPrompt() error {
 // RunFile runs the specified file.
 func RunFile(path string) error {
 	runner := driver.NewPassRunner()
-	runner.AddPass(&desugarwith.DesugarWith{})
-	runner.AddPass(&codata.Flat{})
-	runner.AddPass(infix.NewInfixResolver())
-	runner.AddPass(nameresolve.NewResolver())
+	driver.AddPassesUntil(runner, nameresolve.NewResolver())
 
 	// Read the source code from the file.
 	bytes, err := os.ReadFile(path)
@@ -148,9 +139,7 @@ func RunFile(path string) error {
 	if !ok {
 		return noMainError{}
 	}
-	// top is a dummy token.
-	top := token.Token{Kind: token.IDENT, Lexeme: "toplevel", Location: token.Location{}, Literal: -1}
-	_, err = main.Apply(top)
+	_, err = main.Apply(token.Dummy(), eval.Unit())
 	var exitErr eval.ExitError
 	if errors.As(err, &exitErr) {
 		os.Exit(exitErr.Code)

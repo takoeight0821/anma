@@ -36,6 +36,7 @@ func (v *Var) Plate(err error, _ func(Node, error) (Node, error)) (Node, error) 
 	return v, err
 }
 
+//exhaustruct:ignore
 var _ Node = &Var{}
 
 type Literal struct {
@@ -54,7 +55,27 @@ func (l *Literal) Plate(err error, _ func(Node, error) (Node, error)) (Node, err
 	return l, err
 }
 
+//exhaustruct:ignore
 var _ Node = &Literal{}
+
+type Symbol struct {
+	Name token.Token
+}
+
+func (s Symbol) String() string {
+	return utils.Parenthesize("symbol", s.Name).String()
+}
+
+func (s *Symbol) Base() token.Token {
+	return s.Name
+}
+
+func (s *Symbol) Plate(err error, _ func(Node, error) (Node, error)) (Node, error) {
+	return s, err
+}
+
+//exhaustruct:ignore
+var _ Node = &Symbol{}
 
 type Paren struct {
 	Expr Node
@@ -74,6 +95,7 @@ func (p *Paren) Plate(err error, f func(Node, error) (Node, error)) (Node, error
 	return p, err
 }
 
+//exhaustruct:ignore
 var _ Node = &Paren{}
 
 type Tuple struct {
@@ -116,6 +138,7 @@ func (a *Access) Plate(err error, f func(Node, error) (Node, error)) (Node, erro
 	return a, err
 }
 
+//exhaustruct:ignore
 var _ Node = &Access{}
 
 type Call struct {
@@ -140,6 +163,7 @@ func (c *Call) Plate(err error, f func(Node, error) (Node, error)) (Node, error)
 	return c, err
 }
 
+//exhaustruct:ignore
 var _ Node = &Call{}
 
 type Prim struct {
@@ -163,6 +187,7 @@ func (p *Prim) Plate(err error, f func(Node, error) (Node, error)) (Node, error)
 	return p, err
 }
 
+//exhaustruct:ignore
 var _ Node = &Prim{}
 
 type Binary struct {
@@ -186,29 +211,8 @@ func (b *Binary) Plate(err error, f func(Node, error) (Node, error)) (Node, erro
 	return b, err
 }
 
+//exhaustruct:ignore
 var _ Node = &Binary{}
-
-type Assert struct {
-	Expr Node
-	Type Node
-}
-
-func (a Assert) String() string {
-	return utils.Parenthesize("assert", a.Expr, a.Type).String()
-}
-
-func (a *Assert) Base() token.Token {
-	return a.Expr.Base()
-}
-
-func (a *Assert) Plate(err error, f func(Node, error) (Node, error)) (Node, error) {
-	a.Expr, err = f(a.Expr, err)
-	a.Type, err = f(a.Type, err)
-
-	return a, err
-}
-
-var _ Node = &Assert{}
 
 type Let struct {
 	Bind Node
@@ -230,6 +234,7 @@ func (l *Let) Plate(err error, f func(Node, error) (Node, error)) (Node, error) 
 	return l, err
 }
 
+//exhaustruct:ignore
 var _ Node = &Let{}
 
 type With struct {
@@ -238,6 +243,10 @@ type With struct {
 }
 
 func (w With) String() string {
+	if len(w.Binds) == 0 {
+		return utils.Parenthesize("with _", w.Body).String()
+	}
+
 	return utils.Parenthesize("with", utils.Concat(w.Binds), w.Body).String()
 }
 
@@ -258,6 +267,7 @@ func (w *With) Plate(err error, f func(Node, error) (Node, error)) (Node, error)
 	return w, err
 }
 
+//exhaustruct:ignore
 var _ Node = &With{}
 
 type Seq struct {
@@ -270,7 +280,7 @@ func (s Seq) String() string {
 
 func (s *Seq) Base() token.Token {
 	if len(s.Exprs) == 0 {
-		return token.Token{}
+		return token.Dummy()
 	}
 
 	return s.Exprs[0].Base()
@@ -284,6 +294,7 @@ func (s *Seq) Plate(err error, f func(Node, error) (Node, error)) (Node, error) 
 	return s, err
 }
 
+//exhaustruct:ignore
 var _ Node = &Seq{}
 
 type Codata struct {
@@ -298,7 +309,7 @@ func (c Codata) String() string {
 
 func (c *Codata) Base() token.Token {
 	if len(c.Clauses) == 0 {
-		return token.Token{}
+		return token.Dummy()
 	}
 
 	return c.Clauses[0].Base()
@@ -319,6 +330,7 @@ func (c *Codata) Plate(err error, f func(Node, error) (Node, error)) (Node, erro
 	return c, err
 }
 
+//exhaustruct:ignore
 var _ Node = &Codata{}
 
 type CodataClause struct {
@@ -345,6 +357,7 @@ func (c *CodataClause) Plate(err error, f func(Node, error) (Node, error)) (Node
 	return c, err
 }
 
+//exhaustruct:ignore
 var _ Node = &CodataClause{}
 
 type Lambda struct {
@@ -370,6 +383,7 @@ func (l *Lambda) Plate(err error, f func(Node, error) (Node, error)) (Node, erro
 	return l, err
 }
 
+//exhaustruct:ignore
 var _ Node = &Lambda{}
 
 type Case struct {
@@ -403,6 +417,7 @@ func (c *Case) Plate(err error, fun func(Node, error) (Node, error)) (Node, erro
 	return c, err
 }
 
+//exhaustruct:ignore
 var _ Node = &Case{}
 
 type CaseClause struct {
@@ -438,6 +453,7 @@ func (c *CaseClause) Plate(err error, f func(Node, error) (Node, error)) (Node, 
 	return c, err
 }
 
+//exhaustruct:ignore
 var _ Node = &CaseClause{}
 
 type Object struct {
@@ -467,6 +483,7 @@ func (o *Object) Plate(err error, f func(Node, error) (Node, error)) (Node, erro
 	return o, err
 }
 
+//exhaustruct:ignore
 var _ Node = &Object{}
 
 type Field struct {
@@ -488,47 +505,16 @@ func (f *Field) Plate(err error, g func(Node, error) (Node, error)) (Node, error
 	return f, err
 }
 
+//exhaustruct:ignore
 var _ Node = &Field{}
-
-type TypeDecl struct {
-	Def   Node
-	Types []Node
-}
-
-func (t TypeDecl) String() string {
-	return utils.Parenthesize("type", t.Def, utils.Concat(t.Types)).String()
-}
-
-func (t *TypeDecl) Base() token.Token {
-	return t.Def.Base()
-}
-
-func (t *TypeDecl) Plate(err error, f func(Node, error) (Node, error)) (Node, error) {
-	t.Def, err = f(t.Def, err)
-	for i, typ := range t.Types {
-		t.Types[i], err = f(typ, err)
-	}
-
-	return t, err
-}
-
-var _ Node = &TypeDecl{}
 
 type VarDecl struct {
 	Name token.Token
-	Type Node
 	Expr Node
 }
 
 func (v VarDecl) String() string {
-	if v.Type == nil {
-		return utils.Parenthesize("def", v.Name, v.Expr).String()
-	}
-	if v.Expr == nil {
-		return utils.Parenthesize("def", v.Name, v.Type).String()
-	}
-
-	return utils.Parenthesize("def", v.Name, v.Type, v.Expr).String()
+	return utils.Parenthesize("def", v.Name, v.Expr).String()
 }
 
 func (v *VarDecl) Base() token.Token {
@@ -536,9 +522,6 @@ func (v *VarDecl) Base() token.Token {
 }
 
 func (v *VarDecl) Plate(err error, f func(Node, error) (Node, error)) (Node, error) {
-	if v.Type != nil {
-		v.Type, err = f(v.Type, err)
-	}
 	if v.Expr != nil {
 		v.Expr, err = f(v.Expr, err)
 	}
@@ -546,6 +529,7 @@ func (v *VarDecl) Plate(err error, f func(Node, error) (Node, error)) (Node, err
 	return v, err
 }
 
+//exhaustruct:ignore
 var _ Node = &VarDecl{}
 
 type InfixDecl struct {
@@ -566,6 +550,7 @@ func (i *InfixDecl) Plate(err error, _ func(Node, error) (Node, error)) (Node, e
 	return i, err
 }
 
+//exhaustruct:ignore
 var _ Node = &InfixDecl{}
 
 type This struct {
@@ -584,6 +569,7 @@ func (t *This) Plate(err error, _ func(Node, error) (Node, error)) (Node, error)
 	return t, err
 }
 
+//exhaustruct:ignore
 var _ Node = &This{}
 
 // Traverse the [Node] in depth-first order.

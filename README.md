@@ -1,12 +1,4 @@
-# Anma Programming Language
+# Malgo
 
-Anma is a research programming language.
-It supports:
+Malgo is functional programming language with copatterns.
 
-- First-class functions
-- Anonymous functions
-- Records
-- (Co)patterns
-- Continuation passing style IO
-
-Anma will be the next version of [Malgo](https://github.com/malgo-lang/malgo) language.
